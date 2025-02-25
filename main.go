@@ -1,20 +1,43 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"net/http"
+
+	"github.com/felipeErnica/rebanho-backend/db"
+	server_errors "github.com/felipeErnica/rebanho-backend/errors"
+	"github.com/felipeErnica/rebanho-backend/handlers"
+	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 func main() {
+    
+    util.LogInfo("Iniciando server....")
+
 	mux := http.NewServeMux()
-
-    mux.HandleFunc("GET /comment", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprint(w,"Comentários")
-    })
-
-    err:= http.ListenAndServe("localhost:8080", mux)
+    handlers.InitHandlers(mux)
+    
+    dataBaseInfo:= db.ConnectPostgres().ReturnDatabaseInfo()
+    db, err := sql.Open("postgres", dataBaseInfo)
 
     if err != nil {
-        fmt.Println(err.Error())
+        server_errors.InitServerError(err)
     }
+    
+    defer db.Close()
+
+    err = db.Ping()
+
+    if err != nil {
+        server_errors.InitServerError(err)
+    }
+
+    err = http.ListenAndServe("localhost:8080", mux)
+
+    if err != nil {
+        server_errors.InitServerError(err)
+    }
+
+    util.LogInfo("Server encerrado com sucesso!")
+
 }
