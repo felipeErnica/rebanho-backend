@@ -14,8 +14,8 @@ type AnimalHandler struct {
 
 func InitAnimal(mux *http.ServeMux, db *sql.DB) {
 
-    repository:= repositories.AnimalRepository{}
-    repository.InitRepository(db)
+    repository:= repositories.AnimalRepository{ Db: db, }
+    repositories.LogInitRepository("Animais")
     handler:=AnimalHandler{ Repository: repository, }
 
     mux.Handle("GET /animais", &handler)

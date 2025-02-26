@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/felipeErnica/rebanho-backend/db"
-	server_errors "github.com/felipeErnica/rebanho-backend/errors"
 	"github.com/felipeErnica/rebanho-backend/handlers"
+	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
@@ -14,28 +14,30 @@ func main() {
     
     util.LogInfo("Iniciando server....")
 
-	mux := http.NewServeMux()
-    handlers.InitHandlers(mux)
-    
     dataBaseInfo:= db.ConnectPostgres().ReturnDatabaseInfo()
     db, err := sql.Open("postgres", dataBaseInfo)
+    defer db.Close()
 
     if err != nil {
-        server_errors.InitServerError(err)
+        util.LogError("Não foi possível conectar ao banco de dados!")
+        serverErrors.InitServerError(err)
     }
-    
-    defer db.Close()
 
     err = db.Ping()
 
     if err != nil {
-        server_errors.InitServerError(err)
+        util.LogError("Não foi possível conectar ao banco de dados!")
+        serverErrors.InitServerError(err)
     }
 
+	mux := http.NewServeMux()
+    handlers.InitHandlers(mux, db)
+    
     err = http.ListenAndServe("localhost:8080", mux)
 
     if err != nil {
-        server_errors.InitServerError(err)
+        util.LogError("Não foi possível conectar a porta do host especificado!")
+        serverErrors.InitServerError(err)
     }
 
     util.LogInfo("Server encerrado com sucesso!")
