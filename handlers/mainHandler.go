@@ -1,16 +1,33 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
-func InitHandlers(mux *http.ServeMux, db *sql.DB) {
-    InitAnimal(mux, db)
+func InitHandlers(mux *http.ServeMux) {
+    InitAnimal(mux)
 }
 
 func LogControllersInit(name string) {
     util.LogInfo("Requisições de " + name + " iniciadas com sucesso!")
+}
+
+func JsonServerError(err error, w http.ResponseWriter) {
+    util.LogError("Falha ao decodificar JSON!")
+    util.LogError(err.Error())
+    w.WriteHeader(http.StatusInternalServerError)
+}
+
+func DatabaseSendError(err error, w http.ResponseWriter) {
+    util.LogError("Falha ao enviar dados ao banco de dados!")
+    util.LogError(err.Error())
+    w.WriteHeader(http.StatusInternalServerError)
+}
+
+func DatabaseGetError(err error, w http.ResponseWriter) {
+    util.LogError("Falha ao recuperar dados do banco de dados!")
+    util.LogError(err.Error())
+    w.WriteHeader(http.StatusInternalServerError)
 }

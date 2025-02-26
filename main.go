@@ -6,8 +6,10 @@ import (
 
 	"github.com/felipeErnica/rebanho-backend/db"
 	"github.com/felipeErnica/rebanho-backend/handlers"
+	"github.com/felipeErnica/rebanho-backend/repositories"
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	"github.com/felipeErnica/rebanho-backend/util"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -31,7 +33,8 @@ func main() {
     }
 
 	mux := http.NewServeMux()
-    handlers.InitHandlers(mux, db)
+    handlers.InitHandlers(mux)
+    repositories.InitRepository(db)
     
     err = http.ListenAndServe("localhost:8080", mux)
 

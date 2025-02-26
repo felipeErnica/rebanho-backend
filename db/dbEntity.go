@@ -11,5 +11,6 @@ type DatabaseConfig struct {
 }
 
 func (db *DatabaseConfig) ReturnDatabaseInfo() string {
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s", db.Host, db.Port, db.User, db.Password, db.DbName)
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", 
+        db.Host, db.Port, db.User, db.Password, db.DbName)
 }

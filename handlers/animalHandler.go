@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"strings"
 
+	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
 
@@ -12,23 +13,95 @@ type AnimalHandler struct {
     Repository repositories.AnimalRepository
 }
 
-func InitAnimal(mux *http.ServeMux, db *sql.DB) {
+func InitAnimal(mux *http.ServeMux) {
 
-    repository:= repositories.AnimalRepository{ Db: db, }
-    repositories.LogInitRepository("Animais")
-    handler:=AnimalHandler{ Repository: repository, }
+    handler:=AnimalHandler{ 
+        Repository: repositories.AnimalRepository{}, 
+    }
 
-    mux.Handle("GET /animais", &handler)
-    //mux.Handle("/animais/", &AnimalHandler{})
+    mux.HandleFunc("GET /animais", handler.GetAll)
+    mux.HandleFunc("GET /animais/{id}", handler.GetById)
+    mux.HandleFunc("POST /animais", handler.Add)
+    mux.HandleFunc("POST /animais/save", handler.Save)
     LogControllersInit("Animais")
 }
 
-func (h *AnimalHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    switch {
-        case r.Method == http.MethodGet && strings.EqualFold(r.URL.Path, "/animais"): h.GetAll(w, r)
-    }
-}
 
 func (h *AnimalHandler) GetAll(w http.ResponseWriter, r *http.Request)  {
-    w.Write([]byte("Lista de Animais"))
+    animals, err:= h.Repository.GetAll()
+    if err != nil {
+        DatabaseGetError(err, w)
+        return
+    }
+
+    response, err:= json.Marshal(animals)
+    if err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    w.Write(response)
+}
+
+func (h *AnimalHandler) GetById(w http.ResponseWriter, r *http.Request)  {
+    id:= r.PathValue("id")
+    animal, err:= h.Repository.GetById(id)
+    if err != nil {
+        DatabaseGetError(err, w)
+        return
+    }
+
+    response, err:= json.Marshal(animal)
+    if err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    w.Write(response)
+}
+
+func (h *AnimalHandler) Add(w http.ResponseWriter, r *http.Request) {
+    var createAnimal entity.CreateAnimal
+    if err:= json.NewDecoder(r.Body).Decode(&createAnimal); err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    var test entity.Animal
+    if err:= json.NewDecoder(r.Body).Decode(&test); err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    fmt.Println(json.Marshal(test))
+
+    animal, err:= h.Repository.Add(&createAnimal)
+    if err != nil {
+        DatabaseSendError(err, w)
+        return
+    }
+
+    response, err:= json.Marshal(animal)
+    if err != nil {
+        JsonServerError(err,w)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    w.Write(response)
+}
+
+func (h *AnimalHandler) Save(w http.ResponseWriter, r *http.Request) {
+    var animal entity.Animal
+    if err:= json.NewDecoder(r.Body).Decode(&animal); err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    err:= h.Repository.Save(&animal)
+    if err != nil {
+        DatabaseSendError(err, w)
+        return
+    }
+
 }
