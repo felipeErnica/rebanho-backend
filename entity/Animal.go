@@ -8,20 +8,22 @@ import (
 )
 
 type Animal struct {
-    Id                   string         `json:"Id"`
-    Name                 string         `json:"Name"`
-    IdentificationNumber string         `json:"IdentificationNumber"`
-    FatherId             string         `json:"FatherId"`
-    MotherId             string         `json:"MotherId"`
-    BirthDate            time.Time      `json:"BirthDate"`
-    DeathDate            time.Time      `json:"DeathDate"`
-    PastureId            string         `json:"PastureId"`
-    Status               enums.Status   `json:"Status"`
-    Isr                  float32        `json:"Isr"`
-    AvarageProd          float32        `json:"AvarageProd"`
-    AvarageBirthInterval float32        `json:"AvarageBirthInterval"`
-    MaxPeak              float32        `json:"MaxPeak"`
-    ChildrenQuantity     uint8          `json:"ChildrenQuantity"`
+    Id                   string         `json:"id"`
+    Name                 string         `json:"name"`
+    IdentificationNumber string         `json:"identification_Number"`
+    FatherId             string         `json:"father_id"`
+    MotherId             string         `json:"mother_id"`
+    BirthDate            time.Time      `json:"birth_date"`
+    DeathDate            time.Time      `json:"death_date"`
+    PastureId            string         `json:"pasture_id"`
+    Status               enums.Status   `json:"status"`
+    Isr                  float32        `json:"isr"`
+    AvarageProd          float32        `json:"avarage_prod"`
+    AvarageBirthInterval float32        `json:"avarage_birth_interval"`
+    MaxPeak              float32        `json:"max_peak"`
+    ChildrenQuantity     int            `json:"children_quantity"`
+    CreatedAt            time.Time      `json:"created_at"`
+    DeletedAt            time.Time      `json:"deleted_at"`
 }
 
 func NewAnimal(create *CreateAnimal) *Animal {

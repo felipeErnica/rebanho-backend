@@ -8,7 +8,7 @@ type PastureRepository struct{}
 
 func (p *PastureRepository) GetAll() (*[]entity.Pasture, error) {
 	query := "SELECT * FROM pastures"
-	sqlStatement, err := SelectQueryList(query)
+	sqlStatement, err := selectQueryList(query)
     defer sqlStatement.Close()
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (p *PastureRepository) GetAll() (*[]entity.Pasture, error) {
 func (p *PastureRepository) GetById(id string) (*entity.Pasture, error) {
 	query := "SELECT * FROM pastures WHERE id = $1"
     var pasture entity.Pasture
-	sqlStatement:= SelectQueryOne(query, id)
+	sqlStatement:= selectQueryOne(query, id)
     err:= sqlStatement.Scan(&pasture.Id, &pasture.Name, &pasture.BullId)
     return &pasture, err
 }
@@ -39,12 +39,12 @@ func (p *PastureRepository) GetById(id string) (*entity.Pasture, error) {
 func (p *PastureRepository) Add(newPasture *entity.CreatePasture) (*entity.Pasture, error){
     query:="INSERT INTO pastures(id, name, bull_id) VALUES ($1, $2, $3)"
     pasture:= new(entity.Pasture).NewPasture(newPasture)
-    err:= ExecQuery(query, pasture.Id, pasture.Name, pasture.BullId)
+    err:= execQuery(query, pasture.Id, pasture.Name, pasture.BullId)
     return pasture, err
 }
 
 func (p *PastureRepository) Save(pasture *entity.Pasture) (*entity.Pasture, error){
     query:="UPDATE pastures SET name = $1, bull_id = $2 WHERE id = $3"
-    err:= ExecQuery(query, pasture.Name, pasture.BullId, pasture.Id)
+    err:= execQuery(query, pasture.Name, pasture.BullId, pasture.Id)
     return pasture, err
 }

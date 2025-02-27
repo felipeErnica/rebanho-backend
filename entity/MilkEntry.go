@@ -15,7 +15,7 @@ type MilkEntry struct {
 	MilkQuantity float32
 }
 
-func (m *MilkEntry) New(create *CreateMilkMark) *MilkEntry {
+func (m *MilkEntry) New(create *CreateMilkEntry) *MilkEntry {
     m = &MilkEntry{
         Id: uuid.NewString(),
         AnimalId: create.AnimalId,
@@ -27,7 +27,7 @@ func (m *MilkEntry) New(create *CreateMilkMark) *MilkEntry {
     return m
 }
 
-type CreateMilkMark struct {
+type CreateMilkEntry struct {
 	AnimalId     string
 	PastureId    string
 	LactationId  string
