@@ -17,7 +17,7 @@ func (l *LactationRepository) ScanQueryRows(sqlStatement *sql.Rows) (entity.Lact
 }
 
 
-func (l *LactationRepository) GetFirstPage() (*[]entity.Lactation, error) {
+func (l *LactationRepository) GetFirstPage() (*entity.LactationPage, error) {
 	query := fmt.Sprintf(`SELECT * FROM lactations ORDER BY start_date DESC LIMIT %d`, PAGE_LIMIT)
 	sqlStatement, err := selectQueryList(query)
 	defer sqlStatement.Close()
@@ -35,7 +35,14 @@ func (l *LactationRepository) GetFirstPage() (*[]entity.Lactation, error) {
 		entries = append(entries, entry)
 	}
 
-	return &entries, err
+    lastEntry:=entries[len(entries) - 1]
+    page:= &entity.LactationPage{
+        NextCursor: encodeCursor(lastEntry.CreatedAt, lastEntry.Id),
+        HasNextPage: len(entries) < int(PAGE_LIMIT),
+        List: &entries,
+    }
+
+	return page, err
 }
 
 func (l *LactationRepository) GetNextPage(cursor string) (*entity.LactationPage, error) {
