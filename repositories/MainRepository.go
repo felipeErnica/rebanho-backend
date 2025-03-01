@@ -33,12 +33,12 @@ func decodeCursor(cursor string) (createdAt time.Time, id string, err error) {
 		return
 	}
 
-    formatDate, err:= time.Parse(time.RFC3339Nano, arrKey[0])
+    createdAt, err = time.Parse(time.RFC3339Nano, arrKey[0])
     if err != nil {
         return
     }
 
-	return formatDate, arrKey[1], err
+    return createdAt, arrKey[1], err
 }
 
 func InitRepository(dbConn *sql.DB) {
@@ -47,16 +47,16 @@ func InitRepository(dbConn *sql.DB) {
 }
 
 func selectQueryList(query string, args ...any) (*sql.Rows, error) {
-    util.LogInfo("Enviando query: " + strings.ReplaceAll(query, "\n", " "))
+    util.LogInfo("Enviando query: " + strings.Trim(query, "\n"))
     return db.Query(query, args...)
 }
 
 func selectQueryOne(query string, args ...any) *sql.Row {
-    util.LogInfo("Enviando query: " + strings.ReplaceAll(query, "\n", " "))
+    util.LogInfo("Enviando query: " + strings.Trim(query, "\n"))
     return db.QueryRow(query, args...)
 }
 func execQuery(query string, args ...any) error {
-    util.LogInfo("Enviando query: " + strings.ReplaceAll(query, "\n", " "))
+    util.LogInfo("Enviando query: " + strings.Trim(query, "\n"))
     _, err := db.Exec(query, args...)
     return err
 }
