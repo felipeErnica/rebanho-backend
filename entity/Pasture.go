@@ -17,6 +17,11 @@ func (p *Pasture) NewPasture(create *CreatePasture) *Pasture {
     return p
 }
 
+type PastureShort struct {
+	Id     string
+	Name   string
+}
+
 type CreatePasture struct {
 	BullId string
 	Name   string

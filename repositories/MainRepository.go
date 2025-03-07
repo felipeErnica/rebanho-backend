@@ -21,7 +21,7 @@ func encodeCursor(createdAt time.Time, uuid string) string {
 	return base64.StdEncoding.EncodeToString([]byte(key))
 }
 
-func decodeCursor(cursor string) (createdAt time.Time, id string, err error) {
+func decodeCursor(cursor string) (first string, second string, err error) {
 	byt, err := base64.StdEncoding.DecodeString(cursor)
 	if err != nil {
 		return
@@ -33,12 +33,7 @@ func decodeCursor(cursor string) (createdAt time.Time, id string, err error) {
 		return
 	}
 
-    createdAt, err = time.Parse(time.RFC3339Nano, arrKey[0])
-    if err != nil {
-        return
-    }
-
-    return createdAt, arrKey[1], err
+    return arrKey[0], arrKey[1], err
 }
 
 func InitRepository(dbConn *sql.DB) {
@@ -47,16 +42,23 @@ func InitRepository(dbConn *sql.DB) {
 }
 
 func selectQueryList(query string, args ...any) (*sql.Rows, error) {
-    util.LogInfo("Enviando query: " + strings.Trim(query, "\n"))
+    query = strings.Join(strings.Fields(query)," ")
+    println()
+    util.LogInfo("Enviando query->   " + query)
     return db.Query(query, args...)
 }
 
 func selectQueryOne(query string, args ...any) *sql.Row {
-    util.LogInfo("Enviando query: " + strings.Trim(query, "\n"))
+    query = strings.Join(strings.Fields(query)," ")
+    println()
+    util.LogInfo("Enviando query->   " + query)
     return db.QueryRow(query, args...)
 }
+
 func execQuery(query string, args ...any) error {
-    util.LogInfo("Enviando query: " + strings.Trim(query, "\n"))
+    query = strings.Join(strings.Fields(query)," ")
+    util.LogInfo("Enviando query->   " + query)
+    println()
     _, err := db.Exec(query, args...)
     return err
 }

@@ -21,7 +21,7 @@ func InitAnimal(mux *http.ServeMux) {
 
     mux.HandleFunc("GET /animais", handler.GetAll)
     mux.HandleFunc("GET /animais/firstPage", handler.GetFirstPage)
-    mux.HandleFunc("GET /animais/page/{cursor}", handler.GetNextPage)
+    mux.HandleFunc("GET /animais/page", handler.GetNextPage)
     mux.HandleFunc("GET /animais/{id}", handler.GetById)
     mux.HandleFunc("POST /animais", handler.Add)
     mux.HandleFunc("POST /animais/save", handler.Save)
@@ -45,7 +45,9 @@ func (h *AnimalHandler) GetAll(w http.ResponseWriter, r *http.Request)  {
 }
 
 func (h *AnimalHandler) GetFirstPage(w http.ResponseWriter, r *http.Request)  {
-    animals, err:= h.Repository.GetFirstPage()
+    sort:= r.URL.Query().Get("sort")
+    order:= r.URL.Query().Get("order")
+    animals, err:= h.Repository.GetFirstPage(sort, order)
     if err != nil {
         DatabaseGetError(err, w)
         return
@@ -61,8 +63,10 @@ func (h *AnimalHandler) GetFirstPage(w http.ResponseWriter, r *http.Request)  {
 }
 
 func (h *AnimalHandler) GetNextPage(w http.ResponseWriter, r *http.Request)  {
-    cursor:=r.PathValue("cursor")
-    animals, err:= h.Repository.GetNextPage(cursor)
+    cursor:=r.URL.Query().Get("cursor")
+    sort:= r.URL.Query().Get("sort")
+    order:= r.URL.Query().Get("order")
+    animals, err:= h.Repository.GetNextPage(cursor, sort, order)
     if err != nil {
         DatabaseGetError(err, w)
         return

@@ -3,14 +3,13 @@ package entity
 import (
 	"time"
 
-	"github.com/felipeErnica/rebanho-backend/enums"
 	"github.com/google/uuid"
 )
 
 type PregnancyLoss struct {
 	Id       string
 	AnimalId string
-	LossType enums.LossType
+	LossType string
 	LossDate time.Time
 }
 
@@ -26,6 +25,6 @@ func (p *PregnancyLoss) New(create *CreatePregnancyLoss) *PregnancyLoss {
 
 type CreatePregnancyLoss struct {
 	AnimalId string
-	LossType enums.LossType
+	LossType string
 	LossDate time.Time
 }

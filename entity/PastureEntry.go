@@ -3,7 +3,6 @@ package entity
 import (
 	"time"
 
-	"github.com/felipeErnica/rebanho-backend/enums"
 	"github.com/google/uuid"
 )
 
@@ -13,7 +12,7 @@ type PastureEntry struct {
     PastureId string
     EntryDate time.Time
     ExitDate  time.Time
-    Status enums.Status
+    Status    string
 }
 
 func (e *PastureEntry) New(create *CreatePastureEntry) *PastureEntry {
@@ -33,6 +32,6 @@ type CreatePastureEntry struct {
     PastureId string
     EntryDate time.Time
     ExitDate  time.Time
-    Status enums.Status
+    Status    string
 }
 
