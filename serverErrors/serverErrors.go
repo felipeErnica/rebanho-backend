@@ -1,10 +1,16 @@
 package serverErrors
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/felipeErnica/rebanho-backend/util"
 )
+
+func EmptyList() error {
+    err:= errors.New("A matriz está vazia")
+    return err
+}
 
 func InternalServerError(w http.ResponseWriter) {
     w.WriteHeader(http.StatusInternalServerError)

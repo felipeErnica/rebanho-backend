@@ -51,8 +51,31 @@ type CreateLactation struct {
     Observation       string  
 }
 
+type LactationComplete struct {
+	Id                string  
+	AnimalId          string  
+    AnimalNumber      string
+    AnimalOrder       int
+    AnimalPasture     string
+    AnimalStatus      string
+    AnimalName        string
+    CalfId            *string  
+    CalfSex           string
+    CalfBirthDate     *time.Time
+	StartDate         time.Time  
+	EndDate           *time.Time
+	ProductionPeriod  uint8
+	ProductionTotal   float32
+	AverageProduction float32
+	PeakProduction    float32
+	Isr               float32
+    Observation       *string  
+    CreatedAt         time.Time  
+    DeletedAt         *time.Time  
+}
+
 type LactationPage struct {
     NextCursor  string
     HasNextPage bool
-    List        *[]Lactation
+    List        *[]LactationComplete
 }

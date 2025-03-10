@@ -9,7 +9,9 @@ import (
 type Animal struct {
     Id                   *string         `json:"id"`
     Name                 *string         `json:"name"`
-    IdentificationNumber *string         `json:"identification_Number"`
+    IdentificationNumber *string         `json:"identification_number"`
+    RingOrder            int             `json:"ring_order"`  
+    Sex                  string          `json:"sex"`
     FatherId             *string         `json:"father_id"`
     MotherId             *string         `json:"mother_id"`
     BirthDate            *time.Time      `json:"birth_date"`
@@ -49,6 +51,8 @@ func NewAnimal(create *CreateAnimal) *Animal {
 type CreateAnimal struct {
     Name                 string         `json:"name"`
     IdentificationNumber string         `json:"identification_number"`
+    RingOrder            int            `json:"ring_order"`  
+    Sex                  string         `json:"sex"`
     FatherId             string         `json:"father_id"`
     MotherId             string         `json:"mother_id"`
     BirthDate            time.Time      `json:"birth_date"`
@@ -64,10 +68,12 @@ type CreateAnimal struct {
     DeletedAt            time.Time      `json:"deleted_at"`
 }
 
-type AnimalResponse struct {
+type AnimalComplete struct {
 	Id                   string          `json:"id"`
 	Name                 *string         `json:"name"`
 	IdentificationNumber *string         `json:"identification_number"`
+    RingOrder            int             `json:"ring_order"`  
+    Sex                  string          `json:"sex"`
 	Father               AnimalShort     `json:"father"`
 	Mother               AnimalShort     `json:"mother"`
 	BirthDate            *time.Time      `json:"birth_date"`
@@ -88,8 +94,14 @@ type AnimalShort struct {
     Name                 string
 }
 
+type PageAnimalComplete struct {
+    NextCursor      string
+    HasNextPage     bool
+    List            *[]AnimalComplete
+}
+
 type PageAnimal struct {
     NextCursor      string
     HasNextPage     bool
-    List            *[]AnimalResponse
+    List            *[]Animal
 }

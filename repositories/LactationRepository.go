@@ -1,131 +1,304 @@
 package repositories
 
 import (
-	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type LactationRepository struct{}
 
-func (l *LactationRepository) returnSimpleQuery(criteria string) string {
-    return fmt.Sprintf(
-        `SELECT id, animal_id, calf_id, start_date, end_date, 
-            production_period, production_total, avarage_production, peak_production, 
-            isr, observation, created_at, deleted_at 
-        FROM lactations 
-        %s`, criteria)
-}
+func (l *LactationRepository) createCriteriaFirstPage(sort string, direction string) string {
 
-func (l *LactationRepository) returnFirstPageQuery(criteria string) string {
-    return fmt.Sprintf(`SELECT *
-        FROM (%s)
-        ORDER BY created_at, id
-        LIMIT %d`, l.returnSimpleQuery(criteria), PAGE_LIMIT)
-}
+	var criteria string
+	direction = strings.ToUpper(direction)
 
-func (l *LactationRepository) returnPageQuery(criteria string) string {
-    return fmt.Sprintf(
-        `SELECT *
-        FROM (%s)
-        WHERE (created_at, id) < ($1, $2)
-        ORDER BY created_at, id
-        LIMIT %d`, l.returnSimpleQuery(criteria), PAGE_LIMIT)
-}
- func (l *LactationRepository) createPage(arr []entity.Lactation) *entity.LactationPage {
-    lastEntry:=arr[len(arr) - 1]
-    return &entity.LactationPage{
-        List: &arr,
-        HasNextPage: len(arr) == PAGE_LIMIT,
-        NextCursor: encodeCursor(lastEntry.CreatedAt, lastEntry.Id),
-    }
-} 
-
-
-func (l *LactationRepository) ScanQueryRows(sqlStatement *sql.Rows) (entity.Lactation, error) {
-    var entry entity.Lactation
-    err := sqlStatement.Scan(&entry.Id, &entry.AnimalId, &entry.StartDate, &entry.EndDate, &entry.ProductionPeriod, &entry.ProductionTotal,
-        &entry.AvarageProduction, &entry.PeakProduction, &entry.Isr, &entry.Observation)
-    return entry, err
-}
-
-
-func (l *LactationRepository) GetFirstPage() (*entity.LactationPage, error) {
-	query := l.returnFirstPageQuery("ORDER BY start_date")
-	sqlStatement, err := selectQueryList(query)
-	defer sqlStatement.Close()
-	if err != nil {
-		return nil, err
+	switch sort {
+	case "name":
+		criteria = fmt.Sprintf("ORDER BY animal.name %[1]s, lac.id %[1]s", direction)
+	case "identification_number":
+		criteria = fmt.Sprintf("ORDER BY animal.ring_order %[1]s, lac.id %[1]s", direction)
+	case "birth_date":
+		criteria = fmt.Sprintf("ORDER BY calf.birth_date %[1]s, lac.id %[1]s", direction)
+	case "start_date":
+		criteria = fmt.Sprintf("ORDER BY animal.start_date %[1]s, lac.id %[1]s", direction)
+	case "end_date":
+		criteria = fmt.Sprintf("ORDER BY lac.end_date %[1]s, lac.id %[1]s", direction)
+	case "production_period":
+		criteria = fmt.Sprintf("ORDER BY lac.production_period %[1]s, lac.id %[1]s", direction)
+	case "production_total":
+		criteria = fmt.Sprintf("ORDER BY lac.production_total %[1]s, lac.id %[1]s", direction)
+	case "average_production":
+		criteria = fmt.Sprintf("ORDER BY lac.average_production %[1]s, lac.id %[1]s", direction)
+	case "peak_production":
+		criteria = fmt.Sprintf("ORDER BY lac.peak_production %[1]s, lac.id %[1]s", direction)
+	case "isr":
+		criteria = fmt.Sprintf("ORDER BY lac.isr %[1]s, lac.id %[1]s", direction)
+	default:
+		criteria = "ORDER BY animal.created_at, animal.id"
 	}
 
-	var entries []entity.Lactation
-
-	for sqlStatement.Next() {
-        entry, err:= l.ScanQueryRows(sqlStatement)
-		if err != nil {
-			return nil, err
-		}
-		entries = append(entries, entry)
-	}
-
-    page:= l.createPage(entries)
-	return page, err
+	return criteria
 }
 
-func (l *LactationRepository) GetNextPage(cursor string) (*entity.LactationPage, error) {
-    createdAt, id, err:= decodeCursor(cursor)
-    if err != nil {
-        return nil, err
-    }
+func (l *LactationRepository) createCriteriaNextPage(sort string, direction string) string {
 
-    query:=l.returnPageQuery("ORDER BY start_date")
-	sqlStatement, err := selectQueryList(query, createdAt, id)
-	defer sqlStatement.Close()
-	if err != nil {
-		return nil, err
+	var signal string
+	switch direction {
+	case "asc":
+		signal = ">"
+	case "desc":
+		signal = "<"
 	}
 
-	var entries []entity.Lactation
+	var criteria string
+	direction = strings.ToUpper(direction)
 
-	for sqlStatement.Next() {
-        entry, err:= l.ScanQueryRows(sqlStatement)
-		if err != nil {
-			return nil, err
-		}
-		entries = append(entries, entry)
+	switch sort {
+	case "name":
+		criteria = fmt.Sprintf(`
+            WHERE (animal.name, lac.id) %s ($1, $2)
+            ORDER BY animal.name %[2]s, lac.id %[2]s`, signal, direction)
+	case "identification_number":
+		criteria = fmt.Sprintf(`
+            WHERE (animal.ring_order, lac.id) %s ($1, $2)
+            ORDER BY animal.ring_order %[2]s, lac.id %[2]s`, signal, direction)
+	case "birth_date":
+		criteria = fmt.Sprintf(`
+            WHERE (animal.birth_date, lac.id) %s ($1, $2)
+            ORDER BY calf.birth_date %[2]s, lac.id %[2]s`, signal, direction)
+	case "start_date":
+		criteria = fmt.Sprintf(`
+            WHERE (lac.start_date, lac.id) %s ($1, $2)
+            ORDER BY animal.start_date %[2]s, lac.id %[2]s`, direction)
+	case "end_date":
+		criteria = fmt.Sprintf(`
+            WHERE (lac.end_date, lac.id) %s ($1, $2)
+            ORDER BY lac.end_date %[2]s, lac.id %[2]s`, signal, direction)
+	case "production_period":
+		criteria = fmt.Sprintf(`
+            WHERE (lac.production_period, lac.id) %s ($1, $2)
+            ORDER BY lac.production_period %[2]s, lac.id %[2]s`, signal, direction)
+	case "production_total":
+		criteria = fmt.Sprintf(`
+            WHERE (lac.production_total, lac.id) %s ($1, $2)
+            ORDER BY lac.production_total %[2]s, lac.id %[2]s`, signal, direction)
+	case "average_production":
+		criteria = fmt.Sprintf(`
+            WHERE (lac.average_production, lac.id) %s ($1, $2)
+            ORDER BY lac.average_production %[2]s, lac.id %[2]s`, signal, direction)
+	case "peak_production":
+		criteria = fmt.Sprintf(`
+            WHERE (lac.peak_production, lac.id) %s ($1, $2)
+            ORDER BY lac.peak_production %[2]s, lac.id %[2]s`, signal, direction)
+	case "isr":
+		criteria = fmt.Sprintf(`
+            WHERE (lac.isr, lac.id) %s ($1, $2)
+            ORDER BY lac.isr %[2]s, lac.id %[2]s`, signal, direction)
+	default:
+		criteria = `
+            WHERE (lac.created_at, lac.id) > ($1, $2)
+            ORDER BY lac.created_at, lac.id
+        `
 	}
-    
-    page:=l.createPage(entries)
-	return page, err
+
+	return criteria
 }
 
-func (l *LactationRepository) GetByAnimal(animalId string) (*[]entity.Lactation, error) {
-	query := l.returnSimpleQuery("WHERE animal_id = $1")
-	sqlStatement, err := selectQueryList(query, animalId)
-	defer sqlStatement.Close()
-	if err != nil {
-		return nil, err
+func (l *LactationRepository) createNextCursor(sort string, arr []entity.LactationComplete) (cursor string, err error) {
+
+	if len(arr) == 0 {
+		err = serverErrors.EmptyList()
+		return
 	}
 
-	var entries []entity.Lactation
+	lastEntry := arr[len(arr)-1]
 
-	for sqlStatement.Next() {
-        entry, err:= l.ScanQueryRows(sqlStatement)
-		if err != nil {
-			return nil, err
-		}
-		entries = append(entries, entry)
+	switch sort {
+	case "name":
+		cursor = encodeCursor(lastEntry.AnimalName, lastEntry.Id)
+	case "identification_number":
+		cursor = encodeCursor(strconv.Itoa(lastEntry.AnimalOrder), lastEntry.Id)
+	case "birth_date":
+		cursor = encodeCursor(lastEntry.CalfBirthDate.String(), lastEntry.Id)
+	case "start_date":
+		cursor = encodeCursor(lastEntry.StartDate.String(), lastEntry.Id)
+	case "end_date":
+		cursor = encodeCursor(lastEntry.EndDate.String(), lastEntry.Id)
+	case "production_period":
+		cursor = encodeCursor(strconv.Itoa(int(lastEntry.ProductionPeriod)), lastEntry.Id)
+	case "production_total":
+		cursor = encodeCursor(util.Float32ToString(lastEntry.ProductionTotal), lastEntry.Id)
+	case "average_production":
+		cursor = encodeCursor(util.Float32ToString(lastEntry.AverageProduction), lastEntry.Id)
+	case "peak_production":
+		cursor = encodeCursor(util.Float32ToString(lastEntry.PeakProduction), lastEntry.Id)
+	case "isr":
+		cursor = encodeCursor(lastEntry.AnimalName, lastEntry.Id)
+	default:
+		cursor = encodeCursor(lastEntry.CreatedAt.String(), lastEntry.Id)
 	}
 
-	return &entries, err
+	return cursor, err
 }
 
 func (l *LactationRepository) saveOrUpdateScan(query string, lactation *entity.Lactation) error {
     return execQuery(query, lactation.Id, lactation.AnimalId, lactation.CalfId, lactation.StartDate, lactation.EndDate,
         lactation.ProductionPeriod, lactation.ProductionTotal, lactation.AvarageProduction, lactation.PeakProduction,
         lactation.Isr, lactation.Observation, lactation.CreatedAt, lactation.DeletedAt)
+}
+
+func (l *LactationRepository) hasNextPage(arr []entity.LactationComplete) bool {
+	return len(arr) == PAGE_LIMIT
+}
+
+
+func (l *LactationRepository) GetFirstPage(sort string, direction string) (page *entity.LactationPage, err error) {
+    criteria:= l.createCriteriaFirstPage(sort, direction)
+	query := fmt.Sprintf(`
+        SELECT lac.id, lac.start_date, lac.end_date, lac.production_period, lac.production_total, lac.average_production
+        lac.peak_production, lac.isr, lac.observation,
+        animal.id as animal_id, animal.identificantion_number as animal_number, animal.name as animal_name,
+        animal.ring_order as animal_order, animal.pasture_id as animal_pasture, animal.status as animal_status,
+        calf.id as calf_id, calf.sex as calf_sex, calf.birth_date as calf_birth
+        FROM (
+            SELECT id 
+            FROM lactations
+            %s
+            LIMIT %d
+        ) as subquery
+        JOIN lactations as lac ON lac.id = subquery.id
+        LEFT JOIN animals as animal ON animal.id = lac.animal_id
+        LEFT JOIN animals as calf ON calf.id = lac.animal_id
+        `, criteria, PAGE_LIMIT)
+	sqlStatement, err := selectQueryList(query)
+	defer sqlStatement.Close()
+	
+    if err != nil {
+		return 
+	}
+
+    var lactations []entity.LactationComplete
+
+    for sqlStatement.Next() {
+        var lactation entity.LactationComplete
+        err = sqlStatement.Scan(lactation.Id, lactation.StartDate, lactation.EndDate, lactation.ProductionPeriod, lactation.ProductionTotal,
+            lactation.AverageProduction, lactation.PeakProduction, lactation.Isr, lactation.Observation, lactation.AnimalId, lactation.AnimalNumber,
+            lactation.AnimalName, lactation.AnimalOrder, lactation.AnimalPasture, lactation.AnimalPasture, 
+            lactation.CalfId, lactation.CalfSex, lactation.CalfBirthDate)
+        if err != nil {
+            return
+        }
+        lactations = append(lactations, lactation)
+    }
+    
+    nextCursor, err:= l.createNextCursor(sort, lactations)
+    if err != nil {
+        return
+    }
+
+    page = &entity.LactationPage{
+        HasNextPage: l.hasNextPage(lactations),
+        NextCursor: nextCursor,
+        List: &lactations,
+    }
+
+    return page, err
+
+}
+
+func (l *LactationRepository) GetNextPage(cursor string, sort string, direction string) (page *entity.LactationPage, err error) {
+    param, id, err:= decodeCursor(cursor)
+    if err != nil {
+        return
+    }
+    criteria:= l.createCriteriaNextPage(sort, direction)
+	query := fmt.Sprintf(`
+        SELECT lac.id, lac.start_date, lac.end_date, lac.production_period, lac.production_total, lac.average_production
+        lac.peak_production, lac.isr, lac.observation,
+        animal.id as animal_id, animal.identificantion_number as animal_number, animal.name as animal_name,
+        animal.ring_order as animal_order, animal.pasture_id as animal_pasture, animal.status as animal_status,
+        calf.id as calf_id, calf.sex as calf_sex, calf.birth_date as calf_birth
+        FROM (
+            SELECT id 
+            FROM lactations
+            %s
+            LIMIT %d
+        ) as subquery
+        JOIN lactations as lac ON lac.id = subquery.id
+        LEFT JOIN animals as animal ON animal.id = lac.animal_id
+        LEFT JOIN animals as calf ON calf.id = lac.animal_id
+        `, criteria, PAGE_LIMIT)
+	sqlStatement, err := selectQueryList(query, param, id)
+	defer sqlStatement.Close()
+	
+    if err != nil {
+		return 
+	}
+
+    var lactations []entity.LactationComplete
+
+    for sqlStatement.Next() {
+        var lactation entity.LactationComplete
+        err = sqlStatement.Scan(lactation.Id, lactation.StartDate, lactation.EndDate, lactation.ProductionPeriod, lactation.ProductionTotal,
+            lactation.AverageProduction, lactation.PeakProduction, lactation.Isr, lactation.Observation, lactation.AnimalId, lactation.AnimalNumber,
+            lactation.AnimalName, lactation.AnimalOrder, lactation.AnimalPasture, lactation.AnimalPasture, 
+            lactation.CalfId, lactation.CalfSex, lactation.CalfBirthDate)
+        if err != nil {
+            return
+        }
+        lactations = append(lactations, lactation)
+    }
+    
+    nextCursor, err:= l.createNextCursor(sort, lactations)
+    if err != nil {
+        return
+    }
+
+    page = &entity.LactationPage{
+        HasNextPage: l.hasNextPage(lactations),
+        NextCursor: nextCursor,
+        List: &lactations,
+    }
+
+    return page, err
+
+}
+
+func (l *LactationRepository) GetByAnimal(animalId string) (arr *[]entity.LactationComplete, err error) {
+	query := `
+        SELECT lac.id, lac.start_date, lac.end_date, lac.production_period, lac.production_total, lac.average_production
+            lac.peak_production, lac.isr, lac.observation,
+            calf.id as calf_id, calf.sex as calf_sex, calf.birth_date as calf_birth
+        FROM lactation as lac
+        LEFT JOIN animals as calf ON calf.id = lac.animal_id
+        WHERE lac.animal_id = $1
+    `
+	sqlStatement, err := selectQueryList(query, animalId)
+	defer sqlStatement.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []entity.LactationComplete
+
+    for sqlStatement.Next() {
+        var lactation entity.LactationComplete
+        err = sqlStatement.Scan(lactation.Id, lactation.StartDate, lactation.EndDate, lactation.ProductionPeriod, lactation.ProductionTotal,
+            lactation.AverageProduction, lactation.PeakProduction, lactation.Isr, lactation.Observation, 
+            lactation.CalfId, lactation.CalfSex, lactation.CalfBirthDate)
+        if err != nil {
+            return
+        }
+        entries = append(entries, lactation)
+    }
+    
+	return &entries, err
 }
 
 func (l *LactationRepository) Add(newLactation *entity.CreateLactation) (*entity.Lactation, error) {

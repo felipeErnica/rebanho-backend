@@ -58,7 +58,7 @@ func (h *AnimalHandler) GetFirstPage(w http.ResponseWriter, r *http.Request)  {
         JsonServerError(err, w)
         return
     }
-
+    
     w.Write(response)
 }
 

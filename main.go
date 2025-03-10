@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/felipeErnica/rebanho-backend/db"
 	"github.com/felipeErnica/rebanho-backend/handlers"
@@ -18,6 +19,9 @@ func main() {
 
     dataBaseInfo:= db.ConnectPostgres().ReturnDatabaseInfo()
     db, err := sql.Open("postgres", dataBaseInfo)
+    db.SetMaxOpenConns(15)
+    db.SetMaxIdleConns(15)
+    db.SetConnMaxLifetime(5 * time.Minute)
     defer db.Close()
 
     if err != nil {

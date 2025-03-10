@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/felipeErnica/rebanho-backend/util"
 )
@@ -14,10 +13,8 @@ import (
 var db *sql.DB
 const PAGE_LIMIT int = 500
 
-type Page struct {}
-
-func encodeCursor(createdAt time.Time, uuid string) string {
-	key := fmt.Sprintf("%s,%s", createdAt.Format(time.RFC3339Nano), uuid)
+func encodeCursor(param string, uuid string) string {
+	key := fmt.Sprintf("%s,%s", param, uuid)
 	return base64.StdEncoding.EncodeToString([]byte(key))
 }
 
@@ -45,7 +42,8 @@ func selectQueryList(query string, args ...any) (*sql.Rows, error) {
     query = strings.Join(strings.Fields(query)," ")
     println()
     util.LogInfo("Enviando query->   " + query)
-    return db.Query(query, args...)
+    sql, err:= db.Query(query, args...)
+    return sql, err
 }
 
 func selectQueryOne(query string, args ...any) *sql.Row {
