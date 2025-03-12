@@ -10,13 +10,38 @@ import (
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 )
 
-type AnimalRepository struct {}
+type AnimalRepository struct {
+    Base BaseRepository
+}
 
-var timeFields =  []string {
-    "birth_date",
-    "death_date",
-    "created_at",
-    "deleted_at",
+func (r *AnimalRepository) Init() {
+
+    dateFields:= []string{
+        "birth_date",
+        "death_date",
+        "created_at",
+    }
+
+    DeletedAt:= "animal.deleted_at"
+    SelectPageBody:= `
+        SELECT animal.id, animal.name, animal.identification_number, animal.birth_date, animal.death_date, 
+        animal.status, animal.avarage_prod, animal.avarage_birth_interval, animal.max_peak,
+        animal.children_quantity, animal.created_at, animal.isr,
+        mother.id AS mother_id, mother.name, mother.identification_number,
+        father.id AS father_id, father.name, father.identification_number,
+        pasture.id AS pasture_id, pasture.name
+        FROM animals as animal
+        LEFT JOIN animals AS father ON father.id = animal.father_id
+        LEFT JOIN animals AS mother ON mother.id = animal.mother_id
+        LEFT JOIN pastures AS pasture ON pasture.id = animal.pasture_id
+
+        `
+    r.Base = BaseRepository{
+        Repository: r,
+        SelectPageBody: SelectPageBody,
+        DeletedAtField: DeletedAt,
+        DateFields: dateFields,
+    }
 }
 
 func (r *AnimalRepository) returnSimpleQuery(criteria string) string {
@@ -27,30 +52,6 @@ func (r *AnimalRepository) returnSimpleQuery(criteria string) string {
     FROM animals
     %s`, 
     criteria)
-}
-
-func (r *AnimalRepository) animalArray(sqlStatement *sql.Rows) ([]entity.AnimalComplete, error) {
-    var animals []entity.AnimalComplete
-
-    for sqlStatement.Next() {
-        var animal entity.AnimalComplete
-
-        err:= sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate,
-            &animal.DeathDate, &animal.Status, &animal.AvarageProd, &animal.AvarageBirthInterval, &animal.MaxPeak,
-            &animal.ChildrenQuantity, &animal.CreatedAt, &animal.Isr,
-            &animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber, 
-            &animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
-            &animal.Pasture.Id, &animal.Pasture.Name)
-        if err != nil {
-            return nil, err
-        }
-
-        animals = append(animals, animal)
-    }
-    
-    sqlStatement.Close()
-
-    return animals, nil
 }
 
 func (r *AnimalRepository) animalUnique(sqlStatement *sql.Row) (animal entity.Animal, err error) {
@@ -71,64 +72,74 @@ func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal)
         animal.ChildrenQuantity, animal.CreatedAt, animal.DeletedAt, animal.Isr)
 }
 
-func (r *AnimalRepository) createCriteriaFirst(sort string, direction string) (criteria string) {
+func (r *AnimalRepository) buildPage(query string, sort string, args... any) (page entity.PageInterface, err error) {
+
+    sqlStatement, err:= selectQueryList(query, args...)
+    if err != nil {
+        return
+    }
+
+    var animals []entity.AnimalComplete
+
+    for sqlStatement.Next() {
+        var animal entity.AnimalComplete
+
+        err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate,
+            &animal.DeathDate, &animal.Status, &animal.AvarageProd, &animal.AvarageBirthInterval, &animal.MaxPeak,
+            &animal.ChildrenQuantity, &animal.CreatedAt, &animal.Isr,
+            &animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber, 
+            &animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
+            &animal.Pasture.Id, &animal.Pasture.Name)
+        if err != nil {
+            return 
+        }
+
+        animals = append(animals, animal)
+    }
+    
+    sqlStatement.Close()
+
+    nextCursor, err:= r.createNextCursor(sort, animals)
+    if err !=  nil {
+        return
+    }
+    
+    pageAnimal:= entity.PageAnimalComplete{
+        HasNextPage: len(animals) == PAGE_LIMIT,
+        NextCursor: nextCursor,
+        List: &animals,
+    }
+
+    return &pageAnimal, err
+
+}
+
+func (r *AnimalRepository) getFields(sort string) (firstField string, secondField string) {
 
     switch (sort) {
     case "name": 
-        criteria = fmt.Sprintf("ORDER BY animal.name %[1]s, animal.id %[1]s", direction)
+        return "animal.name", "animal.id"
     case "identification_number": 
-        criteria = fmt.Sprintf("ORDER BY animal.ring_order %[1]s, animal.id %[1]s", direction)
+        return "animal.animal_order", "animal.id"
     case "birth_date":
-        nullOrder:= getNullStatement(direction)
-        criteria = fmt.Sprintf("ORDER BY animal.birth_date %s, animal.id %s", nullOrder, direction)
+        return "animal.birth_date", "animal.id"
     case "death_date":
-        nullOrder:= getNullStatement(direction)
-        criteria = fmt.Sprintf("ORDER BY animal.death_date %s, animal.id %s", nullOrder, direction)
+        return "animal.death_date", "animal.id"
     case "avarage_prod":
-        criteria = fmt.Sprintf("ORDER BY animal.avarage_prod %[1]s, animal.id %[1]s", direction)
+        return "animal.avarage_prod", "animal.id"
     case "avarage_birth_interval":
-        criteria = fmt.Sprintf("ORDER BY animal.avarage_birth_interval %[1]s, animal.id %[1]s", direction)
+        return "animal.avarage_birth_interval", "animal.id"
     case "max_peak":
-        criteria = fmt.Sprintf("ORDER BY animal.max_peak %[1]s, animal.id %[1]s", direction)
+        return "animal.max_peak", "animal.id"
     case "children_quantity":
-        criteria = fmt.Sprintf("ORDER BY animal.children_quantity %[1]s, animal.id %[1]s", direction)
+        return "animal.children_quantity", "animal.id"
     case "isr":
-        criteria = fmt.Sprintf("ORDER BY animal.isr %[1]s, animal.id %[1]s", direction)
+        return "animal.isr", "animal.id"
     default:
-        criteria = fmt.Sprintf("ORDER BY animal.created_at %[1]s, animal.id %[1]s", direction)
+        return "animal.created_at", "animal.id"
     }
 
-    return criteria
 }
-
-func (r *AnimalRepository) createCriteriaNext(sort string, direction string, isNullValue bool) (criteria string) {
-
-    switch (sort) {
-    case "name": 
-        criteria = getNextPageCriteria("animal.name", "animal.id", direction, isNullValue)
-    case "identification_number": 
-        criteria = getNextPageCriteria("animal.identification_number", "animal.id", direction, isNullValue)
-    case "birth_date":
-        criteria = getNextPageCriteria("animal.birth_date", "animal.id", direction, isNullValue)
-    case "death_date":
-        criteria = getNextPageCriteria("animal.death_date", "animal.id", direction, isNullValue)
-    case "avarage_prod":
-        criteria = getNextPageCriteria("animal.avarage_prod", "animal.id", direction, isNullValue)
-    case "avarage_birth_interval":
-        criteria = getNextPageCriteria("animal.avarage_birth_interval", "animal.id", direction, isNullValue)
-    case "max_peak":
-        criteria = getNextPageCriteria("animal.max_peak", "animal.id", direction, isNullValue)
-    case "children_quantity":
-        criteria = getNextPageCriteria("animal.children_quantity", "animal.id", direction, isNullValue)
-    case "isr":
-        criteria = getNextPageCriteria("animal.isr", "animal.id", direction, isNullValue)
-    default:
-        criteria = getNextPageCriteria("animal.created_at", "animal.id", direction, isNullValue)
-    }
-
-    return criteria
-}
-
 func (r *AnimalRepository) createNextCursor(sort string, arr []entity.AnimalComplete) (cursor string, err error) {
 
     if (len(arr) == 0) {
@@ -147,7 +158,10 @@ func (r *AnimalRepository) createNextCursor(sort string, arr []entity.AnimalComp
     case "birth_date":
         key = fmt.Sprintf("%s,%s", lastEntry.BirthDate.Format(time.RFC3339Nano), lastEntry.Id) 
     case "death_date":
-        key = fmt.Sprintf("%s,%s", lastEntry.DeathDate.Format(time.RFC3339Nano), lastEntry.Id) 
+        key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
+        if lastEntry.DeathDate != nil {
+            key = fmt.Sprintf("%s,%s", lastEntry.DeathDate.Format(time.RFC3339Nano), lastEntry.Id) 
+        }
     case "avarage_prod":
         key = fmt.Sprintf("%f,%s", lastEntry.AvarageProd, lastEntry.Id) 
     case "avarage_birth_interval":
@@ -166,109 +180,12 @@ func (r *AnimalRepository) createNextCursor(sort string, arr []entity.AnimalComp
     return cursor, err
 }
 
-func (r *AnimalRepository) GetFirstPage(sort string, direction string) (page *entity.PageAnimalComplete, err error) {
-
-    order:= r.createCriteriaFirst(sort, direction)
-    query:= fmt.Sprintf(`
-        SELECT animal.id, animal.name, animal.identification_number, animal.birth_date, animal.death_date, 
-            animal.status, animal.avarage_prod, animal.avarage_birth_interval, animal.max_peak,
-            animal.children_quantity, animal.created_at, animal.isr,
-            mother.id AS mother_id, mother.name, mother.identification_number,
-            father.id AS father_id, father.name, father.identification_number,
-            pasture.id AS pasture_id, pasture.name
-        FROM animals as animal
-        LEFT JOIN animals AS father ON father.id = animal.father_id
-        LEFT JOIN animals AS mother ON mother.id = animal.mother_id
-        LEFT JOIN pastures AS pasture ON pasture.id = animal.pasture_id
-        WHERE animal.deleted_at IS NOT NULL
-        %s
-        LIMIT %d
-    `, sort, order, PAGE_LIMIT)
-
-    sqlStatement, err:= selectQueryList(query)
-    if err != nil {
-        return
-    }
-
-    animals, err:= r.animalArray(sqlStatement)
-    if err != nil {
-        return 
-    }
-
-    cursor, err:= r.createNextCursor(sort, animals)
-    if err != nil {
-        return 
-    }
-    
-    page = &entity.PageAnimalComplete{
-        HasNextPage: len(animals) == PAGE_LIMIT,
-        NextCursor: cursor,
-        List: &animals,
-    }
-
-    return page, err
+func (r *AnimalRepository) GetPage(sort string, direction string, cursor string) (page entity.PageInterface, err error) {
+    return r.Base.GetPage(sort, direction, cursor)
 }
 
-func (r *AnimalRepository) GetNextPage(cursor string, sort string, direction string) (page *entity.PageAnimalComplete, err error) {
-
-    var first any
-    var second string
-
-    if isTimeField(sort, timeFields) {
-        first, second, err = decodeCursorTime(cursor)
-    } else {
-        first, second, err = decodeCursor(cursor)
-    }
-    
-    if err != nil {
-        return 
-    }
-
-    signal:= ">"
-    if direction == "desc" {
-        signal = "<"
-    }
-
-    query:= fmt.Sprintf(`
-        SELECT animal.id, animal.name, animal.identification_number, animal.birth_date, animal.death_date, 
-            animal.status, animal.avarage_prod, animal.avarage_birth_interval, animal.max_peak,
-            animal.children_quantity, animal.created_at, animal.isr,
-            mother.id AS mother_id, mother.name, mother.identification_number,
-            father.id AS father_id, father.name, father.identification_number,
-            pasture.id AS pasture_id, pasture.name
-        FROM animals as animal
-        LEFT JOIN animals AS father ON father.id = animal.father_id
-        LEFT JOIN animals AS mother ON mother.id = animal.mother_id
-        LEFT JOIN pastures AS pasture ON pasture.id = animal.pasture_id
-        WHERE 
-            (animal.%[1]s, animal.id) %[2]s ($1, $2) 
-            AND animal.deleted_at IS NOT NULL
-        ORDER BY animal.%[1]s %[3]s
-        LIMIT %d
-    `, sort, signal, direction, PAGE_LIMIT)
-
-    sqlStatement, err:= selectQueryList(query, first, second)
-    if err != nil {
-        return 
-    }
-
-    animals, err:= r.animalArray(sqlStatement)
-    if err != nil {
-        return 
-    }
-    
-    nextCursor, err:= r.createNextCursor(sort, animals)
-    if err != nil {
-        return 
-    }
-
-    page = &entity.PageAnimalComplete{
-        HasNextPage: len(animals) == PAGE_LIMIT,
-        NextCursor: nextCursor,
-        List: &animals,
-    }
-
-    return page, err
+func (r *AnimalRepository) GetPageDelete(sort string, direction string, cursor string) (page entity.PageInterface, err error) {
+    return r.Base.GetPageDelete(sort, direction, cursor)
 }
 
 func (r *AnimalRepository) GetById(id string) (*entity.Animal, error) {

@@ -2,13 +2,10 @@ package repositories
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
-	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type LactationRepository struct{}
@@ -111,43 +108,6 @@ func (l *LactationRepository) createCriteriaNextPage(sort string, direction stri
 	return criteria
 }
 
-func (l *LactationRepository) createNextCursor(sort string, arr []entity.LactationComplete) (cursor string, err error) {
-
-	if len(arr) == 0 {
-		err = serverErrors.EmptyList()
-		return
-	}
-
-	lastEntry := arr[len(arr)-1]
-
-	switch sort {
-	case "name":
-		cursor = encodeCursor(lastEntry.AnimalName, lastEntry.Id)
-	case "identification_number":
-		cursor = encodeCursor(strconv.Itoa(lastEntry.AnimalOrder), lastEntry.Id)
-	case "birth_date":
-		cursor = encodeCursor(lastEntry.CalfBirthDate.String(), lastEntry.Id)
-	case "start_date":
-		cursor = encodeCursor(lastEntry.StartDate.String(), lastEntry.Id)
-	case "end_date":
-		cursor = encodeCursor(lastEntry.EndDate.String(), lastEntry.Id)
-	case "production_period":
-		cursor = encodeCursor(strconv.Itoa(int(lastEntry.ProductionPeriod)), lastEntry.Id)
-	case "production_total":
-		cursor = encodeCursor(util.Float32ToString(lastEntry.ProductionTotal), lastEntry.Id)
-	case "average_production":
-		cursor = encodeCursor(util.Float32ToString(lastEntry.AverageProduction), lastEntry.Id)
-	case "peak_production":
-		cursor = encodeCursor(util.Float32ToString(lastEntry.PeakProduction), lastEntry.Id)
-	case "isr":
-		cursor = encodeCursor(lastEntry.AnimalName, lastEntry.Id)
-	default:
-		cursor = encodeCursor(lastEntry.CreatedAt.String(), lastEntry.Id)
-	}
-
-	return cursor, err
-}
-
 func (l *LactationRepository) saveOrUpdateScan(query string, lactation *entity.Lactation) error {
     return execQuery(query, lactation.Id, lactation.AnimalId, lactation.CalfId, lactation.StartDate, lactation.EndDate,
         lactation.ProductionPeriod, lactation.ProductionTotal, lactation.AvarageProduction, lactation.PeakProduction,
@@ -194,7 +154,7 @@ func (l *LactationRepository) GetFirstPage(sort string, direction string) (page 
         lactations = append(lactations, lactation)
     }
     
-    nextCursor, err:= l.createNextCursor(sort, lactations)
+    nextCursor:= ""
     if err != nil {
         return
     }
@@ -248,14 +208,14 @@ func (l *LactationRepository) GetNextPage(cursor string, sort string, direction 
         lactations = append(lactations, lactation)
     }
     
-    nextCursor, err:= l.createNextCursor(sort, lactations)
+    //nextCursor, err:= l.createNextCursor(sort, lactations)
     if err != nil {
         return
     }
 
     page = &entity.LactationPage{
         HasNextPage: l.hasNextPage(lactations),
-        NextCursor: nextCursor,
+        //NextCursor: nextCursor,
         List: &lactations,
     }
 

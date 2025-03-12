@@ -15,8 +15,11 @@ type AnimalHandler struct {
 
 func InitAnimal(mux *http.ServeMux) {
 
+    repository:=new(repositories.AnimalRepository)
+    repository.Init()
+
     handler:=AnimalHandler{ 
-        Repository: repositories.AnimalRepository{}, 
+        Repository: *repository,
     }
 
     mux.HandleFunc("GET /animais/page", handler.GetPage)
@@ -31,29 +34,14 @@ func (h *AnimalHandler) GetPage(w http.ResponseWriter, r *http.Request)  {
     sort:= r.URL.Query().Get("sort")
     order:= r.URL.Query().Get("order")
 
-    if sort == "" {
-        sort = "created_at"
-    }
-
-    if order == "" {
-        order = "asc"
-    }
-
-    var animals *entity.PageAnimalComplete
-    var err error
-
-    if cursor == "" {
-        animals, err = h.Repository.GetFirstPage(sort, order)
-    } else {
-        animals, err = h.Repository.GetNextPage(cursor, sort, order)
-    }
+    animals, err:= h.Repository.GetPage(sort, order, cursor)
 
     if err != nil {
         DatabaseGetError(err, w)
         return
     }
 
-    response, err:= json.Marshal(animals)
+    response, err:= json.Marshal(animals.GetPage())
     if err != nil {
         JsonServerError(err, w)
         return

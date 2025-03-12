@@ -1,120 +1,145 @@
 package repositories
 
 import (
-	"database/sql"
-	"encoding/base64"
-	"errors"
-	"fmt"
 	"strings"
-	"time"
 
+	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
-var db *sql.DB
-const PAGE_LIMIT int = 500
-
-func encodeCursor(key string) string {
-	return base64.StdEncoding.EncodeToString([]byte(key))
+type Repository interface {
+    getFields(string) (string, string)
+    buildPage(query string, sort string, args... any) (entity.PageInterface, error)
 }
 
-func decodeCursor(cursor string) (first string, second string, err error) {
-	byt, err := base64.StdEncoding.DecodeString(cursor)
+type BaseRepository struct {
+    Repository      Repository
+    SelectPageBody  string
+    DeletedAtField  string
+    DateFields      []string
+}
+
+func (r *BaseRepository) firstPage(sort string, direction string) (page entity.PageInterface, err error) {
+	firstField, secondField := r.Repository.getFields(sort)
+	query := new(util.QueryBuilder).GetFirstPage(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+	return r.Repository.buildPage(query, sort)
+}
+
+func (r *BaseRepository) nextPage(sort string, direction string, cursor string) (page entity.PageInterface, err error) {
+	firstParam, secondParam, err := decodeCursor(cursor)
 	if err != nil {
 		return
 	}
 
-	arrKey := strings.Split(string(byt), ",")
-	if len(arrKey) != 2 {
-		err = errors.New("cursor is invalid")
-		return
+	firstField, secondField := r.Repository.getFields(sort)
+	if firstParam != "null" {
+		query := new(util.QueryBuilder).GetNextPage(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+		return r.Repository.buildPage(query, sort, firstParam, secondParam)
 	}
-
-    return arrKey[0], arrKey[1], err
+	query := new(util.QueryBuilder).GetNextPageNull(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+	return r.Repository.buildPage(query, sort, secondParam)
 }
 
-func decodeCursorTime(cursor string) (first time.Time, second string, err error) {
-	byt, err := base64.StdEncoding.DecodeString(cursor)
+func (r *BaseRepository) nextPageDate(sort string, direction string, cursor string) (page entity.PageInterface, err error) {
+	firstParam, secondParam, err := decodeCursorTime(cursor)
 	if err != nil {
 		return
 	}
 
-	arrKey := strings.Split(string(byt), ",")
-	if len(arrKey) != 2 {
-		err = errors.New("cursor is invalid")
+	firstField, secondField := r.Repository.getFields(sort)
+	if firstParam != nil {
+		query := new(util.QueryBuilder).GetNextPage(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+		return r.Repository.buildPage(query, sort, firstParam, secondParam)
+	}
+
+	query := new(util.QueryBuilder).GetNextPageNull(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+	return r.Repository.buildPage(query, sort, secondParam)
+}
+
+func (r *BaseRepository) firstPageDelete(sort string, direction string) (page entity.PageInterface, err error) {
+	firstField, secondField := r.Repository.getFields(sort)
+	query := new(util.QueryBuilder).GetFirstPage(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+	return r.Repository.buildPage(query, sort)
+}
+
+func (r *BaseRepository) nextPageDelete(sort string, direction string, cursor string) (page entity.PageInterface, err error) {
+	firstParam, secondParam, err := decodeCursor(cursor)
+	if err != nil {
 		return
 	}
 
-    if first, err = time.Parse(time.RFC3339Nano, arrKey[0]); err != nil {
-        return
-    }
-
-    return first, arrKey[1], err
+	firstField, secondField := r.Repository.getFields(sort)
+	if firstParam != "null" {
+		query := new(util.QueryBuilder).GetNextPage(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+		return r.Repository.buildPage(query, sort, firstParam, secondParam)
+	}
+	query := new(util.QueryBuilder).GetNextPageNull(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+	return r.Repository.buildPage(query, sort, secondParam)
 }
 
-func isTimeField(field string, timeFields []string) bool {
-
-    for i:=0; i < len(timeFields); i++ {
-        if field == timeFields[i] {
+func (r *BaseRepository) isDateField(sort string) bool {
+    for i:=0; i<len(r.DateFields); i++ {
+        if strings.EqualFold(sort, r.DateFields[i]) {
             return true
         }
     }
-    
     return false
 }
 
-func getNullStatement(direction string) string {
-    nullStatment:="DESC NULLS LAST"
-    if direction == "asc" {
-        nullStatment = "ASC NULLS FIRST" 
-    }
-    return nullStatment
+func (r *BaseRepository) nextPageDateDelete(sort string, direction string, cursor string) (page entity.PageInterface, err error) {
+	firstParam, secondParam, err := decodeCursorTime(cursor)
+	if err != nil {
+		return
+	}
+
+	firstField, secondField := r.Repository.getFields(sort)
+	if firstParam != nil {
+		query := new(util.QueryBuilder).GetDeletedNextPage(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+		return r.Repository.buildPage(query, sort, firstParam, secondParam)
+	}
+
+	query := new(util.QueryBuilder).GetDeletedNextPage(r.SelectPageBody, firstField, secondField, r.DeletedAtField, direction)
+	return r.Repository.buildPage(query, sort, secondParam)
 }
 
-func getNextPageCriteria(firstField string, secondField string, direction string, isNullValue bool) string {
-    orderDirection:= "DESC NULLS LAST"
-    signal:="<"
-    if direction == "asc" {
-        orderDirection = "ASC NULLS FIRST"
-        signal = ">"
-    }
+func (r *BaseRepository) GetPage(sort string, direction string, cursor string) (page entity.PageInterface, err error) {
 
-    order:= fmt.Sprintf("%s %[2]s, %s %[2]s", firstField, orderDirection)
-    
-    var where string
-    if isNullValue {
-        where = fmt.Sprintf("WHERE %s IS NULL AND %s %s $2", firstField, secondField, signal)
-    } else {
-        where = fmt.Sprintf("WHERE (%s,%s) %s ($1, $2)", firstField, secondField, signal)
+    if sort == "" {
+        sort = "created_at"
     }
 
-    return where + "\n" + order
+    if direction == "" {
+        direction = "asc"
+    }
+
+	if cursor == "" {
+		return r.firstPage(sort, direction)
+    }
+
+    if r.isDateField(sort) {
+        return r.nextPageDate(sort, direction, cursor)
+    }
+		
+    return r.nextPage(sort, direction, cursor)
 }
 
-func InitRepository(dbConn *sql.DB) {
-    db = dbConn
-	util.LogInfo("O Repositório foi iniciado com sucesso!")
-}
+func (r *BaseRepository) GetPageDelete(sort string, direction string, cursor string) (page entity.PageInterface, err error) {
 
-func selectQueryList(query string, args ...any) (*sql.Rows, error) {
-    query = strings.Join(strings.Fields(query)," ")
-    println()
-    util.LogInfo("Enviando query->   " + query)
-    sql, err:= db.Query(query, args...)
-    return sql, err
-}
+    if sort == "" {
+        sort = "created_at"
+    }
 
-func selectQueryOne(query string, args ...any) *sql.Row {
-    query = strings.Join(strings.Fields(query)," ")
-    println()
-    util.LogInfo("Enviando query->   " + query)
-    return db.QueryRow(query, args...)
-}
+    if direction == "" {
+        direction = "asc"
+    }
 
-func execQuery(query string, args ...any) error {
-    query = strings.Join(strings.Fields(query)," ")
-    util.LogInfo("Enviando query->   " + query)
-    println()
-    _, err := db.Exec(query, args...)
-    return err
+	if cursor == "" {
+		return r.firstPageDelete(sort, direction)
+	}
+
+    if r.isDateField(sort) {
+        return r.nextPageDateDelete(sort, direction, cursor)
+    }
+
+    return r.nextPageDelete(sort, direction, cursor)
 }

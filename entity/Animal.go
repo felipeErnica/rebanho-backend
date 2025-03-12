@@ -100,8 +100,13 @@ type PageAnimalComplete struct {
     List            *[]AnimalComplete
 }
 
+func (p *PageAnimalComplete) GetPage() PageInterface {
+    return p
+}
+
 type PageAnimal struct {
     NextCursor      string
     HasNextPage     bool
     List            *[]Animal
 }
+
