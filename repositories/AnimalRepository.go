@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"strings"
+	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
@@ -12,25 +12,11 @@ import (
 
 type AnimalRepository struct {}
 
-func (r *AnimalRepository) returnListQuery(criteria string) string {
-    return fmt.Sprintf(
-    `SELECT animal.id, animal.name, animal.identification_number, animal.birth_date, animal.death_date, 
-        animal.status, animal.avarage_prod, animal.avarage_birth_interval, animal.max_peak,
-        animal.children_quantity, animal.created_at, animal.isr,
-        mother.id AS mother_id, mother.name, mother.identification_number,
-        father.id AS father_id, father.name, father.identification_number,
-        pasture.id AS pasture_id, pasture.name
-    FROM (
-        SELECT id 
-        FROM animals as animal
-        %s
-        LIMIT %d
-    ) as subquery
-    JOIN animals as animal ON subquery.id = animal.id
-    LEFT JOIN animals AS father ON father.id = animal.father_id
-    LEFT JOIN animals AS mother ON mother.id = animal.mother_id
-    LEFT JOIN pastures AS pasture ON pasture.id = animal.pasture_id`, 
-    criteria, PAGE_LIMIT)
+var timeFields =  []string {
+    "birth_date",
+    "death_date",
+    "created_at",
+    "deleted_at",
 }
 
 func (r *AnimalRepository) returnSimpleQuery(criteria string) string {
@@ -63,6 +49,7 @@ func (r *AnimalRepository) animalArray(sqlStatement *sql.Rows) ([]entity.AnimalC
     }
     
     sqlStatement.Close()
+
     return animals, nil
 }
 
@@ -78,42 +65,25 @@ func (r *AnimalRepository) animalUnique(sqlStatement *sql.Row) (animal entity.An
     return animal, nil
 }
 
-func (r *AnimalRepository) GetAll() (*[]entity.AnimalComplete, error) {
-    query:= 
-    `SELECT animal.id, animal.name, animal.identification_number, animal.birth_date, animal.death_date, 
-        animal.status, animal.avarage_prod, animal.avarage_birth_interval, animal.max_peak,
-        animal.children_quantity, animal.created_at, animal.isr,
-        mother.id AS mother_id, mother.name, mother.identification_number,
-        father.id AS father_id, father.name, father.identification_number,
-        pasture.id AS pasture_id, pasture.name
-    FROM animals AS animal
-    LEFT JOIN animals AS father ON father.id = animal.father_id
-    LEFT JOIN animals AS mother ON mother.id = animal.mother_id
-    LEFT JOIN pastures AS pasture ON pasture.id = animal.pasture_id`
-
-    sqlStatement, err:= selectQueryList(query)
-    if err != nil {
-        return nil, err
-    }
-
-    animals, err:= r.animalArray(sqlStatement)
-    return &animals, err
+func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal) error {
+    return execQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.FatherId, animal.MotherId,
+        animal.BirthDate, animal.DeathDate, animal.PastureId, animal.Status, animal.AvarageProd, animal.AvarageBirthInterval, animal.MaxPeak,
+        animal.ChildrenQuantity, animal.CreatedAt, animal.DeletedAt, animal.Isr)
 }
 
-func createCriteriaFirstPage(sort string, direction string) string {
-    
-    var criteria string;
-    direction = strings.ToUpper(direction)
+func (r *AnimalRepository) createCriteriaFirst(sort string, direction string) (criteria string) {
 
     switch (sort) {
     case "name": 
         criteria = fmt.Sprintf("ORDER BY animal.name %[1]s, animal.id %[1]s", direction)
     case "identification_number": 
-        criteria = fmt.Sprintf("ORDER BY animal.identification_number %[1]s, animal.id %[1]s", direction)
+        criteria = fmt.Sprintf("ORDER BY animal.ring_order %[1]s, animal.id %[1]s", direction)
     case "birth_date":
-        criteria = fmt.Sprintf("ORDER BY animal.birth_date %[1]s, animal.id %[1]s", direction)
+        nullOrder:= getNullStatement(direction)
+        criteria = fmt.Sprintf("ORDER BY animal.birth_date %s, animal.id %s", nullOrder, direction)
     case "death_date":
-        criteria = fmt.Sprintf("ORDER BY animal.death_date %[1]s, animal.id %[1]s", direction)
+        nullOrder:= getNullStatement(direction)
+        criteria = fmt.Sprintf("ORDER BY animal.death_date %s, animal.id %s", nullOrder, direction)
     case "avarage_prod":
         criteria = fmt.Sprintf("ORDER BY animal.avarage_prod %[1]s, animal.id %[1]s", direction)
     case "avarage_birth_interval":
@@ -125,10 +95,38 @@ func createCriteriaFirstPage(sort string, direction string) string {
     case "isr":
         criteria = fmt.Sprintf("ORDER BY animal.isr %[1]s, animal.id %[1]s", direction)
     default:
-        criteria = "ORDER BY animal.created_at, animal.id"
+        criteria = fmt.Sprintf("ORDER BY animal.created_at %[1]s, animal.id %[1]s", direction)
     }
 
-    return criteria;
+    return criteria
+}
+
+func (r *AnimalRepository) createCriteriaNext(sort string, direction string, isNullValue bool) (criteria string) {
+
+    switch (sort) {
+    case "name": 
+        criteria = getNextPageCriteria("animal.name", "animal.id", direction, isNullValue)
+    case "identification_number": 
+        criteria = getNextPageCriteria("animal.identification_number", "animal.id", direction, isNullValue)
+    case "birth_date":
+        criteria = getNextPageCriteria("animal.birth_date", "animal.id", direction, isNullValue)
+    case "death_date":
+        criteria = getNextPageCriteria("animal.death_date", "animal.id", direction, isNullValue)
+    case "avarage_prod":
+        criteria = getNextPageCriteria("animal.avarage_prod", "animal.id", direction, isNullValue)
+    case "avarage_birth_interval":
+        criteria = getNextPageCriteria("animal.avarage_birth_interval", "animal.id", direction, isNullValue)
+    case "max_peak":
+        criteria = getNextPageCriteria("animal.max_peak", "animal.id", direction, isNullValue)
+    case "children_quantity":
+        criteria = getNextPageCriteria("animal.children_quantity", "animal.id", direction, isNullValue)
+    case "isr":
+        criteria = getNextPageCriteria("animal.isr", "animal.id", direction, isNullValue)
+    default:
+        criteria = getNextPageCriteria("animal.created_at", "animal.id", direction, isNullValue)
+    }
+
+    return criteria
 }
 
 func (r *AnimalRepository) createNextCursor(sort string, arr []entity.AnimalComplete) (cursor string, err error) {
@@ -147,9 +145,9 @@ func (r *AnimalRepository) createNextCursor(sort string, arr []entity.AnimalComp
     case "identification_number": 
         key = fmt.Sprintf("%s,%s",*lastEntry.IdentificationNumber, lastEntry.Id) 
     case "birth_date":
-        key = fmt.Sprintf("%s,%s", lastEntry.BirthDate, lastEntry.Id) 
+        key = fmt.Sprintf("%s,%s", lastEntry.BirthDate.Format(time.RFC3339Nano), lastEntry.Id) 
     case "death_date":
-        key = fmt.Sprintf("%s,%s", lastEntry.DeathDate, lastEntry.Id) 
+        key = fmt.Sprintf("%s,%s", lastEntry.DeathDate.Format(time.RFC3339Nano), lastEntry.Id) 
     case "avarage_prod":
         key = fmt.Sprintf("%f,%s", lastEntry.AvarageProd, lastEntry.Id) 
     case "avarage_birth_interval":
@@ -168,116 +166,103 @@ func (r *AnimalRepository) createNextCursor(sort string, arr []entity.AnimalComp
     return cursor, err
 }
 
-func (r *AnimalRepository) GetFirstPage(sort string, direction string) (*entity.PageAnimalComplete, error) {
-    criteria:=createCriteriaFirstPage(sort, direction)
-    query:= r.returnListQuery(criteria)
+func (r *AnimalRepository) GetFirstPage(sort string, direction string) (page *entity.PageAnimalComplete, err error) {
+
+    order:= r.createCriteriaFirst(sort, direction)
+    query:= fmt.Sprintf(`
+        SELECT animal.id, animal.name, animal.identification_number, animal.birth_date, animal.death_date, 
+            animal.status, animal.avarage_prod, animal.avarage_birth_interval, animal.max_peak,
+            animal.children_quantity, animal.created_at, animal.isr,
+            mother.id AS mother_id, mother.name, mother.identification_number,
+            father.id AS father_id, father.name, father.identification_number,
+            pasture.id AS pasture_id, pasture.name
+        FROM animals as animal
+        LEFT JOIN animals AS father ON father.id = animal.father_id
+        LEFT JOIN animals AS mother ON mother.id = animal.mother_id
+        LEFT JOIN pastures AS pasture ON pasture.id = animal.pasture_id
+        WHERE animal.deleted_at IS NOT NULL
+        %s
+        LIMIT %d
+    `, sort, order, PAGE_LIMIT)
+
     sqlStatement, err:= selectQueryList(query)
     if err != nil {
-        return nil, err
+        return
     }
 
     animals, err:= r.animalArray(sqlStatement)
     if err != nil {
-        return nil, err
+        return 
     }
 
     cursor, err:= r.createNextCursor(sort, animals)
     if err != nil {
-        return nil, err
+        return 
     }
-
     
-    page:= &entity.PageAnimalComplete{
+    page = &entity.PageAnimalComplete{
         HasNextPage: len(animals) == PAGE_LIMIT,
         NextCursor: cursor,
         List: &animals,
     }
+
     return page, err
 }
 
-func (r *AnimalRepository) createCriteriaPages(sort string, direction string) string {
+func (r *AnimalRepository) GetNextPage(cursor string, sort string, direction string) (page *entity.PageAnimalComplete, err error) {
 
-    var signal string;
-    switch (direction) {
-    case "asc": 
-        signal = ">"
-    case "desc":
+    var first any
+    var second string
+
+    if isTimeField(sort, timeFields) {
+        first, second, err = decodeCursorTime(cursor)
+    } else {
+        first, second, err = decodeCursor(cursor)
+    }
+    
+    if err != nil {
+        return 
+    }
+
+    signal:= ">"
+    if direction == "desc" {
         signal = "<"
     }
 
-    direction = strings.ToUpper(direction)
-    var criteria string;
+    query:= fmt.Sprintf(`
+        SELECT animal.id, animal.name, animal.identification_number, animal.birth_date, animal.death_date, 
+            animal.status, animal.avarage_prod, animal.avarage_birth_interval, animal.max_peak,
+            animal.children_quantity, animal.created_at, animal.isr,
+            mother.id AS mother_id, mother.name, mother.identification_number,
+            father.id AS father_id, father.name, father.identification_number,
+            pasture.id AS pasture_id, pasture.name
+        FROM animals as animal
+        LEFT JOIN animals AS father ON father.id = animal.father_id
+        LEFT JOIN animals AS mother ON mother.id = animal.mother_id
+        LEFT JOIN pastures AS pasture ON pasture.id = animal.pasture_id
+        WHERE 
+            (animal.%[1]s, animal.id) %[2]s ($1, $2) 
+            AND animal.deleted_at IS NOT NULL
+        ORDER BY animal.%[1]s %[3]s
+        LIMIT %d
+    `, sort, signal, direction, PAGE_LIMIT)
 
-    switch (sort) {
-    case "name": 
-        criteria = fmt.Sprintf(`
-            WHERE (animal.name, animal.id) %s ($1, $2)
-            ORDER BY animal.name %[2]s, animal.id %[2]s`, signal, direction)
-    case "identification_number": 
-        criteria = fmt.Sprintf(`
-            ORDER BY animal.identification_number %[1]s, animal.id %[1]s
-            WHERE (animal.identification_number, animal.id) %s ($1, $2)`, direction, signal)
-    case "birth_date":
-        criteria = fmt.Sprintf(`
-            ORDER BY animal.birth_date %[1]s, animal.id %[1]s
-            WHERE (animal.birth_date, animal.id)`, direction, signal)
-    case "death_date":
-        criteria = fmt.Sprintf(`
-            ORDER BY animal.death_date %[1]s, animal.id %[1]s
-            WHERE (animal.death_date, animal.id) %s ($1, $2)`, direction, signal)
-    case "avarage_prod":
-        criteria = fmt.Sprintf(`
-            ORDER BY animal.avarage_prod %[1]s, animal.id %[1]s
-            WHERE (animal.avarage_prod, animal.id) %s ($1, $2)`, direction, signal)
-    case "avarage_birth_interval":
-        criteria = fmt.Sprintf(`
-            ORDER BY animal.avarage_birth_interval %[1]s, animal.id %[1]s
-            WHERE (animal.avarage_birth_interval, animal.id) %s ($1, $2)`, direction, signal)
-    case "max_peak":
-        criteria = fmt.Sprintf(`
-            ORDER BY animal.max_peak %[1]s, animal.id %[1]s
-            WHERE (animal.max_peak, animal.id) %s ($1, $2)`, direction, signal)
-    case "children_quantity":
-        criteria = fmt.Sprintf(`
-            ORDER BY animal.children_quantity %[1]s, animal.id %[1]s
-            WHERE (animal.children_quantity, animal.id) %s ($1, $2)`, direction, signal)
-    case "isr":
-        criteria = fmt.Sprintf(`
-            ORDER BY animal.isr %[1]s, animal.id %[1]s
-            WHERE (animal.isr, animal.id) %s ($1, $2)`, direction, signal)
-    default:
-        criteria = `
-            ORDER BY animal.created_at, animal.id
-            WHERE (animal.created_at, animal.id) > ($1, $2)`
-    }
-
-    return criteria;
-}
-
-func (r *AnimalRepository) GetNextPage(cursor string, sort string, direction string) (*entity.PageAnimalComplete, error) {
-    first, second, err:= decodeCursor(cursor)
-    if err != nil {
-        return nil, err
-    }
-
-    criteria:= r.createCriteriaPages(sort, direction)
-    query:= r.returnListQuery(criteria)
     sqlStatement, err:= selectQueryList(query, first, second)
     if err != nil {
-        return nil, err
+        return 
     }
 
     animals, err:= r.animalArray(sqlStatement)
     if err != nil {
-        return nil, err
+        return 
     }
     
     nextCursor, err:= r.createNextCursor(sort, animals)
     if err != nil {
-        return nil, err
+        return 
     }
 
-    page:= &entity.PageAnimalComplete{
+    page = &entity.PageAnimalComplete{
         HasNextPage: len(animals) == PAGE_LIMIT,
         NextCursor: nextCursor,
         List: &animals,
@@ -375,12 +360,6 @@ func (r *AnimalRepository) GetByPastureId(pastureId string) (page *entity.PageAn
     }
 
     return page, err
-}
-
-func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal) error {
-    return execQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.FatherId, animal.MotherId,
-        animal.BirthDate, animal.DeathDate, animal.PastureId, animal.Status, animal.AvarageProd, animal.AvarageBirthInterval, animal.MaxPeak,
-        animal.ChildrenQuantity, animal.CreatedAt, animal.DeletedAt, animal.Isr)
 }
 
 func (r *AnimalRepository) Add(animal *entity.CreateAnimal) (*entity.Animal, error) {

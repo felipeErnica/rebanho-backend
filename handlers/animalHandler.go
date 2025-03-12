@@ -19,35 +19,35 @@ func InitAnimal(mux *http.ServeMux) {
         Repository: repositories.AnimalRepository{}, 
     }
 
-    mux.HandleFunc("GET /animais", handler.GetAll)
-    mux.HandleFunc("GET /animais/firstPage", handler.GetFirstPage)
-    mux.HandleFunc("GET /animais/page", handler.GetNextPage)
+    mux.HandleFunc("GET /animais/page", handler.GetPage)
     mux.HandleFunc("GET /animais/{id}", handler.GetById)
     mux.HandleFunc("POST /animais", handler.Add)
     mux.HandleFunc("POST /animais/save", handler.Save)
     LogControllersInit("Animais")
 }
 
-func (h *AnimalHandler) GetAll(w http.ResponseWriter, r *http.Request)  {
-    animals, err:= h.Repository.GetAll()
-    if err != nil {
-        DatabaseGetError(err, w)
-        return
-    }
-
-    response, err:= json.Marshal(animals)
-    if err != nil {
-        JsonServerError(err, w)
-        return
-    }
-
-    w.Write(response)
-}
-
-func (h *AnimalHandler) GetFirstPage(w http.ResponseWriter, r *http.Request)  {
+func (h *AnimalHandler) GetPage(w http.ResponseWriter, r *http.Request)  {
+    cursor:=r.URL.Query().Get("cursor")
     sort:= r.URL.Query().Get("sort")
     order:= r.URL.Query().Get("order")
-    animals, err:= h.Repository.GetFirstPage(sort, order)
+
+    if sort == "" {
+        sort = "created_at"
+    }
+
+    if order == "" {
+        order = "asc"
+    }
+
+    var animals *entity.PageAnimalComplete
+    var err error
+
+    if cursor == "" {
+        animals, err = h.Repository.GetFirstPage(sort, order)
+    } else {
+        animals, err = h.Repository.GetNextPage(cursor, sort, order)
+    }
+
     if err != nil {
         DatabaseGetError(err, w)
         return
@@ -59,25 +59,7 @@ func (h *AnimalHandler) GetFirstPage(w http.ResponseWriter, r *http.Request)  {
         return
     }
     
-    w.Write(response)
-}
-
-func (h *AnimalHandler) GetNextPage(w http.ResponseWriter, r *http.Request)  {
-    cursor:=r.URL.Query().Get("cursor")
-    sort:= r.URL.Query().Get("sort")
-    order:= r.URL.Query().Get("order")
-    animals, err:= h.Repository.GetNextPage(cursor, sort, order)
-    if err != nil {
-        DatabaseGetError(err, w)
-        return
-    }
-
-    response, err:= json.Marshal(animals)
-    if err != nil {
-        JsonServerError(err, w)
-        return
-    }
-
+    w.Header().Set("Content-Type","application/json")
     w.Write(response)
 }
 

@@ -15,35 +15,36 @@ type LactationRepository struct{}
 
 func (l *LactationRepository) createCriteriaFirstPage(sort string, direction string) string {
 
-	var criteria string
+	var criteriaOrder string
 	direction = strings.ToUpper(direction)
+    criteriaWhere:="WHERE lac.deleted_at IS NULL"
 
 	switch sort {
 	case "name":
-		criteria = fmt.Sprintf("ORDER BY animal.name %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY animal.name %[1]s, lac.id %[1]s", direction)
 	case "identification_number":
-		criteria = fmt.Sprintf("ORDER BY animal.ring_order %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY animal.ring_order %[1]s, lac.id %[1]s", direction)
 	case "birth_date":
-		criteria = fmt.Sprintf("ORDER BY calf.birth_date %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY calf.birth_date %[1]s, lac.id %[1]s", direction)
 	case "start_date":
-		criteria = fmt.Sprintf("ORDER BY animal.start_date %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY animal.start_date %[1]s, lac.id %[1]s", direction)
 	case "end_date":
-		criteria = fmt.Sprintf("ORDER BY lac.end_date %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY lac.end_date %[1]s, lac.id %[1]s", direction)
 	case "production_period":
-		criteria = fmt.Sprintf("ORDER BY lac.production_period %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY lac.production_period %[1]s, lac.id %[1]s", direction)
 	case "production_total":
-		criteria = fmt.Sprintf("ORDER BY lac.production_total %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY lac.production_total %[1]s, lac.id %[1]s", direction)
 	case "average_production":
-		criteria = fmt.Sprintf("ORDER BY lac.average_production %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY lac.average_production %[1]s, lac.id %[1]s", direction)
 	case "peak_production":
-		criteria = fmt.Sprintf("ORDER BY lac.peak_production %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY lac.peak_production %[1]s, lac.id %[1]s", direction)
 	case "isr":
-		criteria = fmt.Sprintf("ORDER BY lac.isr %[1]s, lac.id %[1]s", direction)
+		criteriaOrder = fmt.Sprintf("ORDER BY lac.isr %[1]s, lac.id %[1]s", direction)
 	default:
-		criteria = "ORDER BY animal.created_at, animal.id"
+		criteriaOrder = "ORDER BY animal.created_at, animal.id"
 	}
 
-	return criteria
+	return fmt.Sprintf(`%s %s`, criteriaWhere, criteriaOrder)
 }
 
 func (l *LactationRepository) createCriteriaNextPage(sort string, direction string) string {
@@ -62,47 +63,47 @@ func (l *LactationRepository) createCriteriaNextPage(sort string, direction stri
 	switch sort {
 	case "name":
 		criteria = fmt.Sprintf(`
-            WHERE (animal.name, lac.id) %s ($1, $2)
+            WHERE (animal.name, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY animal.name %[2]s, lac.id %[2]s`, signal, direction)
 	case "identification_number":
 		criteria = fmt.Sprintf(`
-            WHERE (animal.ring_order, lac.id) %s ($1, $2)
+            WHERE (animal.ring_order, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY animal.ring_order %[2]s, lac.id %[2]s`, signal, direction)
 	case "birth_date":
 		criteria = fmt.Sprintf(`
-            WHERE (animal.birth_date, lac.id) %s ($1, $2)
+            WHERE (animal.birth_date, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY calf.birth_date %[2]s, lac.id %[2]s`, signal, direction)
 	case "start_date":
 		criteria = fmt.Sprintf(`
-            WHERE (lac.start_date, lac.id) %s ($1, $2)
-            ORDER BY animal.start_date %[2]s, lac.id %[2]s`, direction)
+            WHERE (lac.start_date, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
+            ORDER BY animal.start_date %[2]s, lac.id %[2]s`, signal, direction)
 	case "end_date":
 		criteria = fmt.Sprintf(`
-            WHERE (lac.end_date, lac.id) %s ($1, $2)
+            WHERE (lac.end_date, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY lac.end_date %[2]s, lac.id %[2]s`, signal, direction)
 	case "production_period":
 		criteria = fmt.Sprintf(`
-            WHERE (lac.production_period, lac.id) %s ($1, $2)
+            WHERE (lac.production_period, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY lac.production_period %[2]s, lac.id %[2]s`, signal, direction)
 	case "production_total":
 		criteria = fmt.Sprintf(`
-            WHERE (lac.production_total, lac.id) %s ($1, $2)
+            WHERE (lac.production_total, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY lac.production_total %[2]s, lac.id %[2]s`, signal, direction)
 	case "average_production":
 		criteria = fmt.Sprintf(`
-            WHERE (lac.average_production, lac.id) %s ($1, $2)
+            WHERE (lac.average_production, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY lac.average_production %[2]s, lac.id %[2]s`, signal, direction)
 	case "peak_production":
 		criteria = fmt.Sprintf(`
-            WHERE (lac.peak_production, lac.id) %s ($1, $2)
+            WHERE (lac.peak_production, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY lac.peak_production %[2]s, lac.id %[2]s`, signal, direction)
 	case "isr":
 		criteria = fmt.Sprintf(`
-            WHERE (lac.isr, lac.id) %s ($1, $2)
+            WHERE (lac.isr, lac.id) %s ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY lac.isr %[2]s, lac.id %[2]s`, signal, direction)
 	default:
 		criteria = `
-            WHERE (lac.created_at, lac.id) > ($1, $2)
+            WHERE (lac.created_at, lac.id) > ($1, $2) AND lac.deleted_at IS NULL
             ORDER BY lac.created_at, lac.id
         `
 	}
@@ -166,15 +167,11 @@ func (l *LactationRepository) GetFirstPage(sort string, direction string) (page 
         animal.id as animal_id, animal.identificantion_number as animal_number, animal.name as animal_name,
         animal.ring_order as animal_order, animal.pasture_id as animal_pasture, animal.status as animal_status,
         calf.id as calf_id, calf.sex as calf_sex, calf.birth_date as calf_birth
-        FROM (
-            SELECT id 
-            FROM lactations
-            %s
-            LIMIT %d
-        ) as subquery
-        JOIN lactations as lac ON lac.id = subquery.id
+        FROM lactations as lac
         LEFT JOIN animals as animal ON animal.id = lac.animal_id
         LEFT JOIN animals as calf ON calf.id = lac.animal_id
+        %s
+        LIMIT %d
         `, criteria, PAGE_LIMIT)
 	sqlStatement, err := selectQueryList(query)
 	defer sqlStatement.Close()
@@ -187,10 +184,10 @@ func (l *LactationRepository) GetFirstPage(sort string, direction string) (page 
 
     for sqlStatement.Next() {
         var lactation entity.LactationComplete
-        err = sqlStatement.Scan(lactation.Id, lactation.StartDate, lactation.EndDate, lactation.ProductionPeriod, lactation.ProductionTotal,
-            lactation.AverageProduction, lactation.PeakProduction, lactation.Isr, lactation.Observation, lactation.AnimalId, lactation.AnimalNumber,
-            lactation.AnimalName, lactation.AnimalOrder, lactation.AnimalPasture, lactation.AnimalPasture, 
-            lactation.CalfId, lactation.CalfSex, lactation.CalfBirthDate)
+        err = sqlStatement.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
+            &lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation, &lactation.AnimalId, &lactation.AnimalNumber,
+            &lactation.AnimalName, &lactation.AnimalOrder, &lactation.AnimalPasture, &lactation.AnimalPasture, 
+            &lactation.CalfId, &lactation.CalfSex, &lactation.CalfBirthDate)
         if err != nil {
             return
         }
@@ -220,19 +217,15 @@ func (l *LactationRepository) GetNextPage(cursor string, sort string, direction 
     criteria:= l.createCriteriaNextPage(sort, direction)
 	query := fmt.Sprintf(`
         SELECT lac.id, lac.start_date, lac.end_date, lac.production_period, lac.production_total, lac.average_production
-        lac.peak_production, lac.isr, lac.observation,
-        animal.id as animal_id, animal.identificantion_number as animal_number, animal.name as animal_name,
-        animal.ring_order as animal_order, animal.pasture_id as animal_pasture, animal.status as animal_status,
-        calf.id as calf_id, calf.sex as calf_sex, calf.birth_date as calf_birth
-        FROM (
-            SELECT id 
-            FROM lactations
-            %s
-            LIMIT %d
-        ) as subquery
-        JOIN lactations as lac ON lac.id = subquery.id
+            lac.peak_production, lac.isr, lac.observation,
+            animal.id as animal_id, animal.identificantion_number as animal_number, animal.name as animal_name,
+            animal.ring_order as animal_order, animal.pasture_id as animal_pasture, animal.status as animal_status,
+            calf.id as calf_id, calf.sex as calf_sex, calf.birth_date as calf_birth
+        FROM lactations as lac
         LEFT JOIN animals as animal ON animal.id = lac.animal_id
         LEFT JOIN animals as calf ON calf.id = lac.animal_id
+        %s
+        LIMIT %d
         `, criteria, PAGE_LIMIT)
 	sqlStatement, err := selectQueryList(query, param, id)
 	defer sqlStatement.Close()
@@ -245,10 +238,10 @@ func (l *LactationRepository) GetNextPage(cursor string, sort string, direction 
 
     for sqlStatement.Next() {
         var lactation entity.LactationComplete
-        err = sqlStatement.Scan(lactation.Id, lactation.StartDate, lactation.EndDate, lactation.ProductionPeriod, lactation.ProductionTotal,
-            lactation.AverageProduction, lactation.PeakProduction, lactation.Isr, lactation.Observation, lactation.AnimalId, lactation.AnimalNumber,
-            lactation.AnimalName, lactation.AnimalOrder, lactation.AnimalPasture, lactation.AnimalPasture, 
-            lactation.CalfId, lactation.CalfSex, lactation.CalfBirthDate)
+        err = sqlStatement.Scan(lactation.Id, lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
+            &lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation, &lactation.AnimalId, &lactation.AnimalNumber,
+            &lactation.AnimalName, &lactation.AnimalOrder, &lactation.AnimalPasture, &lactation.AnimalPasture, 
+            &lactation.CalfId, &lactation.CalfSex, &lactation.CalfBirthDate)
         if err != nil {
             return
         }
