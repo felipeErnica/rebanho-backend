@@ -32,3 +32,8 @@ func DatabaseGetError(err error, w http.ResponseWriter) {
     util.LogError(err.Error())
     w.WriteHeader(http.StatusInternalServerError)
 }
+
+func writeResponse(w http.ResponseWriter, response []byte) {
+    w.Header().Set("Content-Type","application/json")
+    w.Write(response)
+}
