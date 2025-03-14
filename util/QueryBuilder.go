@@ -22,123 +22,75 @@ func (q QueryBuilder) getSignal(direction string) string {
 	return signal
 }
 
-func (q QueryBuilder) GetFirstPage(mainQuery string, firstField string, secondField string,
-	deletedField string, direction string) string {
+func (q QueryBuilder) GetFirstPage(mainQuery string, firstField string, 
+    secondField string, direction string) string {
 	nullOrdering := q.getNullOrdering(direction)
 	return fmt.Sprintf(`
         %[1]s
-        WHERE %[2]s IS NULL
+        ORDER BY %[2]s %[3]s, %[4]s %[3]s
+        LIMIT %[5]d
+    `, mainQuery, firstField, nullOrdering, secondField, PAGE_LIMIT)
+}
+
+func (q QueryBuilder) GetNextPage(mainQuery string, firstField string, 
+    secondField string, direction string) string {
+	nullOrdering := q.getNullOrdering(direction)
+	signal := q.getSignal(direction)
+	return fmt.Sprintf(`
+        %[1]s
+        WHERE (%[2]s, %[3]s) %[4]s ($1, $2)
+        ORDER BY %[2]s %[5]s, %[3]s %[5]s
+        LIMIT %d
+        `, mainQuery, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
+}
+
+func (q QueryBuilder) GetNextPageNull(mainQuery string, firstField string, 
+    secondField string, direction string) string {
+	nullOrdering := q.getNullOrdering(direction)
+	signal := q.getSignal(direction)
+	return fmt.Sprintf(`
+        %[1]s
+        WHERE (%[2]s IS NULL AND %[3]s %[4]s $1)
+        ORDER BY %[2]s %[5]s, %[3]s %[5]s
+        LIMIT %d
+        `, mainQuery, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
+}
+
+func (q *QueryBuilder) GetFirstPageConditional(mainQuery string,conditionalField string, firstField string, 
+    secondField string, direction string) string {
+	nullOrdering := q.getNullOrdering(direction)
+	return fmt.Sprintf(`
+        %[1]s
+        WHERE %[2]s = $1
         ORDER BY %[3]s %[4]s, %[5]s %[4]s
         LIMIT %[6]d
-    `, mainQuery, deletedField, firstField, nullOrdering, secondField, PAGE_LIMIT)
-}
-
-func (q QueryBuilder) GetNextPage(mainQuery string, firstField string, secondField string,
-	deletedField string, direction string) string {
-	nullOrdering := q.getNullOrdering(direction)
-	signal := q.getSignal(direction)
-	return fmt.Sprintf(`
-        %[1]s
-        WHERE 
-            %[2]s IS NULL
-            AND (%[3]s, %[4]s) %[5]s ($1, $2)
-        ORDER BY %[3]s %[6]s, %[4]s %[6]s
-        LIMIT %d
-        `, mainQuery, deletedField, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
-}
-
-func (q QueryBuilder) GetNextPageNull(mainQuery string, firstField string, secondField string,
-	deletedField string, direction string) string {
-	nullOrdering := q.getNullOrdering(direction)
-	signal := q.getSignal(direction)
-	return fmt.Sprintf(`
-        %[1]s
-        WHERE 
-            %[2]s IS NULL
-            AND (%[3]s IS NULL AND %[4]s %[5]s $1)
-        ORDER BY %[3]s %[6]s, %[4]s %[6]s
-        LIMIT %d
-        `, mainQuery, deletedField, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
-}
-
-func (q *QueryBuilder) GetFirstPageConditional(mainQuery string,conditionalField string, firstField string, secondField string, 
-    deletedField string, direction string) string {
-	nullOrdering := q.getNullOrdering(direction)
-	return fmt.Sprintf(`
-        %[1]s
-        WHERE 
-            %[2]s IS NULL
-            AND %[3]s = $1
-        ORDER BY %[4]s %[5]s, %[6]s %[5]s
-        LIMIT %[7]d
-    `, mainQuery, deletedField, conditionalField, firstField, nullOrdering, secondField, PAGE_LIMIT)
+    `, mainQuery, conditionalField, firstField, nullOrdering, secondField, PAGE_LIMIT)
 }
 
 func (q *QueryBuilder) GetNextPageNullConditional(mainQuery string, conditionalField string, firstField string,
-    secondField string, deletedField string, direction string) string {
+    secondField string, direction string) string {
 	nullOrdering := q.getNullOrdering(direction)
 	signal := q.getSignal(direction)
 	return fmt.Sprintf(`
         %[1]s
         WHERE 
-            %[2]s IS NULL
-            AND %[3]s = $1
-            AND (%[4]s IS NULL AND %[5]s %[6]s $2)
-        ORDER BY %[4]s %[7]s, %[5]s %[7]s
-        LIMIT %d
-        `, mainQuery, deletedField, conditionalField, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
-}
-
-func (q *QueryBuilder) GetNextPageConditional(mainQuery string, conditionalField string, firstField string, secondField string, 
-    deletedField string, direction string) string {
-	nullOrdering := q.getNullOrdering(direction)
-	signal := q.getSignal(direction)
-	return fmt.Sprintf(`
-        %[1]s
-        WHERE 
-            %[2]s IS NULL
-            AND %[3]s = $1
-            AND (%[4]s, %[5]s) %[6]s ($2, $3)
-        ORDER BY %[4]s %[7]s, %[5]s %[7]s
-        LIMIT %d
-        `, mainQuery, deletedField, conditionalField, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
-}
-
-func (q QueryBuilder) GetDeletedFirstPage(mainQuery string, firstField string, secondField string,
-	deletedField string, direction string) string {
-	nullOrdering := q.getNullOrdering(direction)
-	return fmt.Sprintf(`
-        %[1]s
-        WHERE %[2]s IS NOT NULL
-        ORDER BY %[3]s %[4]s, %[5]s %[4]s
-        LIMIT %[6]d
-    `, mainQuery, deletedField, firstField, nullOrdering, secondField, PAGE_LIMIT)
-}
-
-func (q QueryBuilder) GetDeletedNextPage(mainQuery string, firstField string,
-	secondField string, deletedField string, direction string) string {
-	nullOrdering := q.getNullOrdering(direction)
-	signal := q.getSignal(direction)
-	return fmt.Sprintf(`
-        %[1]s
-        WHERE 
-            %[2]s IS NOT NULL
-            AND (%[3]s, %[4]s) %[5]s ($1, $2)
+            %[2]s = $1
+            AND (%[3]s IS NULL AND %[4]s %[5]s $2)
         ORDER BY %[3]s %[6]s, %[4]s %[6]s
         LIMIT %d
-        `, mainQuery, deletedField, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
+        `, mainQuery, conditionalField, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
 }
 
-func (q QueryBuilder) GetDeletedNextPageNull(mainQuery string, firstField string, secondField string,
-	deletedField string, direction string) string {
+func (q *QueryBuilder) GetNextPageConditional(mainQuery string, conditionalField string, 
+    firstField string, secondField string, direction string) string {
 	nullOrdering := q.getNullOrdering(direction)
 	signal := q.getSignal(direction)
 	return fmt.Sprintf(`
         %[1]s
         WHERE 
-            %[2]s IS NOT NULL
-            AND (%[3]s IS NULL AND %[4]s %[5]s $1)
+            %[2]s = $1
+            AND (%[3]s, %[4]s) %[5]s ($2, $3)
         ORDER BY %[3]s %[6]s, %[4]s %[6]s
         LIMIT %d
-        `, mainQuery, deletedField, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
+        `, mainQuery, conditionalField, firstField, secondField, signal, nullOrdering, PAGE_LIMIT)
 }

@@ -21,19 +21,20 @@ func InitAnimal(mux *http.ServeMux) {
         Repository: *repository,
     }
 
-    mux.HandleFunc("GET /animais/page", handler.GetPage)
-    mux.HandleFunc("GET /animais/{id}", handler.GetById)
-    mux.HandleFunc("GET /animais/father/{fatherId}", handler.FindByFatherId)
-    mux.HandleFunc("GET /animais/mother/{motherId}", handler.FindByMotherId)
-    mux.HandleFunc("GET /animais/pasture/{pastureId}/page", handler.FindByPastureId)
-    mux.HandleFunc("GET /animais/deleted/page", handler.FindDeleted)
-    mux.HandleFunc("POST /animais", handler.Add)
-    mux.HandleFunc("POST /animais/save", handler.Save)
-    mux.HandleFunc("DELETE /animais/{id}", handler.Delete)
+    mux.HandleFunc("GET /animals/page", handler.FindPage)
+    mux.HandleFunc("GET /animals/{id}", handler.FindById)
+    mux.HandleFunc("GET /animals/name/{name}", handler.FindByName)
+    mux.HandleFunc("GET /animals/number/{number}", handler.FindByNumber)
+    mux.HandleFunc("GET /animals/father/{fatherId}", handler.FindByFatherId)
+    mux.HandleFunc("GET /animals/mother/{motherId}", handler.FindByMotherId)
+    mux.HandleFunc("GET /animals/pasture/{pastureId}/page", handler.FindByPastureId)
+    mux.HandleFunc("POST /animals", handler.Add)
+    mux.HandleFunc("POST /animals/save", handler.Save)
+    mux.HandleFunc("DELETE /animals/{id}", handler.Delete)
     LogControllersInit("Animais")
 }
 
-func (h *AnimalHandler) GetPage(w http.ResponseWriter, r *http.Request)  {
+func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request)  {
     cursor:=r.URL.Query().Get("cursor")
     sort:= r.URL.Query().Get("sort")
     order:= r.URL.Query().Get("order")
@@ -53,9 +54,43 @@ func (h *AnimalHandler) GetPage(w http.ResponseWriter, r *http.Request)  {
     writeResponse(w, response)   
 }
 
-func (h *AnimalHandler) GetById(w http.ResponseWriter, r *http.Request)  {
+func (h *AnimalHandler) FindById(w http.ResponseWriter, r *http.Request)  {
     id:= r.PathValue("id")
     animal, err:= h.Repository.FindById(id)
+    if err != nil {
+        DatabaseGetError(err, w)
+        return
+    }
+
+    response, err:= json.Marshal(animal)
+    if err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    writeResponse(w, response)
+}
+
+func (h *AnimalHandler) FindByName(w http.ResponseWriter, r *http.Request)  {
+    name:= r.PathValue("name")
+    animal, err:= h.Repository.FindByName(name)
+    if err != nil {
+        DatabaseGetError(err, w)
+        return
+    }
+
+    response, err:= json.Marshal(animal)
+    if err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    writeResponse(w, response)
+}
+
+func (h *AnimalHandler) FindByNumber(w http.ResponseWriter, r *http.Request)  {
+    number:= r.PathValue("number")
+    animal, err:= h.Repository.FindByIdentificationNumber(number)
     if err != nil {
         DatabaseGetError(err, w)
         return
@@ -111,26 +146,6 @@ func (h *AnimalHandler) FindByPastureId(w http.ResponseWriter, r *http.Request) 
     pastureId:=r.PathValue("pastureId")
 
     animals, err:= h.Repository.FindByPastureId(sort, order, cursor, pastureId)
-
-    if err != nil {
-        DatabaseGetError(err, w)
-        return
-    }
-
-    response, err:= json.Marshal(animals)
-    if err != nil {
-        JsonServerError(err, w)
-        return
-    }
-    writeResponse(w, response)   
-}
-
-func (h *AnimalHandler) FindDeleted(w http.ResponseWriter, r *http.Request)  {
-    cursor:=r.URL.Query().Get("cursor")
-    sort:= r.URL.Query().Get("sort")
-    order:= r.URL.Query().Get("order")
-
-    animals, err:= h.Repository.FindDeletedPage(sort, order, cursor)
 
     if err != nil {
         DatabaseGetError(err, w)
