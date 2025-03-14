@@ -18,8 +18,8 @@ func (p *Pasture) NewPasture(create *CreatePasture) *Pasture {
 }
 
 type PastureShort struct {
-	Id     string
-	Name   string
+	Id     *string
+	Name   *string
 }
 
 type CreatePasture struct {

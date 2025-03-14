@@ -8,11 +8,11 @@ type Animal struct {
     IdentificationNumber *string         `json:"identification_number"`
     RingOrder            int             `json:"ring_order"`  
     Sex                  string          `json:"sex"`
-    Father               AnimalShort    `json:"father_id"`
-    Mother               AnimalShort    `json:"mother_id"`
+    Father               AnimalShort     `json:"father_id"`
+    Mother               AnimalShort     `json:"mother_id"`
     BirthDate            *time.Time      `json:"birth_date"`
     DeathDate            *time.Time      `json:"death_date"`
-    Pasture              PastureShort   `json:"pasture_id"`
+    Pasture              PastureShort    `json:"pasture_id"`
     Status               *string         `json:"status"`
     Isr                  float32         `json:"isr"`
     AvarageProd          float32         `json:"avarage_prod"`
@@ -45,7 +45,7 @@ type Animal struct {
 //}
 
 type AnimalShort struct {
-    Id                   string
-    IdentificationNumber string
-    Name                 string
+    Id                   *string
+    IdentificationNumber *string
+    Name                 *string
 }
