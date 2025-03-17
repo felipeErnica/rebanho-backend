@@ -24,7 +24,15 @@ type Animal struct {
 }
 
 type AnimalShort struct {
-    Id                   *string
-    IdentificationNumber *string
-    Name                 *string
+    Id                   *string          `json:"id"`
+    Name                 *string         `json:"name"`
+    IdentificationNumber *string         `json:"identification_number"`
+    AnimalOrder            *int             `json:"ring_order"`  
+    Sex                  *string          `json:"sex"`
+    FatherId             *string         `json:"father_id"`
+    MotherId             *string         `json:"mother_id"`
+    BirthDate            *time.Time      `json:"birth_date"`
+    DeathDate            *time.Time      `json:"death_date"`
+    PastureId            *string         `json:"pasture"`
+    Status               *string         `json:"status"`
 }

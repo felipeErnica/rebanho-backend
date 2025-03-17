@@ -3,16 +3,16 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/google/uuid"
 )
 
 type Repository[E entity.IEntity] interface {
-	setNewId(*E, string)
-	buildEntity(*sql.Row) (*E, error)
-	buildListEntity(*sql.Rows) (*[]E, error)
-	saveOrUpdateScan(string, *E) error
+	setNewEntity(model *E)
+	buildEntity(row *sql.Row) (model *E, err error)
+	buildListEntity(rows *sql.Rows) (arr *[]E, err error)
+	saveOrUpdateScan(query string, model *E) error
 }
 
 type RepositoryImpl[E entity.IEntity] struct {
@@ -54,8 +54,7 @@ func (r *RepositoryImpl[E]) FindListByQuery(query string, args... any) (list *[]
 }
 
 func (r *RepositoryImpl[E]) Add(model E) (*E, error) {
-    id:= uuid.New().String()
-    r.Repository.setNewId(&model, id)
+    r.Repository.setNewEntity(&model)
     err:= r.Repository.saveOrUpdateScan(r.InsertQuery, &model)
     return &model, err
 }
@@ -66,6 +65,7 @@ func (r *RepositoryImpl[E]) Save(model *E) error {
 }
 
 func (r *RepositoryImpl[E]) Delete(id string) error {
-    query:=fmt.Sprintf("DELETE FROM %s WHERE id = $1", r.TableName)
-    return execQuery(query, id)
+    timeDeletion:=time.Now()
+    query:=fmt.Sprintf("UPDATE %s SET deleted_at = $1 WHERE id = $2", r.TableName)
+    return execQuery(query, timeDeletion, id)
 }

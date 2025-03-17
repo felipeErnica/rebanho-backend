@@ -2,36 +2,14 @@ package entity
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type PastureEntry struct {
-    Id        string
-    AnimalId  string
-    PastureId string
-    EntryDate time.Time
-    ExitDate  time.Time
-    Status    string
+    Id          string          `json:"id"`
+    Animal      AnimalShort     `json:"animal"`
+    Pasture     PastureShort    `json:"pasture"`
+    EntryDate   time.Time       `json:"entry_date"`
+    ExitDate    time.Time       `json:"exit_date"`
+    CreatedAt   time.Time       `json:"created_at"`
+    DeletedAt   *time.Time      `json:"deleted_at"`
 }
-
-func (e *PastureEntry) New(create *CreatePastureEntry) *PastureEntry {
-    e = &PastureEntry{
-        Id: uuid.New().String(),
-        AnimalId: create.AnimalId,
-        PastureId: create.PastureId,
-        EntryDate: create.EntryDate,
-        ExitDate: create.ExitDate,
-        Status: create.Status,
-    }
-    return e
-}
-
-type CreatePastureEntry struct {
-    AnimalId  string
-    PastureId string
-    EntryDate time.Time
-    ExitDate  time.Time
-    Status    string
-}
-

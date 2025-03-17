@@ -2,80 +2,34 @@ package entity
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Lactation struct {
-	Id                string  
-	AnimalId          string  
-    CalfId            string  
-	StartDate         time.Time  
-	EndDate           time.Time
-	ProductionPeriod  uint8
-	ProductionTotal   float32
-	AvarageProduction float32
-	PeakProduction    float32
-	Isr               float32
-    Observation       string  
-    CreatedAt         time.Time  
-    DeletedAt         time.Time  
+    Id                string        `json:"id"`
+    Cow               AnimalShort   `json:"cow"`
+    Calf              AnimalShort   `json:"calf"`
+    StartDate         time.Time     `json:"start_date"`
+    EndDate           *time.Time    `json:"end_date"`
+    ProductionPeriod  uint          `json:"production_period"`
+    ProductionTotal   float32       `json:"production_total"`
+    AverageProduction float32       `json:"average_production"`
+    PeakProduction    float32       `json:"peak_production"`
+    Isr               float32       `json:"isr"`
+    Observation       *string       `json:"observation"`
+    CreatedAt         time.Time     `json:"created_at"`
+    DeletedAt         *time.Time    `json:"deleted_at"`
 }
 
-func (l *Lactation) New(c *CreateLactation) *Lactation {
-    l = &Lactation{
-        Id: uuid.NewString(),
-        AnimalId: c.AnimalId,
-        StartDate: c.StartDate,
-        EndDate: c.EndDate,
-        ProductionPeriod: c.ProductionPeriod,
-        ProductionTotal: c.ProductionTotal,
-        AvarageProduction: c.AvarageProduction,
-        PeakProduction: c.PeakProduction,
-        Isr: c.Isr,
-        CreatedAt: time.Now(),
-    }
-    return l
-}
-
-type CreateLactation struct {
-	AnimalId          string  
-    CalfId            string  
-	StartDate         time.Time  
-	EndDate           time.Time
-	ProductionPeriod  uint8
-	ProductionTotal   float32
-	AvarageProduction float32
-	PeakProduction    float32
-	Isr               float32
-    Observation       string  
-}
-
-type LactationComplete struct {
-	Id                string  
-	AnimalId          string  
-    AnimalNumber      string
-    AnimalOrder       int
-    AnimalPasture     string
-    AnimalStatus      string
-    AnimalName        string
-    CalfId            *string  
-    CalfSex           string
-    CalfBirthDate     *time.Time
-	StartDate         time.Time  
-	EndDate           *time.Time
-	ProductionPeriod  uint8
-	ProductionTotal   float32
-	AverageProduction float32
-	PeakProduction    float32
-	Isr               float32
-    Observation       *string  
-    CreatedAt         time.Time  
-    DeletedAt         *time.Time  
-}
-
-type LactationPage struct {
-    NextCursor  string
-    HasNextPage bool
-    List        *[]LactationComplete
+type LactationShort struct {
+    Id                string        `json:"id"`
+    AnimalId          string        `json:"animal_id"`
+    CalfId            string        `json:"calf_id"`
+    StartDate         time.Time     `json:"start_date"`
+    EndDate           time.Time     `json:"end_date"`
+    ProductionPeriod  uint          `json:"production_period"`
+    ProductionTotal   float32       `json:"production_total"`
+    AverageProduction float32       `json:"average_production"`
+    PeakProduction    float32       `json:"peak_production"`
+    Isr               float32       `json:"isr"`
+    Observation       string        `json:"observation"`
 }

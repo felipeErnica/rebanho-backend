@@ -2,35 +2,15 @@ package entity
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type MilkEntry struct {
-	Id           string
-	AnimalId     string
-	PastureId    string
-	LactationId  string
-	EntryDate     time.Time
-	MilkQuantity float32
-}
-
-func (m *MilkEntry) New(create *CreateMilkEntry) *MilkEntry {
-    m = &MilkEntry{
-        Id: uuid.NewString(),
-        AnimalId: create.AnimalId,
-        PastureId:  create.PastureId,
-        LactationId: create.LactationId,
-        EntryDate: create.MarkDate,
-        MilkQuantity: create.MilkQuantity,
-    }
-    return m
-}
-
-type CreateMilkEntry struct {
-	AnimalId     string
-	PastureId    string
-	LactationId  string
-	MarkDate     time.Time
-	MilkQuantity float32
+	Id           string         `json:"id"`
+	Animal       AnimalShort    `json:"animal"`
+	Pasture      PastureShort   `json:"pasturte"`
+    LactationId  string         `json:"lactation_id"`
+	EntryDate    time.Time      `json:"entry_date"`
+	MilkQuantity float32        `json:"milk_quantity"`
+    CreatedAt    time.Time      `json:"created_at"`
+    DeletedAt    *time.Time     `json:"deleted_at"`
 }

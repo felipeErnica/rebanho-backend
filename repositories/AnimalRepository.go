@@ -2,12 +2,11 @@ package repositories
 
 import (
 	"database/sql"
-	"encoding/base64"
 	"fmt"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/google/uuid"
 )
 
 type AnimalRepository struct {
@@ -66,8 +65,9 @@ func (r *AnimalRepository) Init() {
     }
 }
 
-func (r *AnimalRepository) setNewId(model *entity.Animal, id string) {
-    model.Id = id
+func (r *AnimalRepository) setNewEntity(model *entity.Animal) {
+    model.Id = uuid.NewString()
+    model.CreatedAt = time.Now()
 }
 
 func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.Animal, err error) {
@@ -133,7 +133,7 @@ func (r *AnimalRepository) buildPage(query string, sort string, args... any) (pa
     }
     sqlStatement.Close()
 
-    nextCursor, err:= r.createNextCursor(sort, animals)
+    nextCursor, err:= r.Base.CreateNextCursor(sort, animals)
     if err !=  nil {
         return
     }
@@ -148,7 +148,6 @@ func (r *AnimalRepository) buildPage(query string, sort string, args... any) (pa
 }
 
 func (r *AnimalRepository) getFields(sort string) (firstField string, secondField string) {
-
     switch (sort) {
     case "name": 
         return "animals.name", "animals.id"
@@ -173,18 +172,10 @@ func (r *AnimalRepository) getFields(sort string) (firstField string, secondFiel
     default:
         return "animals.created_at", "animals.id"
     }
-
 }
-func (r *AnimalRepository) createNextCursor(sort string, arr []entity.Animal) (cursor string, err error) {
 
-    if (len(arr) == 0) {
-        err = serverErrors.EmptyList()
-        return 
-    }
-
-    lastEntry:= arr[len(arr) - 1]
-
-    var key string;
+func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) string {
+    var key string
     switch (sort) {
     case "name": 
         key = fmt.Sprintf("%s,%s", *lastEntry.Name, lastEntry.Id) 
@@ -218,9 +209,7 @@ func (r *AnimalRepository) createNextCursor(sort string, arr []entity.Animal) (c
     default:
         key = fmt.Sprintf("%s,%s", lastEntry.CreatedAt.Format(time.RFC3339Nano), lastEntry.Id) 
     }
-
-    cursor = base64.StdEncoding.EncodeToString([]byte(key))
-    return cursor, err
+    return key
 }
 
 func (r *AnimalRepository) FindPage(sort string, direction string, cursor string) (page *entity.Page[entity.Animal], err error) {

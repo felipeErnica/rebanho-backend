@@ -195,7 +195,6 @@ func (h *AnimalHandler) Save(w http.ResponseWriter, r *http.Request) {
         DatabaseSendError(err, w)
         return
     }
-
 }
 
 func (h *AnimalHandler) Delete(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"encoding/base64"
+	"errors"
 	"strings"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
@@ -8,9 +10,9 @@ import (
 )
 
 type PageRepository[E entity.IEntity] interface {
-    setNewId(*E, string)
-    getFields(string) (string, string)
-    buildPage(string, string, ... any) (*entity.Page[E], error)
+    getFields(sort string) (firstField string, secondField string)
+    createKey(sort string, lastEntry *E) (key string)
+    buildPage(query string, sort string, args... any) (page *entity.Page[E], err error)
     Repository[E]
 }
 
@@ -109,6 +111,17 @@ func (r *PageRepositoryImpl[E]) isDateField(sort string) bool {
         }
     }
     return false
+}
+
+func (r *PageRepositoryImpl[E]) CreateNextCursor(sort string, array []E) (cursor string, err error) {
+    if len(array) == 0 {
+        err = errors.New("A matriz está vazia!")
+        return
+    }
+    lastEntry:=array[len(array) - 1]
+    key:= r.PageRepository.createKey(sort, &lastEntry)
+    cursor = base64.RawStdEncoding.EncodeToString([]byte(key))
+    return cursor, err
 }
 
 func (r *PageRepositoryImpl[E]) FindPage(sort string, direction string, cursor string) (page *entity.Page[E], err error) {
