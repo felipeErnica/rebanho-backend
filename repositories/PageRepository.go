@@ -3,6 +3,7 @@ package repositories
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
@@ -22,90 +23,109 @@ type PageRepositoryImpl[E entity.IEntity] struct {
     DateFields      []string
 }
 
-func (r *PageRepositoryImpl[E]) firstPage(sort string, direction string) (page *entity.Page[E], err error) {
-	firstField, secondField := r.PageRepository.getFields(sort)
-	query := new(util.QueryBuilder).GetFirstPage(r.Base.SelectQueryBody, firstField, secondField, direction)
-	return r.PageRepository.buildPage(query, sort)
+func (p *PageRepositoryImpl[E]) getNullOrdering(direction string) string {
+	nullDirection := " DESC NULLS LAST"
+	if direction == "asc" {
+		nullDirection = " ASC NULLS FIRST"
+	}
+	return nullDirection
 }
 
-func (r *PageRepositoryImpl[E]) nextPage(sort string, direction string, cursor string) (page *entity.Page[E], err error) {
-	firstParam, secondParam, err := decodeCursor(cursor)
-	if err != nil {
-		return
+func (q *PageRepositoryImpl[E]) getSignal(direction string) string {
+	signal := ">"
+	if direction == "desc" {
+		signal = "<"
 	}
-
-	firstField, secondField := r.PageRepository.getFields(sort)
-	if firstParam != "null" {
-		query := new(util.QueryBuilder).GetNextPage(r.Base.SelectQueryBody, firstField, secondField, direction)
-		return r.PageRepository.buildPage(query, sort, firstParam, secondParam)
-	}
-	query := new(util.QueryBuilder).GetNextPageNull(r.Base.SelectQueryBody, firstField, secondField, direction)
-	return r.PageRepository.buildPage(query, sort, secondParam)
+	return signal
 }
 
-func (r *PageRepositoryImpl[E]) nextPageDate(sort string, direction string, cursor string) (page *entity.Page[E], err error) {
-	firstParam, secondParam, err := decodeCursorTime(cursor)
-	if err != nil {
-		return
-	}
+func (q *PageRepositoryImpl[E]) verifyQueryParams(sort string, direction string) (string, string) {
+    if sort == "" {
+        sort = "created_at"
+    }
 
-	firstField, secondField := r.PageRepository.getFields(sort)
-	if firstParam != nil {
-		query := new(util.QueryBuilder).GetNextPage(r.Base.SelectQueryBody, firstField, secondField, direction)
-		return r.PageRepository.buildPage(query, sort, firstParam, secondParam)
-	}
-
-	query := new(util.QueryBuilder).GetNextPageNull(r.Base.SelectQueryBody, firstField, secondField, direction)
-	return r.PageRepository.buildPage(query, sort, secondParam)
+    if direction == "" {
+        direction = "asc"
+    }
+    return sort, direction
 }
 
-func (r *PageRepositoryImpl[E]) firstPageConditional(sort string, direction string, 
-    conditionalField string, conditionalValue any) (page *entity.Page[E], err error) {
-	firstField, secondField := r.PageRepository.getFields(sort)
-	query := new(util.QueryBuilder).GetFirstPageConditional(r.Base.SelectQueryBody, conditionalField, 
-        firstField, secondField, direction)
-	return r.PageRepository.buildPage(query, sort, conditionalValue)
+func (r *PageRepositoryImpl[E]) nextPage(cursor string, query *util.QueryConstructor, 
+    sort string, direction string, firstField string, secondField string) (page *entity.Page[E], err error) {
+    firstParam, secondParam, err:= decodeCursor(cursor) 
+    if err != nil {
+        return 
+    }
+
+    signal:= r.getSignal(direction)
+    if firstParam == "null" {
+        query.Where(firstField + " IS NULL").And(fmt.Sprintf("%s %s $1", secondField, signal))
+        return r.PageRepository.buildPage(query.Build(), sort, secondParam)
+    } else {
+        query.Where(fmt.Sprintf("(%s,%s) %s ($1, $2)", firstField, secondField, signal))
+        return r.PageRepository.buildPage(query.Build(), sort, firstParam, secondParam)
+    }
 }
 
-func (r *PageRepositoryImpl[E]) nextPageConditional(sort string, direction string, cursor string, 
-    conditionalField string, conditionalValue any) (page *entity.Page[E], err error) {
-	firstParam, secondParam, err := decodeCursor(cursor)
-	if err != nil {
-		return
-	}
+func (r *PageRepositoryImpl[E]) nextPageDate(cursor string, query *util.QueryConstructor, 
+    sort string, direction string, firstField string, secondField string) (page *entity.Page[E], err error) {
+    firstParam, secondParam, err:= decodeCursorTime(cursor) 
+    if err != nil {
+        return 
+    }
 
-	firstField, secondField := r.PageRepository.getFields(sort)
-	if firstParam != "null" {
-		query := new(util.QueryBuilder).GetNextPageConditional(r.Base.SelectQueryBody, conditionalField, 
-            firstField, secondField, direction)
-		return r.PageRepository.buildPage(query, sort, conditionalValue, firstParam, secondParam)
-	}
-	query := new(util.QueryBuilder).GetNextPageNullConditional(r.Base.SelectQueryBody, conditionalField,
-        firstField, secondField, direction)
-	return r.PageRepository.buildPage(query, sort, conditionalValue, secondParam)
+    signal:= r.getSignal(direction)
+    if firstParam == nil {
+        query.Where(firstField + " IS NULL").And(fmt.Sprintf("%s %s $1", secondField, signal))
+        return r.PageRepository.buildPage(query.Build(), sort, secondParam)
+    } else {
+        query.Where(fmt.Sprintf("(%s,%s) %s ($1, $2)", firstField, secondField, signal))
+        return r.PageRepository.buildPage(query.Build(), sort, firstParam, secondParam)
+    }
 }
 
-func (r *PageRepositoryImpl[E]) nextPageDateConditional(sort string, direction string, cursor string, 
-    conditionalField string, conditionalValue any) (page *entity.Page[E], err error) {
-	firstParam, secondParam, err := decodeCursorTime(cursor)
-	if err != nil {
-		return
-	}
+func (r *PageRepositoryImpl[E]) nextRandomPage(cursor string, query *util.QueryConstructor, 
+    sort string, direction string, firstField string, secondField string, args... any) (page *entity.Page[E], err error) {
+    firstParam, secondParam, err:= decodeCursor(cursor) 
+    if err != nil {
+        return 
+    }
 
-	firstField, secondField := r.PageRepository.getFields(sort)
-	if firstParam != nil {
-		query := new(util.QueryBuilder).GetNextPageConditional(r.Base.SelectQueryBody, conditionalField, 
-            firstField, secondField, direction)
-		return r.PageRepository.buildPage(query, sort, conditionalValue, firstParam, secondParam)
-	}
+    signal:= r.getSignal(direction)
+    paramNumber:= len(args) + 1
+    if firstParam == "null" {
+        query.And(firstField + " IS NULL").And(fmt.Sprintf("%s %s $%d", secondField, signal, paramNumber))
+        args = append(args, secondField)
+        return r.PageRepository.buildPage(query.Build(), sort, args...)
+    } else {
+        query.And(fmt.Sprintf("(%s,%s) %s ($%d, $%d)", firstField, secondField, signal, paramNumber, paramNumber + 1))
+        args = append(args, firstParam, secondParam)
+        return r.PageRepository.buildPage(query.Build(), sort, args...)
+    }
+}
 
-	query := new(util.QueryBuilder).GetNextPageNullConditional(r.Base.SelectQueryBody, conditionalField, 
-        firstField, secondField, direction)
-	return r.PageRepository.buildPage(query, sort, conditionalValue, secondParam)
+func (r *PageRepositoryImpl[E]) nextRandomPageDate(cursor string, query *util.QueryConstructor, 
+    sort string, direction string, firstField string, secondField string, args... any) (page *entity.Page[E], err error){
+    firstParam, secondParam, err:= decodeCursorTime(cursor) 
+    if err != nil {
+        return 
+    }
+
+    signal:= r.getSignal(direction)
+    paramNumber:= len(args) + 1
+    if firstParam == nil {
+        query.And(firstField + " IS NULL").And(fmt.Sprintf("%s %s $%d", secondField, signal, paramNumber))
+        args = append(args, secondParam)
+        return r.PageRepository.buildPage(query.Build(), sort, args...)
+    } else {
+        query.And(fmt.Sprintf("(%s,%s) %s ($%d, $%d)", firstField, secondField, signal, paramNumber, paramNumber + 1))
+        args = append(args, firstParam, secondParam)
+        return r.PageRepository.buildPage(query.Build(), sort, args...)
+    }
 }
 
 func (r *PageRepositoryImpl[E]) isDateField(sort string) bool {
-    for i:=0; i<len(r.DateFields); i++ {
+    for i:=range r.DateFields {
         if strings.EqualFold(sort, r.DateFields[i]) {
             return true
         }
@@ -120,52 +140,47 @@ func (r *PageRepositoryImpl[E]) CreateNextCursor(sort string, array []E) (cursor
     }
     lastEntry:=array[len(array) - 1]
     key:= r.PageRepository.createKey(sort, &lastEntry)
-    cursor = base64.RawStdEncoding.EncodeToString([]byte(key))
+    cursor = base64.StdEncoding.EncodeToString([]byte(key))
     return cursor, err
 }
 
 func (r *PageRepositoryImpl[E]) FindPage(sort string, direction string, cursor string) (page *entity.Page[E], err error) {
+    sort, direction = r.verifyQueryParams(sort, direction)
+    firstField, secondField:= r.PageRepository.getFields(sort)
+    nullOrdering:= r.getNullOrdering(direction)
 
-    if sort == "" {
-        sort = "created_at"
-    }
-
-    if direction == "" {
-        direction = "asc"
-    }
+    query:= new(util.QueryConstructor).FromQuery(r.Base.SelectQueryBody)
+    query.Order(firstField + nullOrdering).AndOrder(secondField + " " + direction)
+    query.Limit(PAGE_LIMIT)
 
 	if cursor == "" {
-		return r.firstPage(sort, direction)
+		return r.PageRepository.buildPage(query.Build(), sort)
     }
 
     if r.isDateField(sort) {
-        return r.nextPageDate(sort, direction, cursor)
+        return r.nextPageDate(cursor, query, sort, direction, firstField, secondField)
     }
 		
-    return r.nextPage(sort, direction, cursor)
+    return r.nextPage(cursor, query, sort, direction, firstField, secondField)
 }
 
-func (r *PageRepositoryImpl[E]) FindPageCondional(sort string, direction string, cursor string, 
-    conditionalField string, conditionalValue any) (page *entity.Page[E], err error) {
-
-    if sort == "" {
-        sort = "created_at"
-    }
-
-    if direction == "" {
-        direction = "asc"
-    }
+func (r *PageRepositoryImpl[E]) FindRandomQueryPage(query *util.QueryConstructor, sort string, 
+    direction string, cursor string, args... any) (page *entity.Page[E], err error) {
+    sort, direction = r.verifyQueryParams(sort, direction)
+    firstField, secondField:= r.PageRepository.getFields(sort)
+    nullOrderinrg:= r.getNullOrdering(direction)
+    query.Order(firstField + nullOrderinrg).AndOrder(secondField + nullOrderinrg)
+    query.Limit(PAGE_LIMIT)
 
 	if cursor == "" {
-		return r.firstPageConditional(sort, direction, conditionalField, conditionalValue)
+		return r.PageRepository.buildPage(query.Build(), sort, args...)
     }
 
     if r.isDateField(sort) {
-        return r.nextPageDateConditional(sort, direction, cursor, conditionalField, conditionalValue)
+        return r.nextRandomPageDate(cursor, query, sort, direction, firstField, secondField, args...)
     }
-		
-    return r.nextPageConditional(sort, direction, cursor, conditionalField, conditionalValue)
-}
+	return r.nextRandomPage(cursor, query, sort, direction, firstField, secondField, args...)
+} 
 
 func (r *PageRepositoryImpl[E]) FindAll() (*[]E, error) {
     return r.Base.FindAll()

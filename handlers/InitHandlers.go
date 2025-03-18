@@ -9,6 +9,7 @@ import (
 func InitHandlers(mux *http.ServeMux) {
     InitAnimal(mux)
     InitLactation(mux)
+    InitMilk(mux)
 }
 
 func LogControllersInit(name string) {

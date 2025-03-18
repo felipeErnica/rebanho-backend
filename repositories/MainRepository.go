@@ -2,10 +2,10 @@ package repositories
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type Repository[E entity.IEntity] interface {
@@ -30,7 +30,7 @@ func (r *RepositoryImpl[E]) FindAll() (*[]E, error) {
 }
 
 func (r *RepositoryImpl[E]) FindById(id string) (*E, error) {
-    query:=fmt.Sprintf("%s WHERE %s.id = $1", r.SelectQueryBody, r.TableName)
+    query:=new(util.QueryConstructor).FromQuery(r.SelectQueryBody).Where(r.TableName + ".id = $1").Build()
     sqlRow:=selectQueryOne(query, id)
     entity, err:= r.Repository.buildEntity(sqlRow)
     return entity, err
@@ -66,6 +66,6 @@ func (r *RepositoryImpl[E]) Save(model *E) error {
 
 func (r *RepositoryImpl[E]) Delete(id string) error {
     timeDeletion:=time.Now()
-    query:=fmt.Sprintf("UPDATE %s SET deleted_at = $1 WHERE id = $2", r.TableName)
+    query:=new(util.QueryConstructor).SoftDelete(r.TableName).Build()
     return execQuery(query, timeDeletion, id)
 }

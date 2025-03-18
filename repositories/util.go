@@ -41,18 +41,6 @@ func execQuery(query string, args ...any) error {
     return err
 }
 
-func getSignal (direction string) string {
-    signal:= ">"
-    if direction == "desc" {
-        signal = "<"
-    }
-    return signal
-}
-
-func encodeCursor(key string) string {
-	return base64.StdEncoding.EncodeToString([]byte(key))
-}
-
 func decodeCursor(cursor string) (first string, second string, err error) {
 	byt, err := base64.StdEncoding.DecodeString(cursor)
 	if err != nil {

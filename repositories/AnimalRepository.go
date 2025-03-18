@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
 	"github.com/google/uuid"
 )
 
@@ -22,18 +23,15 @@ func (r *AnimalRepository) Init() {
         "deleted_at",
     }
 
-  selectQueryBody:= `
-        SELECT animals.id, animals.name, animals.identification_number, animals.birth_date, animals.death_date, 
-            animals.status, animals.avarage_prod, animals.avarage_birth_interval, animals.max_peak,
-            animals.children_quantity, animals.created_at, animals.deleted_at, animals.isr,
-            mother.id AS mother_id, mother.name, mother.identification_number,
-            father.id AS father_id, father.name, father.identification_number,
-            pasture.id AS pasture_id, pasture.name
-        FROM animals_active as animals
-            LEFT JOIN animals AS father ON father.id = animals.father_id
-            LEFT JOIN animals AS mother ON mother.id = animals.mother_id
-            LEFT JOIN pastures AS pasture ON pasture.id = animals.pasture_id
-    `
+    selectQueryBody:=new(util.QueryConstructor).Select("animals", "id", "name", "identification_number", "birth_date", "death_date",
+        "status", "avarage_prod", "avarage_birth_interval", "max_peak", "children_quantity", "created_at", "deleted_at", "isr")
+        selectQueryBody.AndSelect("mother", "id", "name", "identification_number")
+        selectQueryBody.AndSelect("father", "id", "name", "identification_number")
+        selectQueryBody.AndSelect("pastures", "id", "name")
+        selectQueryBody.From("animals_active", "animals")
+        selectQueryBody.LeftJoin("animals", "father").On("father.id", "animals.father_id")
+        selectQueryBody.LeftJoin("animals", "mother").On("mother.id", "animals.mother_id")
+        selectQueryBody.LeftJoin("pastures", "").On("pastures.id", "animals.pasture_id")
 
     insertQuery:=`
         INSERT INTO animals (id, name, identification_number, father_id, mother_id, 
@@ -53,7 +51,7 @@ func (r *AnimalRepository) Init() {
     baseRepo:= &RepositoryImpl[entity.Animal]{
         Repository: r,
         TableName: "animals",
-        SelectQueryBody: selectQueryBody,
+        SelectQueryBody: selectQueryBody.Build(),
         InsertQuery: insertQuery,
         UpdateQuery: updateQuery,
     }
@@ -178,9 +176,15 @@ func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) stri
     var key string
     switch (sort) {
     case "name": 
-        key = fmt.Sprintf("%s,%s", *lastEntry.Name, lastEntry.Id) 
+        key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
+        if lastEntry.Name != nil {
+            key = fmt.Sprintf("%s,%s", *lastEntry.Name, lastEntry.Id) 
+        }
     case "identification_number": 
-        key = fmt.Sprintf("%s,%s",*lastEntry.IdentificationNumber, lastEntry.Id) 
+        key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
+        if lastEntry.IdentificationNumber != nil {
+            key = fmt.Sprintf("%s,%s", *lastEntry.IdentificationNumber, lastEntry.Id) 
+        }
     case "birth_date":
         key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
         if lastEntry.BirthDate != nil {
@@ -230,7 +234,9 @@ func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]entity.Animal, er
 
 func (r *AnimalRepository) FindByPastureId(sort string, direction string, 
     cursor string, pastureId string) (page *entity.Page[entity.Animal], err error) {
-    return r.Base.FindPageCondional(sort, direction, cursor, "animal.pasture_id", pastureId)
+    query:= new(util.QueryConstructor).FromQuery(r.Base.Base.SelectQueryBody)
+    query.Where("animals.pastureId = $1")
+    return r.Base.FindRandomQueryPage(query, sort, direction, cursor, pastureId)
 }
 
 func (r *AnimalRepository) FindByName(name string) (*[]entity.Animal, error) {

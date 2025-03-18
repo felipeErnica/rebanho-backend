@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
 	"github.com/google/uuid"
 )
 
 type PastureEntryRepository struct {
     Base PageRepositoryImpl[entity.PastureEntry]
+    SelectQuery string
 }
 
 func (r *PastureEntryRepository) Init() {
@@ -21,17 +23,15 @@ func (r *PastureEntryRepository) Init() {
         "created_at",
     }
 
-    selectQuery:=`
-        SELECT pasture_entries.id, pasture_entries.entry_date, pasture_entries.exit_date,
-            animal.id as animal_id, animal.identification_number as animal_number, animal.animal_order as animal_order,
-            animal.name,
-            pasture.id, pasture.name
-        FROM pasture_entries_active as pasture_entries
-        LEFT JOIN pastures as pasture ON pasture.id = pasture_entries.pasture_id
-        LEFT JOIN animals as animal ON animal.id = pasture_entries.animal_id
-    `
+    selectQuery:=new(util.QueryConstructor).Select("pasture_entries", "id", "entry_date", "exit_date")
+        selectQuery.AndSelect("animals", "id", "identification_number", "animal_order", "name")
+        selectQuery.AndSelect("pastures", "id", "identification_number", "animal_order", "name")
+        selectQuery.From("pasture_entries_active", "pasture_entries")
+        selectQuery.LeftJoin("pastures", "").On("pastures.id", "pasture_entries.pasture_id")
+        selectQuery.LeftJoin("animals", "").On("animals.id", "pasture_entries.animal_id")
+    r.SelectQuery = selectQuery.Build()
 
-    insertQuery:=`
+   insertQuery:=`
         INSERT INTO pasture_entries (id, entry_date, exit_date, animal_id, pasture_id, created_at)
         VALUES ($1, $2, $3, $4, $5, $6)
     `
@@ -42,10 +42,9 @@ func (r *PastureEntryRepository) Init() {
         WHERE id = $1
     `
 
-
     mainRepository:= RepositoryImpl[entity.PastureEntry] {
         TableName: "pasture_entries",
-        SelectQueryBody: selectQuery,
+        SelectQueryBody: r.SelectQuery,
         InsertQuery: insertQuery,
         UpdateQuery: updateQuery,
         Repository: r,
@@ -156,12 +155,26 @@ func (r *PastureEntryRepository) saveOrUpdateScan(query string, model *entity.Pa
 
 func (r *PastureEntryRepository) FindByPastureId(sort string, direction string, 
     cursor string, pastureId string) (*entity.Page[entity.PastureEntry], error) {
-    return r.Base.FindPageCondional(sort, direction, cursor, "pasture_entries.pasture_id", pastureId)
+    query:=new(util.QueryConstructor).FromQuery(r.SelectQuery)
+    query.Where("pasture_entries.pasture_id = $1")
+    return r.Base.FindRandomQueryPage(query, sort, direction, cursor, pastureId)
 }
 
 func (r *PastureEntryRepository) FindByAnimalId(animalId string) (*[]entity.PastureEntry, error) {
     query:="WHERE pasture_entries.animal_id = $1"
     return r.Base.FindListByQuery(query, animalId)
+}
+
+func (r *PastureEntryRepository) FindByDeletedPasturePage(sort string, direction string, 
+    cursor string, pastureId string) (*entity.Page[entity.PastureEntry], error) {
+    query:=new(util.QueryConstructor).Select("pasture_entries", "id", "entry_date", "exit_date")
+        query.AndSelect("animals", "id", "identification_number", "animal_order", "name")
+        query.AndSelect("pastures", "id", "identification_number", "animal_order", "name")
+        query.From("pasture_entries_deleted", "pasture_entries")
+        query.LeftJoin("pastures", "").On("pastures.id", "pasture_entries.pasture_id")
+        query.LeftJoin("animals", "").On("animals.id", "pasture_entries.animal_id")
+        query.Where("pasture_entries.pasture_id = $1")
+    return r.Base.FindRandomQueryPage(query, sort, direction, cursor, pastureId)
 }
 
 func (r *PastureEntryRepository) Add(newEntry entity.PastureEntry) (*entity.PastureEntry, error) {
