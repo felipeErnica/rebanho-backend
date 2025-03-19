@@ -7,7 +7,6 @@ import (
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
-	"github.com/google/uuid"
 )
 
 type PastureEntryRepository struct {
@@ -87,42 +86,9 @@ func (r *PastureEntryRepository) createKey(sort string, lastEntry *entity.Pastur
 	}
 }
 
-func (r *PastureEntryRepository) buildPage(query string, sort string, args... any) (page *entity.Page[entity.PastureEntry], err error) {
-	rows, err := selectQueryList(query, args...)
-	if err != nil {
-		return
-	}
-
-	var entries []entity.PastureEntry
-	for rows.Next() {
-		var entry entity.PastureEntry
-        err = rows.Scan(&entry.Id, &entry.EntryDate, &entry.ExitDate,
-            &entry.Animal.Id, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder, &entry.Animal.Name, 
-            &entry.Pasture.Id, &entry.Pasture.Name)
-		if err != nil {
-			return
-		}
-		entries = append(entries, entry)
-	}
-	rows.Close()
-
-	nextCursor, err := r.Base.CreateNextCursor(sort, entries)
-	if err != nil {
-		return
-	}
-
-	pageAnimal := entity.Page[entity.PastureEntry]{
-		HasNextPage: len(entries) == PAGE_LIMIT,
-		NextCursor:  nextCursor,
-		List:        &entries,
-	}
-
-	return &pageAnimal, err
-}
-
-func (r *PastureEntryRepository) setNewEntity(model *entity.PastureEntry) {
-    model.Id = uuid.NewString()
-    model.CreatedAt = time.Now()
+func (r *PastureEntryRepository) setNewEntity(model *entity.PastureEntry, id string, createdAt time.Time) {
+    model.Id = id
+    model.CreatedAt = createdAt
 }
 
 func (r *PastureEntryRepository) buildEntity(row *sql.Row) (*entity.PastureEntry, error) {
@@ -186,5 +152,5 @@ func (r *PastureEntryRepository) Save(entry *entity.PastureEntry) error {
 }
 
 func (r* PastureEntryRepository) Delete(id string) error {
-    return r.Base.Delete(id)
+    return r.Base.SoftDelete(id)
 }

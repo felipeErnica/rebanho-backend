@@ -1,28 +1,20 @@
 package entity
 
-import "github.com/google/uuid"
+import "time"
 
 type Pasture struct {
-	Id     string
-	BullId string
-	Name   string
+    Id        string     `json:"id"`
+    Bull      Bull       `json:"bull"`
+    Name      string     `json:"name"`
+    CreatedAt time.Time  `json:"created_at"`
 }
 
-func (p *Pasture) NewPasture(create *CreatePasture) *Pasture {
-	p = &Pasture{
-		Id: uuid.NewString(),
-        BullId: create.BullId,
-        Name: create.BullId,
-	}
-    return p
+type Bull struct {
+    Id   *string  `json:"id"`
+    Name *string  `json:"name"`
 }
 
 type PastureShort struct {
-	Id     *string
-	Name   *string
-}
-
-type CreatePasture struct {
-	BullId string
-	Name   string
+    Id   *string  `json:"id"`
+    Name *string  `json:"name"`
 }

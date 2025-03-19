@@ -6,10 +6,11 @@ import (
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
+	"github.com/google/uuid"
 )
 
 type Repository[E entity.IEntity] interface {
-	setNewEntity(model *E)
+	setNewEntity(model *E, id string, createdAt time.Time)
 	buildEntity(row *sql.Row) (model *E, err error)
 	buildListEntity(rows *sql.Rows) (arr *[]E, err error)
 	saveOrUpdateScan(query string, model *E) error
@@ -26,6 +27,7 @@ type RepositoryImpl[E entity.IEntity] struct {
 func (r *RepositoryImpl[E]) FindAll() (*[]E, error) {
     sqlRows, err:=selectQueryList(r.SelectQueryBody)
     list, err:= r.Repository.buildListEntity(sqlRows)
+    sqlRows.Close()
     return list, err
 }
 
@@ -50,11 +52,14 @@ func (r *RepositoryImpl[E]) FindListByQuery(query string, args... any) (list *[]
         return
     }
     entity, err:= r.Repository.buildListEntity(sqlRow)
+    sqlRow.Close()
     return entity, err
 }
 
 func (r *RepositoryImpl[E]) Add(model E) (*E, error) {
-    r.Repository.setNewEntity(&model)
+    id:=uuid.NewString()
+    createdAt:=time.Now()
+    r.Repository.setNewEntity(&model, id, createdAt)
     err:= r.Repository.saveOrUpdateScan(r.InsertQuery, &model)
     return &model, err
 }
@@ -64,8 +69,14 @@ func (r *RepositoryImpl[E]) Save(model *E) error {
     return err
 }
 
-func (r *RepositoryImpl[E]) Delete(id string) error {
+func (r *RepositoryImpl[E]) SoftDelete(id string) error {
     timeDeletion:=time.Now()
     query:=new(util.QueryConstructor).SoftDelete(r.TableName).Build()
+    return execQuery(query, timeDeletion, id)
+}
+
+func (r *RepositoryImpl[E]) HardDelete(id string) error {
+    timeDeletion:=time.Now()
+    query:=new(util.QueryConstructor).Delete(r.TableName).Build()
     return execQuery(query, timeDeletion, id)
 }

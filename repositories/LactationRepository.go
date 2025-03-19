@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/google/uuid"
 )
 
 type LactationRepository struct {
@@ -25,12 +24,13 @@ func (r *LactationRepository) Init() {
 	selectQuery := `
         SELECT lactations.id, lactations.start_date, lactations.end_date, lactations.production_period, lactations.production_total, lactations.average_production
             lactations.peak_production, lactations.isr, lactations.observation,
-            animal.id as animal_id, animal.identificantion_number as animal_number, animal.name as animal_name,
-            animal.ring_order as animal_order, animal.pasture_id as animal_pasture, animal.status as animal_status,
+            animal.id as animal_id, animal.identificantion_number as animal_number, animal.name as animal_name, animal.status as animal_status,
+            cow_pasture.id, cow_pasture.name,
             calf.id as calf_id, calf.sex as calf_sex, calf.birth_date as calf_birth
             FROM lactations_active as lactations
         LEFT JOIN animals as animal ON animal.id = lactations.animal_id
         LEFT JOIN animals as calf ON calf.id = lactations.calf_id
+        LEFT JOIN pastures as cow_pasture ON cow_pasture.id = animal.pasture_id
     `
 
 	insertQuery := `
@@ -62,16 +62,17 @@ func (r *LactationRepository) Init() {
 
 }
 
-func (l *LactationRepository) setNewEntity(model *entity.Lactation) {
-	model.Id = uuid.NewString()
-	model.CreatedAt = time.Now()
+func (l *LactationRepository) setNewEntity(model *entity.Lactation, id string, createdAt time.Time) {
+	model.Id = id
+	model.CreatedAt = createdAt
 }
 
 func (l *LactationRepository) buildEntity(row *sql.Row) (model *entity.Lactation, err error) {
 	var lactation entity.Lactation
 	err = row.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
 		&lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation,
-		&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.AnimalOrder, &lactation.Cow.PastureId,
+		&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.Status,
+        &lactation.Cow.Pasture.Id, &lactation.Cow.Pasture.Name,
 		&lactation.Calf.Id, &lactation.Calf.Sex, &lactation.Calf.BirthDate)
 	if err != nil {
 		return
@@ -85,7 +86,8 @@ func (l *LactationRepository) buildListEntity(rows *sql.Rows) (list *[]entity.La
 		var lactation entity.Lactation
 		err = rows.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
 			&lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation,
-			&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.AnimalOrder, &lactation.Cow.PastureId,
+			&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.Status,
+            &lactation.Cow.Pasture.Id, &lactation.Cow.Pasture.Name,
 			&lactation.Calf.Id, &lactation.Calf.Sex, &lactation.Calf.BirthDate)
 		if err != nil {
 			return
@@ -120,40 +122,6 @@ func (l *LactationRepository) getFields(sort string) (firstField string, secondF
 	default:
 		return "lactations.created_at", "lactations.id"
 	}
-}
-
-func (l *LactationRepository) buildPage(sort string, query string, args ...any) (page *entity.Page[entity.Lactation], err error) {
-	sqlStatement, err := selectQueryList(query, args...)
-	if err != nil {
-		return
-	}
-
-	var lactations []entity.Lactation
-	for sqlStatement.Next() {
-		var lactation entity.Lactation
-		err = sqlStatement.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
-			&lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation,
-			&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.AnimalOrder, &lactation.Cow.PastureId,
-			&lactation.Calf.Id, &lactation.Calf.Sex, &lactation.Calf.BirthDate)
-		if err != nil {
-			return
-		}
-		lactations = append(lactations, lactation)
-	}
-	sqlStatement.Close()
-
-	nextCursor, err := l.Base.CreateNextCursor(sort, lactations)
-	if err != nil {
-		return
-	}
-
-	pageAnimal := entity.Page[entity.Lactation]{
-		HasNextPage: len(lactations) == PAGE_LIMIT,
-		NextCursor:  nextCursor,
-		List:        &lactations,
-	}
-
-	return &pageAnimal, err
 }
 
 func (r *LactationRepository) createKey(sort string, lactation *entity.Lactation)  string  {
@@ -211,5 +179,5 @@ func (l *LactationRepository) Save(lactation *entity.Lactation) error {
 }
 
 func (l *LactationRepository) Delete(id string) error {
-    return l.Base.Delete(id)
+    return l.Base.SoftDelete(id)
 }

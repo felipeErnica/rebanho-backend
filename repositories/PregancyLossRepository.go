@@ -1,0 +1,125 @@
+package repositories
+
+import (
+	"database/sql"
+	"fmt"
+	"time"
+
+	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
+)
+
+type PregnancyLossRepository struct {
+    Impl  PageRepositoryImpl[entity.PregnancyLoss]
+}
+
+func (r *PregnancyLossRepository) Init() {
+    
+    dateFields:=[]string{
+        "loss_date",
+    }
+
+    selectQuery:=new(util.QueryConstructor).Select("loss","id", "loss_type", "loss_date", "created_at")
+        selectQuery.AndSelect("animals", "id", "identification_number", "name", "animal_order")
+        selectQuery.From("pregnancy_losses", "loss")
+        selectQuery.LeftJoin("animals","").On("animal.id", "loss.animal_id")
+    
+    updateQuery:=new(util.QueryConstructor).Update("pregnancy_losses", "animal_id", "loss_type", "loss_date", "created_at")
+    insertQuery:=new(util.QueryConstructor).Insert("pregnancy_losses", "id", "animal_id", "loss_type", "loss_date", "created_at")
+
+    base:=RepositoryImpl[entity.PregnancyLoss]{
+        Repository: r,
+        SelectQueryBody: selectQuery.Build(),
+        InsertQuery: insertQuery.Build(),
+        UpdateQuery: updateQuery.Build(),
+        TableName: "pregnancy_losses",
+    }
+
+    r.Impl = PageRepositoryImpl[entity.PregnancyLoss]{
+        Base: &base,
+        PageRepository: r,
+        DateFields: dateFields,
+    }
+
+}
+
+func (r *PregnancyLossRepository) setNewEntity(model *entity.PregnancyLoss, id string, createdAt time.Time) {
+    model.Id = id
+    model.CreatedAt = createdAt
+}
+
+func (r *PregnancyLossRepository) buildEntity(row *sql.Row) (model *entity.PregnancyLoss, err error) {
+    var loss entity.PregnancyLoss
+    err = row.Scan(&loss.Id, &loss.LossType, &loss.LossDate, &loss.CreatedAt, 
+        &loss.Animal.Id, &loss.Animal.IdentificationNumber, &loss.Animal.AnimalOrder)
+    return &loss, err
+}
+
+func (r *PregnancyLossRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.PregnancyLoss, err error) {
+    var losses []entity.PregnancyLoss
+    for rows.Next() {
+        var loss entity.PregnancyLoss
+        err = rows.Scan(&loss.Id, &loss.LossType, &loss.LossDate, &loss.CreatedAt, 
+            &loss.Animal.Id, &loss.Animal.IdentificationNumber, &loss.Animal.AnimalOrder)
+        if err != nil {
+            return
+        }
+        losses = append(losses, loss)
+    }
+    return &losses, err
+}
+
+func (r *PregnancyLossRepository) saveOrUpdateScan(query string, model *entity.PregnancyLoss) error {
+    return execQuery(query, model.Id, model.Animal.Id, model.LossType, model.LossDate, model.CreatedAt)
+}
+
+func (r *PregnancyLossRepository) getFields(sort string) (firstField string, secondField string) {
+    switch (sort) {
+    case "name": 
+        return "animals.name", "animals.id"
+    case "identification_number": 
+        return "animals.animal_order", "animals.id"
+    case "loss_date":
+        return "animals.birth_date", "animals.id"
+    default:
+        return "animals.created_at", "animals.id"
+    }
+}
+
+func (r *PregnancyLossRepository) createKey(sort string, lastEntry *entity.PregnancyLoss) (key string) {
+    switch (sort) {
+    case "name": 
+        return fmt.Sprintf("%s,%s", *lastEntry.Animal.Name, lastEntry.Id)
+    case "identification_number": 
+        return fmt.Sprintf("%d,%s", *lastEntry.Animal.AnimalOrder, lastEntry.Id)
+    case "loss_date":
+        return fmt.Sprintf("%s,%s", lastEntry.LossDate, lastEntry.Id)
+    default:
+        return fmt.Sprintf("%s,%s", lastEntry.CreatedAt, lastEntry.Id)
+    }
+}
+
+func (r *PregnancyLossRepository) FindPage(cursor string, sort string, order string) (*entity.Page[entity.PregnancyLoss], error) {
+    return r.Impl.FindPage(cursor, sort, order)
+}
+
+func (r *PregnancyLossRepository) FindByAnimalId(animalId string) (*[]entity.PregnancyLoss, error) {
+    query:="WHERE loss.animal_id = $1"
+    return r.Impl.FindListByQuery(query)
+}
+
+func (r *PregnancyLossRepository) FindById(id string) (*entity.PregnancyLoss, error) {
+    return r.Impl.FindById(id)
+}
+
+func (r *PregnancyLossRepository) Add(newModel entity.PregnancyLoss) (*entity.PregnancyLoss, error) {
+    return r.Impl.Add(newModel)
+}
+
+func (r *PregnancyLossRepository) Save(model *entity.PregnancyLoss) error {
+    return r.Impl.Save(model)
+}
+
+func (r *PregnancyLossRepository) Delete(id string) error {
+    return r.Impl.HardDelete(id)
+}

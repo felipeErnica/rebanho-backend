@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -10,13 +9,20 @@ import (
 )
 
 type MilkHandler struct {
-    Repository repositories.MilkRepository
+    Impl        HandlerImpl[entity.MilkEntry]
+    Repository  repositories.MilkRepository
 }
 
 func InitMilk(mux *http.ServeMux) {
     repository:= repositories.MilkRepository{}
     repository.Init()
+
+    impl:=HandlerImpl[entity.MilkEntry]{
+        Repository: *repository.Base.Base,
+    }
+
     handler:= MilkHandler{
+        Impl: impl,
         Repository: repository,
     }
 
@@ -30,33 +36,15 @@ func InitMilk(mux *http.ServeMux) {
 }
 
 func (h *MilkHandler) FindPage(w http.ResponseWriter, r *http.Request) {
-    cursor:=r.URL.Query().Get("cursor")
-    sort:=r.URL.Query().Get("sort")
-    direction:=r.URL.Query().Get("order")
+    cursor, sort, direction:=h.Impl.GetPageParameters(r)
     page, err:=h.Repository.FindPage(sort, direction, cursor)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
-    
-    response, err:= json.Marshal(page)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-    w.Write(response)
+    h.Impl.SendPage(w, page, err)
 }
 
 func (h *MilkHandler) FindByCow(w http.ResponseWriter, r *http.Request) {
     animalId:=r.PathValue("animalId")
-    animalsList, err:=h.Repository.FindByAnimal(animalId)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
-    
-    response, err:= json.Marshal(animalsList)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-    w.Write(response)
+    milkList, err:=h.Repository.FindByAnimal(animalId)
+    h.Impl.SendList(w, milkList, err)
 }
 
 func (h *MilkHandler) FindByEntryDate(w http.ResponseWriter, r *http.Request) {
@@ -65,56 +53,18 @@ func (h *MilkHandler) FindByEntryDate(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         return
     }
-
-    animalsList, err:=h.Repository.FindByEntryDate(entryDate)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
-    
-    response, err:= json.Marshal(animalsList)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-    w.Write(response)
+    milkList, err:=h.Repository.FindByEntryDate(entryDate)
+    h.Impl.SendList(w, milkList, err)
 }
 
 func (h *MilkHandler) Add(w http.ResponseWriter, r *http.Request) {
-    var newMilk entity.MilkEntry;
-    err:= json.NewDecoder(r.Body).Decode(&newMilk)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-
-    lactation, err:=h.Repository.Add(newMilk)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
-    
-    response, err:= json.Marshal(lactation)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-    w.WriteHeader(http.StatusCreated)
-    w.Write(response)
+    h.Impl.Add(w,r)
 }
 
 func (h *MilkHandler) Save(w http.ResponseWriter, r *http.Request) {
-    var milk entity.MilkEntry;
-    err:= json.NewDecoder(r.Body).Decode(&milk)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-
-    err = h.Repository.Save(&milk)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
+    h.Impl.Save(w,r)
 }
 
 func (h *MilkHandler) Delete(w http.ResponseWriter, r *http.Request) {
-    id:=r.PathValue("id")
-    err:=h.Repository.Delete(id)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
+    h.Impl.Delete(w,r)
 }

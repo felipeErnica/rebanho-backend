@@ -13,7 +13,6 @@ import (
 type PageRepository[E entity.IEntity] interface {
     getFields(sort string) (firstField string, secondField string)
     createKey(sort string, lastEntry *E) (key string)
-    buildPage(query string, sort string, args... any) (page *entity.Page[E], err error)
     Repository[E]
 }
 
@@ -50,6 +49,28 @@ func (q *PageRepositoryImpl[E]) verifyQueryParams(sort string, direction string)
     return sort, direction
 }
 
+func (r *PageRepositoryImpl[E]) buildPage(query string, sort string, args... any) (page *entity.Page[E], err error) {
+    sqlStatement, err:= selectQueryList(query, args...)
+    if err != nil {
+        return
+    }
+
+    arr, err:=r.PageRepository.buildListEntity(sqlStatement)    
+
+    nextCursor, err:= r.CreateNextCursor(sort, *arr)
+    if err !=  nil {
+        return
+    }
+    
+    page = &entity.Page[E]{
+        HasNextPage: len(*arr) == PAGE_LIMIT,
+        NextCursor: nextCursor,
+        List: arr,
+    }
+
+    return page, err
+}
+
 func (r *PageRepositoryImpl[E]) nextPage(cursor string, query *util.QueryConstructor, 
     sort string, direction string, firstField string, secondField string) (page *entity.Page[E], err error) {
     firstParam, secondParam, err:= decodeCursor(cursor) 
@@ -60,10 +81,10 @@ func (r *PageRepositoryImpl[E]) nextPage(cursor string, query *util.QueryConstru
     signal:= r.getSignal(direction)
     if firstParam == "null" {
         query.Where(firstField + " IS NULL").And(fmt.Sprintf("%s %s $1", secondField, signal))
-        return r.PageRepository.buildPage(query.Build(), sort, secondParam)
+        return r.buildPage(query.Build(), sort, secondParam)
     } else {
         query.Where(fmt.Sprintf("(%s,%s) %s ($1, $2)", firstField, secondField, signal))
-        return r.PageRepository.buildPage(query.Build(), sort, firstParam, secondParam)
+        return r.buildPage(query.Build(), sort, firstParam, secondParam)
     }
 }
 
@@ -77,10 +98,10 @@ func (r *PageRepositoryImpl[E]) nextPageDate(cursor string, query *util.QueryCon
     signal:= r.getSignal(direction)
     if firstParam == nil {
         query.Where(firstField + " IS NULL").And(fmt.Sprintf("%s %s $1", secondField, signal))
-        return r.PageRepository.buildPage(query.Build(), sort, secondParam)
+        return r.buildPage(query.Build(), sort, secondParam)
     } else {
         query.Where(fmt.Sprintf("(%s,%s) %s ($1, $2)", firstField, secondField, signal))
-        return r.PageRepository.buildPage(query.Build(), sort, firstParam, secondParam)
+        return r.buildPage(query.Build(), sort, firstParam, secondParam)
     }
 }
 
@@ -96,11 +117,11 @@ func (r *PageRepositoryImpl[E]) nextRandomPage(cursor string, query *util.QueryC
     if firstParam == "null" {
         query.And(firstField + " IS NULL").And(fmt.Sprintf("%s %s $%d", secondField, signal, paramNumber))
         args = append(args, secondField)
-        return r.PageRepository.buildPage(query.Build(), sort, args...)
+        return r.buildPage(query.Build(), sort, args...)
     } else {
         query.And(fmt.Sprintf("(%s,%s) %s ($%d, $%d)", firstField, secondField, signal, paramNumber, paramNumber + 1))
         args = append(args, firstParam, secondParam)
-        return r.PageRepository.buildPage(query.Build(), sort, args...)
+        return r.buildPage(query.Build(), sort, args...)
     }
 }
 
@@ -116,11 +137,11 @@ func (r *PageRepositoryImpl[E]) nextRandomPageDate(cursor string, query *util.Qu
     if firstParam == nil {
         query.And(firstField + " IS NULL").And(fmt.Sprintf("%s %s $%d", secondField, signal, paramNumber))
         args = append(args, secondParam)
-        return r.PageRepository.buildPage(query.Build(), sort, args...)
+        return r.buildPage(query.Build(), sort, args...)
     } else {
         query.And(fmt.Sprintf("(%s,%s) %s ($%d, $%d)", firstField, secondField, signal, paramNumber, paramNumber + 1))
         args = append(args, firstParam, secondParam)
-        return r.PageRepository.buildPage(query.Build(), sort, args...)
+        return r.buildPage(query.Build(), sort, args...)
     }
 }
 
@@ -154,7 +175,7 @@ func (r *PageRepositoryImpl[E]) FindPage(sort string, direction string, cursor s
     query.Limit(PAGE_LIMIT)
 
 	if cursor == "" {
-		return r.PageRepository.buildPage(query.Build(), sort)
+		return r.buildPage(query.Build(), sort)
     }
 
     if r.isDateField(sort) {
@@ -173,7 +194,7 @@ func (r *PageRepositoryImpl[E]) FindRandomQueryPage(query *util.QueryConstructor
     query.Limit(PAGE_LIMIT)
 
 	if cursor == "" {
-		return r.PageRepository.buildPage(query.Build(), sort, args...)
+		return r.buildPage(query.Build(), sort, args...)
     }
 
     if r.isDateField(sort) {
@@ -206,6 +227,10 @@ func (r *PageRepositoryImpl[E]) Save(model *E) error {
     return r.Base.Save(model)
 }
 
-func (r *PageRepositoryImpl[E]) Delete(id string) error {
-    return r.Base.Delete(id)
+func (r *PageRepositoryImpl[E]) SoftDelete(id string) error {
+    return r.Base.SoftDelete(id)
+}
+
+func (r *PageRepositoryImpl[E]) HardDelete(id string) error {
+    return r.Base.HardDelete(id)
 }

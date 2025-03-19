@@ -10,6 +10,12 @@ func InitHandlers(mux *http.ServeMux) {
     InitAnimal(mux)
     InitLactation(mux)
     InitMilk(mux)
+    InitPastureEntryHandler(mux)
+    InitPastureHandler(mux)
+    InitPregnancyLossHandler(mux)
+    InitWeightEntries(mux)
+    InitWeightGroups(mux)
+    InitSlaugherhouses(mux)
 }
 
 func LogControllersInit(name string) {

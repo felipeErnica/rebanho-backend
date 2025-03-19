@@ -13,7 +13,6 @@ type AnimalHandler struct {
 }
 
 func InitAnimal(mux *http.ServeMux) {
-
     repository:=new(repositories.AnimalRepository)
     repository.Init()
 

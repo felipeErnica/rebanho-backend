@@ -6,8 +6,8 @@ import (
 
 type Lactation struct {
     Id                string        `json:"id"`
-    Cow               AnimalShort   `json:"cow"`
-    Calf              AnimalShort   `json:"calf"`
+    Cow               Cow           `json:"cow"`
+    Calf              Calf          `json:"calf"`
     StartDate         time.Time     `json:"start_date"`
     EndDate           *time.Time    `json:"end_date"`
     ProductionPeriod  uint          `json:"production_period"`

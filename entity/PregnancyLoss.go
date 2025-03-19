@@ -1,30 +1,12 @@
 package entity
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 type PregnancyLoss struct {
-	Id       string
-	AnimalId string
-	LossType string
-	LossDate time.Time
-}
-
-func (p *PregnancyLoss) New(create *CreatePregnancyLoss) *PregnancyLoss {
-    p = &PregnancyLoss{
-        Id: uuid.NewString(),
-        AnimalId: create.AnimalId,
-        LossType: create.LossType,
-        LossDate: create.LossDate,
-    }
-    return p
-}
-
-type CreatePregnancyLoss struct {
-	AnimalId string
-	LossType string
-	LossDate time.Time
+    Id         string       `json:"id"`
+    Animal     AnimalShort  `json:"animal"`
+    LossType   string       `json:"loss_type"`
+    LossDate   time.Time    `json:"loss_date"`
+    CreatedAt  time.Time    `json:"created_at"`
+    DeletedAt  *time.Time   `json:"deleted_at"`
 }

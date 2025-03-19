@@ -1,18 +1,28 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
 
+type LactationHandler struct {
+	Repository  repositories.LactationRepository
+    Impl        HandlerImpl[entity.Lactation]
+}
+
 func InitLactation(mux *http.ServeMux) {
     repository:= repositories.LactationRepository{}
     repository.Init()
+
+    impl:=HandlerImpl[entity.Lactation]{
+        Repository: *repository.Base.Base,
+    }
+
     handler:=LactationHandler{
         Repository: repository,
+        Impl: impl,
     }
     
     mux.HandleFunc("GET /lactation/page", handler.FindPage)
@@ -23,77 +33,26 @@ func InitLactation(mux *http.ServeMux) {
     LogControllersInit("Lactações")
 }
 
-type LactationHandler struct {
-	Repository repositories.LactationRepository
+func (h *LactationHandler) FindPage(w http.ResponseWriter, r *http.Request) {
+    cursor, sort, direction:= h.Impl.GetPageParameters(r)
+    page, err:=h.Repository.FindPage(sort, direction, cursor)
+    h.Impl.SendPage(w, page, err)
 }
 
-func (l *LactationHandler) FindPage(w http.ResponseWriter, r *http.Request) {
-    cursor:=r.URL.Query().Get("cursor")
-    sort:=r.URL.Query().Get("sort")
-    direction:=r.URL.Query().Get("order")
-    page, err:=l.Repository.FindPage(sort, direction, cursor)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
-    
-    response, err:= json.Marshal(page)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-    w.Write(response)
-}
-
-func (l *LactationHandler) FindByCow(w http.ResponseWriter, r *http.Request) {
+func (h *LactationHandler) FindByCow(w http.ResponseWriter, r *http.Request) {
     animalId:=r.PathValue("animalId")
-    animalsList, err:=l.Repository.FindByAnimal(animalId)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
-    
-    response, err:= json.Marshal(animalsList)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-    w.Write(response)
+    animalsList, err:=h.Repository.FindByAnimal(animalId)
+    h.Impl.SendList(w, animalsList, err)
 }
 
-func (l *LactationHandler) Add(w http.ResponseWriter, r *http.Request) {
-    var newLactation entity.Lactation;
-    err:= json.NewDecoder(r.Body).Decode(&newLactation)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-
-    lactation, err:=l.Repository.Add(newLactation)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
-    
-    response, err:= json.Marshal(lactation)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-    w.WriteHeader(http.StatusCreated)
-    w.Write(response)
+func (h *LactationHandler) Add(w http.ResponseWriter, r *http.Request) {
+    h.Impl.Add(w, r)
 }
 
-func (l *LactationHandler) Save(w http.ResponseWriter, r *http.Request) {
-    var lactation entity.Lactation;
-    err:= json.NewDecoder(r.Body).Decode(&lactation)
-    if err != nil {
-        JsonServerError(err, w)
-    }
-
-    err = l.Repository.Save(&lactation)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
+func (h *LactationHandler) Save(w http.ResponseWriter, r *http.Request) {
+    h.Impl.Save(w, r)
 }
 
-func (l *LactationHandler) Delete(w http.ResponseWriter, r *http.Request) {
-    id:=r.PathValue("id")
-    err:=l.Repository.Delete(id)
-    if err != nil {
-        DatabaseSendError(err, w)
-    }
+func (h *LactationHandler) Delete(w http.ResponseWriter, r *http.Request) {
+    h.Impl.Delete(w,r)
 }

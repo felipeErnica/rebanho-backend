@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/google/uuid"
 )
 
 type MilkRepository struct{
@@ -82,43 +81,9 @@ func (m *MilkRepository) createKey(sort string, lastEntry *entity.MilkEntry) (ke
     }
 }
 
-func (m *MilkRepository) buildPage(query string, sort string, args... any) (page *entity.Page[entity.MilkEntry], err error) {
-    rows, err:= selectQueryList(query, args...)
-    if err != nil {
-        return
-    }
-
-    var entries []entity.MilkEntry
-    for rows.Next() {
-        var milk entity.MilkEntry
-        err = rows.Scan(&milk.Id, &milk.EntryDate, &milk.MilkQuantity, &milk.LactationId,
-            &milk.Animal.Id, &milk.Animal.IdentificationNumber, &milk.Animal.AnimalOrder, &milk.Animal.Name,
-            &milk.Pasture.Id, &milk.Pasture.Name)
-        if err != nil {
-            return 
-        }
-
-        entries = append(entries, milk)
-    }
-    rows.Close()
-
-    nextCursor, err:= m.Base.CreateNextCursor(sort, entries)
-    if err !=  nil {
-        return
-    }
-    
-    page = &entity.Page[entity.MilkEntry]{
-        HasNextPage: len(entries) == PAGE_LIMIT,
-        NextCursor: nextCursor,
-        List: &entries,
-    }
-
-    return page, err
-}
-
-func (m *MilkRepository) setNewEntity(model *entity.MilkEntry) {
-    model.Id = uuid.NewString()
-    model.CreatedAt = time.Now()
+func (m *MilkRepository) setNewEntity(model *entity.MilkEntry, id string, createdAt time.Time) {
+    model.Id = id
+    model.CreatedAt = createdAt
 }
 
 func (m *MilkRepository) buildEntity(row *sql.Row) (model *entity.MilkEntry, err error) {
@@ -172,5 +137,5 @@ func (m *MilkRepository) Save(milk *entity.MilkEntry) error {
 }
 
 func (m *MilkRepository) Delete(id string) error {
-    return m.Base.Delete(id)
+    return m.Base.SoftDelete(id)
 }

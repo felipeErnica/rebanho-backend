@@ -7,7 +7,6 @@ import (
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
-	"github.com/google/uuid"
 )
 
 type AnimalRepository struct {
@@ -63,9 +62,9 @@ func (r *AnimalRepository) Init() {
     }
 }
 
-func (r *AnimalRepository) setNewEntity(model *entity.Animal) {
-    model.Id = uuid.NewString()
-    model.CreatedAt = time.Now()
+func (r *AnimalRepository) setNewEntity(model *entity.Animal, id string, createdAt time.Time) {
+    model.Id = id
+    model.CreatedAt = createdAt
 }
 
 func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.Animal, err error) {
@@ -83,7 +82,6 @@ func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.An
         }
         animals = append(animals, animal)
     }
-    sqlRows.Close()
     return &animals, err
 }
 
@@ -105,44 +103,6 @@ func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal)
     return execQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.Father.Id, animal.Mother.Id,
         animal.BirthDate, animal.DeathDate, animal.Pasture.Id, animal.Status, animal.AvarageProd, animal.AvarageBirthInterval, animal.MaxPeak,
         animal.ChildrenQuantity, animal.CreatedAt, animal.DeletedAt, animal.Isr)
-}
-
-func (r *AnimalRepository) buildPage(query string, sort string, args... any) (page *entity.Page[entity.Animal], err error) {
-    sqlStatement, err:= selectQueryList(query, args...)
-    if err != nil {
-        return
-    }
-
-    var animals []entity.Animal
-    for sqlStatement.Next() {
-        var animal entity.Animal
-
-        err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate,
-            &animal.DeathDate, &animal.Status, &animal.AvarageProd, &animal.AvarageBirthInterval, &animal.MaxPeak,
-            &animal.ChildrenQuantity, &animal.CreatedAt, &animal.DeletedAt, &animal.Isr,
-            &animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber, 
-            &animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
-            &animal.Pasture.Id, &animal.Pasture.Name)
-        if err != nil {
-            return 
-        }
-
-        animals = append(animals, animal)
-    }
-    sqlStatement.Close()
-
-    nextCursor, err:= r.Base.CreateNextCursor(sort, animals)
-    if err !=  nil {
-        return
-    }
-    
-    pageAnimal:= entity.Page[entity.Animal]{
-        HasNextPage: len(animals) == PAGE_LIMIT,
-        NextCursor: nextCursor,
-        List: &animals,
-    }
-
-    return &pageAnimal, err
 }
 
 func (r *AnimalRepository) getFields(sort string) (firstField string, secondField string) {
@@ -256,6 +216,6 @@ func (r *AnimalRepository) Save(animal *entity.Animal) error {
 }
 
 func (r *AnimalRepository) Delete(id string) error {
-    return r.Base.Delete(id)
+    return r.Base.SoftDelete(id)
 }
 
