@@ -119,7 +119,7 @@ func (h *HandlerImpl[E]) Save(w http.ResponseWriter, r *http.Request) {
 
 func (h *HandlerImpl[E]) Delete(w http.ResponseWriter, r *http.Request) {
     id:= r.PathValue("id")
-    err:=h.Repository.SoftDelete(id)
+    err:=h.Repository.Delete(id)
     if err != nil {
         DatabaseSendError(err, w)
     }

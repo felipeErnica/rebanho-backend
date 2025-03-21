@@ -25,11 +25,11 @@ func InitWeightGroups(mux *http.ServeMux) {
         Impl: impl,
     }
 
-    mux.HandleFunc("GET /weightGroup/", handler.FindAll)
-    mux.HandleFunc("GET /weightGroup/{id}", handler.FindById)
-    mux.HandleFunc("POST /weightGroup", handler.Add)
-    mux.HandleFunc("POST /weightGroup/save", handler.Save)
-    mux.HandleFunc("DELETE /weightGroup/{id}", handler.Delete)
+    mux.HandleFunc("GET /weight/groups/", handler.FindAll)
+    mux.HandleFunc("GET /weight/groups/{id}", handler.FindById)
+    mux.HandleFunc("POST /weight/groups", handler.Add)
+    mux.HandleFunc("POST /weight/groups/save", handler.Save)
+    mux.HandleFunc("DELETE /weight/groups/{id}", handler.Delete)
     LogControllersInit("Grupos de Pesagem")
 }
 

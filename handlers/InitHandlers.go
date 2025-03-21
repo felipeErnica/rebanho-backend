@@ -20,6 +20,8 @@ func InitHandlers(mux *http.ServeMux) {
     InitSlaughterEntry(mux)
     InitPregnancyTestGroup(mux)
     InitPregnancyTestEntry(mux)
+    InitInseminationGroup(mux)
+    InitInseminationEntry(mux)
 }
 
 func LogControllersInit(name string) {

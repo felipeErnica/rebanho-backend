@@ -14,13 +14,17 @@ type PregancyTestEntryRepository struct {
 
 func (r *PregancyTestEntryRepository) Init() {
     selectQuery:=new(util.QueryConstructor).Select("entry", "id", "group_id", "is_pregnant", "birth_forecast")
-        selectQuery.AndSelect("animals", "id", "name", "identification_number", "animal_order")
+        selectQuery.AndSelect("animal", "id", "name", "identification_number", "animal_order")
+        selectQuery.AndSelect("loss", "id", "loss_type", "loss_date")
+        selectQuery.AndSelect("calf", "id", "sex", "birth_date")
         selectQuery.From("pregancy_test_entries", "entry")
-        selectQuery.LeftJoin("animals", "").On("animals.id", "entry.animal_id")
+        selectQuery.LeftJoin("animals", "animal").On("animal.id", "entry.animal_id")
+        selectQuery.LeftJoin("animals", "calf").On("calf.id", "entry.calf_id")
+        selectQuery.LeftJoin("pregnancy_losses", "loss").On("loss.id", "entry.loss_id")
     insertQuery:=new(util.QueryConstructor).Insert("pregancy_test_entries", "id", "animal_id", "group_id", 
-        "is_pregnant", "birth_forecast", "created_at", "user_id")
+        "is_pregnant", "birth_forecast", "loss_id", "calf_id", "created_at", "user_id")
     updateQuery:=new(util.QueryConstructor).Update("pregancy_test_entries", "id", "animal_id", "group_id", 
-        "is_pregnant", "birth_forecast", "created_at", "user_id")
+        "is_pregnant", "birth_forecast", "loss_id", "calf_id", "created_at", "user_id")
     r.Impl = RepositoryImpl[entity.PregnancyTestEntry]{
         TableName: "pregancy_test_entries",
         SelectQueryBody: selectQuery.Build(),
@@ -47,7 +51,9 @@ func (r *PregancyTestEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]en
     for rows.Next() {
         var entry entity.PregnancyTestEntry
         err = rows.Scan(&entry.Id, &entry.GroupId, &entry.IsPregnant, &entry.BirthForecast, 
-            &entry.Animal.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
+            &entry.Animal.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder,
+            &entry.Loss.Id, &entry.Loss.LossType, &entry.Loss.LossDate,
+            &entry.Calf.Id, &entry.Calf.Sex, &entry.Calf.BirthDate)
         if err != nil {
             return
         }
@@ -58,7 +64,7 @@ func (r *PregancyTestEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]en
 
 func (r *PregancyTestEntryRepository) saveOrUpdateScan(query string, model *entity.PregnancyTestEntry) error {
     return execQuery(query, model.Id, model.Animal.Id, model.GroupId, model.IsPregnant, 
-        model.BirthForecast, model.CreatedAt)
+        model.BirthForecast, model.Calf.Id, model.Loss.Id, model.CreatedAt)
 }
 
 func (r *PregancyTestEntryRepository) FindByGroupId(groupId string) (*[]entity.PregnancyTestEntry, error) {

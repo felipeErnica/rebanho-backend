@@ -36,7 +36,7 @@ func main() {
         serverErrors.InitServerError(err)
     }
 
-	mux := http.NewServeMux()
+	mux:= http.NewServeMux()
     handlers.InitHandlers(mux)
     repositories.InitRepository(db)
     

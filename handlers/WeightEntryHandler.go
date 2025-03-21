@@ -25,11 +25,11 @@ func InitWeightEntries(mux *http.ServeMux) {
         Impl: impl,
     }
 
-    mux.HandleFunc("GET /weightEntries/group/{groupId}", handler.FindByGroupId)
-    mux.HandleFunc("GET /weightEntries/{id}", handler.FindById)
-    mux.HandleFunc("POST /weightEntries", handler.Add)
-    mux.HandleFunc("POST /weightEntries/save", handler.Save)
-    mux.HandleFunc("DELETE /weightEntries/{id}", handler.Delete)
+    mux.HandleFunc("GET /weight/group/{groupId}/entries", handler.FindByGroupId)
+    mux.HandleFunc("GET /weight/entries/{id}", handler.FindById)
+    mux.HandleFunc("POST /weight/entries", handler.Add)
+    mux.HandleFunc("POST /weight/entries/save", handler.Save)
+    mux.HandleFunc("DELETE /weight/entries/{id}", handler.Delete)
     LogControllersInit("Entradas de Peso")
 }
 

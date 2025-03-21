@@ -14,6 +14,7 @@ type Repository[E entity.IEntity] interface {
 	buildEntity(row *sql.Row) (model *E, err error)
 	buildListEntity(rows *sql.Rows) (arr *[]E, err error)
 	saveOrUpdateScan(query string, model *E) error
+    Delete(id string) error
 }
 
 type RepositoryImpl[E entity.IEntity] struct {
@@ -76,7 +77,11 @@ func (r *RepositoryImpl[E]) SoftDelete(id string) error {
 }
 
 func (r *RepositoryImpl[E]) HardDelete(id string) error {
-    timeDeletion:=time.Now()
     query:=new(util.QueryConstructor).Delete(r.TableName).Build()
-    return execQuery(query, timeDeletion, id)
+    return execQuery(query, id)
 }
+
+func (r *RepositoryImpl[E]) Delete(id string) error {
+    return r.Repository.Delete(id)
+}
+
