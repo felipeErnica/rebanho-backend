@@ -16,6 +16,10 @@ func InitHandlers(mux *http.ServeMux) {
     InitWeightEntries(mux)
     InitWeightGroups(mux)
     InitSlaugherhouses(mux)
+    InitSlaughterGroup(mux)
+    InitSlaughterEntry(mux)
+    InitPregnancyTestGroup(mux)
+    InitPregnancyTestEntry(mux)
 }
 
 func LogControllersInit(name string) {

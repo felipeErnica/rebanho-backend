@@ -10,3 +10,9 @@ type SlaughterGroup struct {
     CreatedAt        time.Time            `json:"created_at"`
     UserId           string               `json:"user_id"`
 }
+
+type SlaughterGroupShort struct {
+    Id               string               `json:"id"`
+    WeightDecrease   float32              `json:"weight_decrease"`
+    SlaughterDate    time.Time            `json:"slaughter_date"`
+}

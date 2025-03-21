@@ -25,10 +25,10 @@ func InitSlaugherhouses(mux *http.ServeMux) {
         Impl: impl,
     }
 
-    mux.HandleFunc("GET /slaughterhouses", handler.FindAll)
-    mux.HandleFunc("GET /slaughterhouses/{id}", handler.FindById)
-    mux.HandleFunc("POST /slaughterhouses", handler.Add)
-    mux.HandleFunc("POST /slaughterhouses/save", handler.Save)
+    mux.HandleFunc("GET /slaughter/slaughterhouses", handler.FindAll)
+    mux.HandleFunc("GET /slaughter/slaughterhouses/{id}", handler.FindById)
+    mux.HandleFunc("POST /slaughter/slaughterhouses", handler.Add)
+    mux.HandleFunc("POST /slaughter/slaughterhouses/save", handler.Save)
     mux.HandleFunc("DELETE /slaughterhouses/{id}", handler.Delete)
     LogControllersInit("Frigoríficos")
 }
