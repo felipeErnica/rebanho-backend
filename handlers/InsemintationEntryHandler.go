@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type InseminationEntryHandler struct {
     Repository repositories.InseminationEntryRepository
 }
 
-func InitInseminationEntry(mux *http.ServeMux) {
+func InitInseminationEntry(app *app.App) {
     repository:=new(repositories.InseminationEntryRepository)
     repository.Init()
     impl:=HandlerImpl[entity.InseminationEntry] {
@@ -23,11 +24,11 @@ func InitInseminationEntry(mux *http.ServeMux) {
         Impl: impl,
     }
 
-    mux.HandleFunc("GET insemination/groups/{groupId}/entries", handler.FindByGroupId)
-    mux.HandleFunc("GET insemination/entries/{id}", handler.FindById)
-    mux.HandleFunc("POST insemination/entries", handler.Add)
-    mux.HandleFunc("POST insemination/entries/save", handler.Save)
-    mux.HandleFunc("DELETE insemination/entries/{id}", handler.Delete)
+    app.HandleFunc("GET insemination/groups/{groupId}/entries", handler.FindByGroupId)
+    app.HandleFunc("GET insemination/entries/{id}", handler.FindById)
+    app.HandleFunc("POST insemination/entries", handler.Add)
+    app.HandleFunc("POST insemination/entries/save", handler.Save)
+    app.HandleFunc("DELETE insemination/entries/{id}", handler.Delete)
     LogControllersInit("Entradas de Inseminação")
 }
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type InseminationGroupHandler struct {
     Repository repositories.InseminationGroupRepository
 }
 
-func InitInseminationGroup(mux *http.ServeMux) {
+func InitInseminationGroup(app *app.App) {
     repository:=new(repositories.InseminationGroupRepository)
     repository.Init()
     
@@ -25,11 +26,11 @@ func InitInseminationGroup(mux *http.ServeMux) {
         Repository: *repository,
     }
 
-    mux.HandleFunc("GET insemination/groups", handler.FindAll)
-    mux.HandleFunc("GET insemination/groups/{id}", handler.FindById)
-    mux.HandleFunc("POST insemination/groups", handler.Add)
-    mux.HandleFunc("POST insemination/groups/save", handler.Save)
-    mux.HandleFunc("DELETE insemination/groups/{id}", handler.Delete)
+    app.HandleFunc("GET insemination/groups", handler.FindAll)
+    app.HandleFunc("GET insemination/groups/{id}", handler.FindById)
+    app.HandleFunc("POST insemination/groups", handler.Add)
+    app.HandleFunc("POST insemination/groups/save", handler.Save)
+    app.HandleFunc("DELETE insemination/groups/{id}", handler.Delete)
     LogControllersInit("Grupos de Inseminação")
 }
 

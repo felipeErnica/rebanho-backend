@@ -2,11 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"net/http"
 	"time"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/db"
 	"github.com/felipeErnica/rebanho-backend/handlers"
+	"github.com/felipeErnica/rebanho-backend/middlewares"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	"github.com/felipeErnica/rebanho-backend/util"
@@ -16,6 +17,9 @@ import (
 func main() {
     
     util.LogInfo("Iniciando server....")
+
+    app:=app.NewApp()
+    app.UseGroup(middlewares.AuthenticationMiddleware)
 
     dataBaseInfo:= db.ConnectPostgres().ReturnDatabaseInfo()
     db, err := sql.Open("postgres", dataBaseInfo)
@@ -36,11 +40,10 @@ func main() {
         serverErrors.InitServerError(err)
     }
 
-	mux:= http.NewServeMux()
-    handlers.InitHandlers(mux)
+    handlers.InitHandlers(app)
     repositories.InitRepository(db)
     
-    err = http.ListenAndServe("localhost:8080", mux)
+    err = app.ListenAndServe("localhost:8080")
 
     if err != nil {
         util.LogError("Não foi possível conectar a porta do host especificado!")

@@ -7,8 +7,8 @@ type Animal struct {
 	Name                 *string      `json:"name"`
 	IdentificationNumber *string      `json:"identification_number"`
 	AnimalOrder          int          `json:"animal_order"`
-	Sex                  string       `json:"sex"`
-	WeaningDate          time.Time    `json:"weaning_date"`
+	Sex                  *string       `json:"sex"`
+	WeaningDate          *time.Time    `json:"weaning_date"`
 	Father               AnimalShort  `json:"father"`
 	Mother               AnimalShort  `json:"mother"`
 	BirthDate            *time.Time   `json:"birth_date"`

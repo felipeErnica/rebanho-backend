@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type PregnancyLossHandler struct {
     Repository repositories.PregnancyLossRepository
 }
 
-func InitPregnancyLossHandler(mux *http.ServeMux) {
+func InitPregnancyLossHandler(app *app.App) {
     repository:= new(repositories.PregnancyLossRepository)
     repository.Init()
 
@@ -25,12 +26,12 @@ func InitPregnancyLossHandler(mux *http.ServeMux) {
         Repository: *repository,
     }
 
-    mux.HandleFunc("GET /losses/page", handler.FindPage)
-    mux.HandleFunc("GET /losses/animal/{animalId}", handler.FindByAnimalId)
-    mux.HandleFunc("GET /losses/{id}", handler.FindById)
-    mux.HandleFunc("POST /losses", handler.Add)
-    mux.HandleFunc("POST /losses/save", handler.Save)
-    mux.HandleFunc("DELETE /losses/{id}", handler.Delete)
+    app.HandleFunc("GET /losses/page", handler.FindPage)
+    app.HandleFunc("GET /losses/animal/{animalId}", handler.FindByAnimalId)
+    app.HandleFunc("GET /losses/{id}", handler.FindById)
+    app.HandleFunc("POST /losses", handler.Add)
+    app.HandleFunc("POST /losses/save", handler.Save)
+    app.HandleFunc("DELETE /losses/{id}", handler.Delete)
     LogControllersInit("Perdas de Parição")
 }
 

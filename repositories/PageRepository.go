@@ -56,6 +56,9 @@ func (r *PageRepositoryImpl[E]) buildPage(query string, sort string, args... any
     }
 
     arr, err:=r.PageRepository.buildListEntity(sqlStatement)    
+    if err != nil {
+        return
+    }
 
     nextCursor, err:= r.CreateNextCursor(sort, *arr)
     if err !=  nil {

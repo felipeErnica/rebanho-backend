@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type LactationHandler struct {
     Impl        HandlerImpl[entity.Lactation]
 }
 
-func InitLactation(mux *http.ServeMux) {
+func InitLactation(app *app.App) {
     repository:= repositories.LactationRepository{}
     repository.Init()
 
@@ -25,11 +26,11 @@ func InitLactation(mux *http.ServeMux) {
         Impl: impl,
     }
     
-    mux.HandleFunc("GET /lactation/page", handler.FindPage)
-    mux.HandleFunc("GET /lactation/animal/{animalId}", handler.FindByCow)
-    mux.HandleFunc("POST /lactation/", handler.Add)
-    mux.HandleFunc("POST /lactation/save", handler.Save)
-    mux.HandleFunc("DELETE /lactation/{id}", handler.Delete)
+    app.HandleFunc("GET /lactation/page", handler.FindPage)
+    app.HandleFunc("GET /lactation/animal/{animalId}", handler.FindByCow)
+    app.HandleFunc("POST /lactation/", handler.Add)
+    app.HandleFunc("POST /lactation/save", handler.Save)
+    app.HandleFunc("DELETE /lactation/{id}", handler.Delete)
     LogControllersInit("Lactações")
 }
 

@@ -62,7 +62,8 @@ func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.An
     for sqlRows.Next() {
         var animal entity.Animal
         err = sqlRows.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate,
-            &animal.DeathDate, &animal.Status, &animal.WeaningDate, &animal.AverageProd, &animal.AverageBirthInterval, &animal.MaxPeak,
+            &animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd, 
+            &animal.AverageBirthInterval, &animal.MaxPeak,
             &animal.ChildrenQuantity, &animal.CreatedAt, &animal.DeletedAt, &animal.Isr, &animal.Sex,
             &animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber, 
             &animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,

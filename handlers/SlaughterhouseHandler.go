@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type SlaughterhouseHandler struct {
     Repository  repositories.SlaughterhouseRepository  
 }
 
-func InitSlaugherhouses(mux *http.ServeMux) {
+func InitSlaugherhouses(app *app.App) {
     repository:=new(repositories.SlaughterhouseRepository)
     repository.Init()
 
@@ -25,11 +26,11 @@ func InitSlaugherhouses(mux *http.ServeMux) {
         Impl: impl,
     }
 
-    mux.HandleFunc("GET /slaughter/slaughterhouses", handler.FindAll)
-    mux.HandleFunc("GET /slaughter/slaughterhouses/{id}", handler.FindById)
-    mux.HandleFunc("POST /slaughter/slaughterhouses", handler.Add)
-    mux.HandleFunc("POST /slaughter/slaughterhouses/save", handler.Save)
-    mux.HandleFunc("DELETE /slaughterhouses/{id}", handler.Delete)
+    app.HandleFunc("GET /slaughter/slaughterhouses", handler.FindAll)
+    app.HandleFunc("GET /slaughter/slaughterhouses/{id}", handler.FindById)
+    app.HandleFunc("POST /slaughter/slaughterhouses", handler.Add)
+    app.HandleFunc("POST /slaughter/slaughterhouses/save", handler.Save)
+    app.HandleFunc("DELETE /slaughterhouses/{id}", handler.Delete)
     LogControllersInit("Frigoríficos")
 }
 

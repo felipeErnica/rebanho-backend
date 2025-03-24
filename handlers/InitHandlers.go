@@ -3,25 +3,26 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
-func InitHandlers(mux *http.ServeMux) {
-    InitAnimal(mux)
-    InitLactation(mux)
-    InitMilk(mux)
-    InitPastureEntryHandler(mux)
-    InitPastureHandler(mux)
-    InitPregnancyLossHandler(mux)
-    InitWeightEntries(mux)
-    InitWeightGroups(mux)
-    InitSlaugherhouses(mux)
-    InitSlaughterGroup(mux)
-    InitSlaughterEntry(mux)
-    InitPregnancyTestGroup(mux)
-    InitPregnancyTestEntry(mux)
-    InitInseminationGroup(mux)
-    InitInseminationEntry(mux)
+func InitHandlers(app *app.App) {
+    InitAnimal(app)
+    InitLactation(app)
+    InitMilk(app)
+    InitPastureEntryHandler(app)
+    InitPastureHandler(app)
+    InitPregnancyLossHandler(app)
+    InitWeightEntries(app)
+    InitWeightGroups(app)
+    InitSlaugherhouses(app)
+    InitSlaughterGroup(app)
+    InitSlaughterEntry(app)
+    InitPregnancyTestGroup(app)
+    InitPregnancyTestEntry(app)
+    InitInseminationGroup(app)
+    InitInseminationEntry(app)
 }
 
 func LogControllersInit(name string) {

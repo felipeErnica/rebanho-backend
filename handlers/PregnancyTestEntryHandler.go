@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type PregnancyTestEntryHandler struct {
     Repository repositories.PregancyTestEntryRepository
 }
 
-func InitPregnancyTestEntry(mux *http.ServeMux) {
+func InitPregnancyTestEntry(app *app.App) {
     repository:=new(repositories.PregancyTestEntryRepository)
     repository.Init()
 
@@ -22,11 +23,11 @@ func InitPregnancyTestEntry(mux *http.ServeMux) {
         Repository: repository.Impl,
     }
 
-    mux.HandleFunc("GET /pregnancy/test/groups/{groupId}/entries", handler.FindByGroupId)
-    mux.HandleFunc("GET /pregnancy/test/entries/{id}", handler.FindById)
-    mux.HandleFunc("POST /pregnancy/test/entries", handler.Add)
-    mux.HandleFunc("POST /pregnancy/test/entries/save", handler.Save)
-    mux.HandleFunc("DELETE /pregnancy/test/entries/{id}", handler.Delete)
+    app.HandleFunc("GET /pregnancy/test/groups/{groupId}/entries", handler.FindByGroupId)
+    app.HandleFunc("GET /pregnancy/test/entries/{id}", handler.FindById)
+    app.HandleFunc("POST /pregnancy/test/entries", handler.Add)
+    app.HandleFunc("POST /pregnancy/test/entries/save", handler.Save)
+    app.HandleFunc("DELETE /pregnancy/test/entries/{id}", handler.Delete)
     LogControllersInit("Entradas de Toque")
 } 
 

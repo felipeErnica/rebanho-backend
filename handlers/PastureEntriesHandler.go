@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type PastureEntryHandler struct {
     Repository  repositories.PastureEntryRepository
 }
 
-func InitPastureEntryHandler(mux *http.ServeMux) {
+func InitPastureEntryHandler(app *app.App) {
     repository:= new(repositories.PastureEntryRepository)
     repository.Init()
     impl:=HandlerImpl[entity.PastureEntry]{
@@ -23,12 +24,12 @@ func InitPastureEntryHandler(mux *http.ServeMux) {
         Repository: *repository,
     }
 
-    mux.HandleFunc("GET /pastureEntries/pasture/{pastureId}/page", handler.FindByPastureId)
-    mux.HandleFunc("GET /pastureEntries/pasture/{pastureId}/deleted/page", handler.FindDeletedByPastureId)
-    mux.HandleFunc("GET /pastureEntries/animal/{animalId}", handler.FindByAnimalId)
-    mux.HandleFunc("POST /pastureEntries/", handler.Add)
-    mux.HandleFunc("POST /pastureEntries/save", handler.Save)
-    mux.HandleFunc("DELETE /pastureEntries/{id}", handler.Delete)
+    app.HandleFunc("GET /pastureEntries/pasture/{pastureId}/page", handler.FindByPastureId)
+    app.HandleFunc("GET /pastureEntries/pasture/{pastureId}/deleted/page", handler.FindDeletedByPastureId)
+    app.HandleFunc("GET /pastureEntries/animal/{animalId}", handler.FindByAnimalId)
+    app.HandleFunc("POST /pastureEntries/", handler.Add)
+    app.HandleFunc("POST /pastureEntries/save", handler.Save)
+    app.HandleFunc("DELETE /pastureEntries/{id}", handler.Delete)
     LogControllersInit("Entradas no Lote")
 }
 

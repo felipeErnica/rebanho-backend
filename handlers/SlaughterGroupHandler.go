@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type SlaughterGroupHandler struct {
     Repository repositories.SlaughterGroupRepository
 }
 
-func InitSlaughterGroup(mux *http.ServeMux) {
+func InitSlaughterGroup(app *app.App) {
     repository:=new(repositories.SlaughterGroupRepository)
     repository.Init()
 
@@ -25,11 +26,11 @@ func InitSlaughterGroup(mux *http.ServeMux) {
         Impl: impl,
     }
 
-    mux.HandleFunc("GET /slaughter/groups", handler.FindAll)
-    mux.HandleFunc("GET /slaughter/groups/{id}", handler.FindById)
-    mux.HandleFunc("POST /slaughter/groups", handler.Add)
-    mux.HandleFunc("POST /slaughter/groups/save", handler.Save)
-    mux.HandleFunc("DELETE /slaughter/groups/{id}", handler.Delete)
+    app.HandleFunc("GET /slaughter/groups", handler.FindAll)
+    app.HandleFunc("GET /slaughter/groups/{id}", handler.FindById)
+    app.HandleFunc("POST /slaughter/groups", handler.Add)
+    app.HandleFunc("POST /slaughter/groups/save", handler.Save)
+    app.HandleFunc("DELETE /slaughter/groups/{id}", handler.Delete)
     LogControllersInit("Frigoríficos")
 }
 

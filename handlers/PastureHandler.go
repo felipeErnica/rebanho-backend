@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type PastureHandler struct {
     Repository  repositories.PastureRepository
 }
 
-func InitPastureHandler(mux *http.ServeMux) {
+func InitPastureHandler(app *app.App) {
     repository:= new(repositories.PastureRepository)
     repository.Init()
     impl:=HandlerImpl[entity.Pasture]{
@@ -23,11 +24,11 @@ func InitPastureHandler(mux *http.ServeMux) {
         Repository: *repository,
     }
 
-    mux.HandleFunc("GET /pastures", handler.FindAll)
-    mux.HandleFunc("GET /pastures/{id}", handler.FindById)
-    mux.HandleFunc("POST /pastures", handler.Add)
-    mux.HandleFunc("POST /pastures/save", handler.Save)
-    mux.HandleFunc("DELETE /pastures/{id}", handler.Delete)
+    app.HandleFunc("GET /pastures", handler.FindAll)
+    app.HandleFunc("GET /pastures/{id}", handler.FindById)
+    app.HandleFunc("POST /pastures", handler.Add)
+    app.HandleFunc("POST /pastures/save", handler.Save)
+    app.HandleFunc("DELETE /pastures/{id}", handler.Delete)
     LogControllersInit("Pastos")
 }
 

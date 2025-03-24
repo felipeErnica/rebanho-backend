@@ -25,8 +25,11 @@ type RepositoryImpl[E entity.IEntity] struct {
 	UpdateQuery     string
 }
 
-func (r *RepositoryImpl[E]) FindAll() (*[]E, error) {
+func (r *RepositoryImpl[E]) FindAll() (arr *[]E, err error) {
     sqlRows, err:=selectQueryList(r.SelectQueryBody)
+    if err != nil {
+        return
+    }
     list, err:= r.Repository.buildListEntity(sqlRows)
     sqlRows.Close()
     return list, err

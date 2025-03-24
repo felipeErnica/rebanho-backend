@@ -20,6 +20,12 @@ func NotFoundError(w http.ResponseWriter) {
     w.WriteHeader(http.StatusNotFound)
 }
 
+
+func AuthenticationError(w http.ResponseWriter, err error) {
+    util.LogError(err.Error())
+    w.WriteHeader(http.StatusUnauthorized)
+}
+
 func InitServerError(err error) {
     util.LogError(err.Error())
     util.LogError("Erro na inicialização de server!")

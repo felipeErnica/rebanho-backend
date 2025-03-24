@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type WeightGroupHandler struct {
     Repository  repositories.WeightGroupRepository
 }
 
-func InitWeightGroups(mux *http.ServeMux) {
+func InitWeightGroups(app *app.App) {
     repository:=new(repositories.WeightGroupRepository)
     repository.Init()
 
@@ -25,11 +26,11 @@ func InitWeightGroups(mux *http.ServeMux) {
         Impl: impl,
     }
 
-    mux.HandleFunc("GET /weight/groups/", handler.FindAll)
-    mux.HandleFunc("GET /weight/groups/{id}", handler.FindById)
-    mux.HandleFunc("POST /weight/groups", handler.Add)
-    mux.HandleFunc("POST /weight/groups/save", handler.Save)
-    mux.HandleFunc("DELETE /weight/groups/{id}", handler.Delete)
+    app.HandleFunc("GET /weight/groups/", handler.FindAll)
+    app.HandleFunc("GET /weight/groups/{id}", handler.FindById)
+    app.HandleFunc("POST /weight/groups", handler.Add)
+    app.HandleFunc("POST /weight/groups/save", handler.Save)
+    app.HandleFunc("DELETE /weight/groups/{id}", handler.Delete)
     LogControllersInit("Grupos de Pesagem")
 }
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -13,7 +14,7 @@ type MilkHandler struct {
     Repository  repositories.MilkRepository
 }
 
-func InitMilk(mux *http.ServeMux) {
+func InitMilk(app *app.App) {
     repository:= repositories.MilkRepository{}
     repository.Init()
 
@@ -26,12 +27,12 @@ func InitMilk(mux *http.ServeMux) {
         Repository: repository,
     }
 
-    mux.HandleFunc("GET /milkEntries/page", handler.FindPage)
-    mux.HandleFunc("GET /milkEntries/animal/{animalId}", handler.FindByCow)
-    mux.HandleFunc("GET /milkEntries/entryDate/{entryDate}", handler.FindByEntryDate)
-    mux.HandleFunc("POST /milkEntries/", handler.Add)
-    mux.HandleFunc("POST /milkEntries/save", handler.Save)
-    mux.HandleFunc("DELETE /milkEntries/{id}", handler.Delete)
+    app.HandleFunc("GET /milkEntries/page", handler.FindPage)
+    app.HandleFunc("GET /milkEntries/animal/{animalId}", handler.FindByCow)
+    app.HandleFunc("GET /milkEntries/entryDate/{entryDate}", handler.FindByEntryDate)
+    app.HandleFunc("POST /milkEntries/", handler.Add)
+    app.HandleFunc("POST /milkEntries/save", handler.Save)
+    app.HandleFunc("DELETE /milkEntries/{id}", handler.Delete)
     LogControllersInit("Entradas de Leite")
 }
 

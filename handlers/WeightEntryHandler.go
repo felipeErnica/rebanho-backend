@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 )
@@ -12,7 +13,7 @@ type WeightEntryHandler struct {
     Repository  repositories.WeightEntryRepository
 }
 
-func InitWeightEntries(mux *http.ServeMux) {
+func InitWeightEntries(app *app.App) {
     repository:=new(repositories.WeightEntryRepository)
     repository.Init()
 
@@ -25,11 +26,11 @@ func InitWeightEntries(mux *http.ServeMux) {
         Impl: impl,
     }
 
-    mux.HandleFunc("GET /weight/group/{groupId}/entries", handler.FindByGroupId)
-    mux.HandleFunc("GET /weight/entries/{id}", handler.FindById)
-    mux.HandleFunc("POST /weight/entries", handler.Add)
-    mux.HandleFunc("POST /weight/entries/save", handler.Save)
-    mux.HandleFunc("DELETE /weight/entries/{id}", handler.Delete)
+    app.HandleFunc("GET /weight/group/{groupId}/entries", handler.FindByGroupId)
+    app.HandleFunc("GET /weight/entries/{id}", handler.FindById)
+    app.HandleFunc("POST /weight/entries", handler.Add)
+    app.HandleFunc("POST /weight/entries/save", handler.Save)
+    app.HandleFunc("DELETE /weight/entries/{id}", handler.Delete)
     LogControllersInit("Entradas de Peso")
 }
 
