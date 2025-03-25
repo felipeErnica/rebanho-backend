@@ -51,7 +51,7 @@ func (r *PregnancyTestGroupRepository) buildListEntity(rows *sql.Rows) (arr *[]e
 }
 
 func (r *PregnancyTestGroupRepository) saveOrUpdateScan(query string, model *entity.PregancyTestGroup) error {
-    return execQuery(query, model.Id, model.TestDate, model.NumberEntries, model.NumberPregnants)
+    return ExecQuery(query, model.Id, model.TestDate, model.NumberEntries, model.NumberPregnants)
 }
 
 func (r *PregnancyTestGroupRepository) FindAll() (*[]entity.PregancyTestGroup, error) {

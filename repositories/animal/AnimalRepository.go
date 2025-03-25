@@ -1,4 +1,4 @@
-package repositories
+package animal
 
 import (
 	"database/sql"
@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/repositories"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type AnimalRepository struct {
-    Base      PageRepositoryImpl[entity.Animal]
+    Base repositories.PageRepositoryImpl[entity.Animal]
 }
 
 func (r *AnimalRepository) Init() {
@@ -38,26 +39,26 @@ func (r *AnimalRepository) Init() {
         "birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod", "average_birth_interval", "max_peak",
         "children_quantity", "created_at", "isr")
 
-    baseRepo:= &RepositoryImpl[entity.Animal]{
+    baseRepo:= &repositories.RepositoryImpl[entity.Animal]{
         Repository: r,
         TableName: "animals",
         SelectQueryBody: selectQueryBody.Build(),
         InsertQuery: insertQuery.Build(),
         UpdateQuery: updateQuery.Build(),
     }
-    r.Base = PageRepositoryImpl[entity.Animal]{
+    r.Base = repositories.PageRepositoryImpl[entity.Animal]{
         Base: baseRepo,
         PageRepository: r,
         DateFields: dateFields,
     }
 }
 
-func (r *AnimalRepository) setNewEntity(model *entity.Animal, id string, createdAt time.Time) {
+func (r *AnimalRepository) SetNewEntity(model *entity.Animal, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
 }
 
-func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.Animal, err error) {
+func (r *AnimalRepository) BuildListEntity(sqlRows *sql.Rows) (list *[]entity.Animal, err error) {
     var animals []entity.Animal
     for sqlRows.Next() {
         var animal entity.Animal
@@ -76,7 +77,7 @@ func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.An
     return &animals, err
 }
 
-func (r *AnimalRepository) buildEntity(sqlStatement *sql.Row) (model *entity.Animal, err error) {
+func (r *AnimalRepository) BuildEntity(sqlStatement *sql.Row) (model *entity.Animal, err error) {
     var animal entity.Animal
     err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate,
         &animal.DeathDate, &animal.Status, &animal.WeaningDate, &animal.AverageProd, &animal.AverageBirthInterval, &animal.MaxPeak,
@@ -87,13 +88,13 @@ func (r *AnimalRepository) buildEntity(sqlStatement *sql.Row) (model *entity.Ani
     return &animal, err
 }
 
-func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal) error {
-    return execQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.Father.Id, animal.Mother.Id,
+func (r *AnimalRepository) SaveOrUpdateScan(query string, animal *entity.Animal) error {
+    return repositories.ExecQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.Father.Id, animal.Mother.Id,
         animal.BirthDate, animal.DeathDate, animal.Pasture.Id, animal.WeaningDate, animal.Status, animal.AverageProd, 
         animal.AverageBirthInterval, animal.MaxPeak, animal.ChildrenQuantity, animal.CreatedAt, animal.Isr)
 }
 
-func (r *AnimalRepository) getFields(sort string) (firstField string, secondField string) {
+func (r *AnimalRepository) GetFields(sort string) (firstField string, secondField string) {
     switch (sort) {
     case "name": 
         return "animals.name", "animals.id"
@@ -120,7 +121,7 @@ func (r *AnimalRepository) getFields(sort string) (firstField string, secondFiel
     }
 }
 
-func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) string {
+func (r *AnimalRepository) CreateKey(sort string, lastEntry *entity.Animal) string {
     var key string
     switch (sort) {
     case "name": 

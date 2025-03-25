@@ -115,7 +115,7 @@ func (r *PastureEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.
 }
 
 func (r *PastureEntryRepository) saveOrUpdateScan(query string, model *entity.PastureEntry) error {
-    return execQuery(query, model.Id, model.EntryDate, model.ExitDate, model.Animal.Id, 
+    return ExecQuery(query, model.Id, model.EntryDate, model.ExitDate, model.Animal.Id, 
         model.Pasture.Id, model.CreatedAt)
 }
 

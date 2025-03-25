@@ -110,7 +110,7 @@ func (m *MilkRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.MilkEntr
 }
 	
 func (m *MilkRepository) saveOrUpdateScan(query string, model *entity.MilkEntry) error {
-    return execQuery(query, model.Id, model.EntryDate, model.MilkQuantity, 
+    return ExecQuery(query, model.Id, model.EntryDate, model.MilkQuantity, 
         model.Animal.Id, model.Pasture.Id, model.LactationId, model.CreatedAt)
 }
 

@@ -1,15 +1,16 @@
-package repositories
+package insemination
 
 import (
 	"database/sql"
 	"time"
 
-	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/entity/insemination"
+	"github.com/felipeErnica/rebanho-backend/repositories"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type InseminationEntryRepository struct {
-	Impl RepositoryImpl[entity.InseminationEntry]
+	Impl repositories.RepositoryImpl[insemination.InseminationEntry]
 }
 
 func (r *InseminationEntryRepository) Init() {
@@ -24,7 +25,8 @@ func (r *InseminationEntryRepository) Init() {
         "group_id", "observation", "status", "loss_id", "calf_id", "created_at")
     updateQuery:=new(util.QueryConstructor).Update("insemination_entries", "animal_id", 
         "group_id", "observation", "status", "loss_id", "calf_id", "created_at")
-    r.Impl = RepositoryImpl[entity.InseminationEntry]{
+
+    r.Impl = repositories.RepositoryImpl[insemination.InseminationEntry]{
         TableName: "insemination_entries",
         SelectQueryBody: selectQuery.Build(),
         InsertQuery: insertQuery.Build(),
@@ -33,13 +35,13 @@ func (r *InseminationEntryRepository) Init() {
     }
 }
 
-func (r *InseminationEntryRepository) setNewEntity(model *entity.InseminationEntry, id string, createdAt time.Time) {
+func (r *InseminationEntryRepository) SetNewEntity(model *insemination.InseminationEntry, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
 }
 
-func (r *InseminationEntryRepository) buildEntity(row *sql.Row) (model *entity.InseminationEntry, err error) {
-    var entry entity.InseminationEntry
+func (r *InseminationEntryRepository) BuildEntity(row *sql.Row) (model *insemination.InseminationEntry, err error) {
+    var entry insemination.InseminationEntry
     err = row.Scan(&entry.Id, &entry.GroupId, &entry.Observation, &entry.Status, 
         &entry.Animal.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder, 
         &entry.Loss.Id, &entry.Loss.LossType, &entry.Loss.LossDate,
@@ -47,10 +49,10 @@ func (r *InseminationEntryRepository) buildEntity(row *sql.Row) (model *entity.I
     return &entry, err
 }
 
-func (r *InseminationEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.InseminationEntry, err error) {
-    var entries []entity.InseminationEntry
+func (r *InseminationEntryRepository) BuildListEntity(rows *sql.Rows) (arr *[]insemination.InseminationEntry, err error) {
+    var entries []insemination.InseminationEntry
     for rows.Next() {
-        var entry entity.InseminationEntry
+        var entry insemination.InseminationEntry
         err = rows.Scan(&entry.Id, &entry.GroupId, &entry.Observation, &entry.Status, 
             &entry.Animal.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder, 
             &entry.Loss.Id, &entry.Loss.LossType, &entry.Loss.LossDate,
@@ -63,25 +65,25 @@ func (r *InseminationEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]en
     return &entries, err
 }
 
-func (r *InseminationEntryRepository) saveOrUpdateScan(query string, model *entity.InseminationEntry) error {
-    return execQuery(query, model.Id, model.Animal.Id, model.GroupId, model.Observation, 
+func (r *InseminationEntryRepository) SaveOrUpdateScan(query string, model *insemination.InseminationEntry) error {
+    return repositories.ExecQuery(query, model.Id, model.Animal.Id, model.GroupId, model.Observation, 
         model.Status, model.Loss.Id, model.CreatedAt)
 }
 
-func (r *InseminationEntryRepository) FindByGroupId(groupId string) (*[]entity.InseminationEntry, error) {
+func (r *InseminationEntryRepository) FindByGroupId(groupId string) (*[]insemination.InseminationEntry, error) {
     query:="WHERE entry.group_id = $1"
     return r.Impl.FindListByQuery(query, groupId)
 }
 
-func (r *InseminationEntryRepository) FindById(id string) (*entity.InseminationEntry, error) {
+func (r *InseminationEntryRepository) FindById(id string) (*insemination.InseminationEntry, error) {
     return r.Impl.FindById(id)
 }
 
-func (r *InseminationEntryRepository) Add(newModel entity.InseminationEntry) (*entity.InseminationEntry, error) {
+func (r *InseminationEntryRepository) Add(newModel insemination.InseminationEntry) (*insemination.InseminationEntry, error) {
     return r.Impl.Add(newModel)
 }
 
-func (r *InseminationEntryRepository) Save(model *entity.InseminationEntry) error {
+func (r *InseminationEntryRepository) Save(model *insemination.InseminationEntry) error {
     return r.Impl.Save(model)
 }
 

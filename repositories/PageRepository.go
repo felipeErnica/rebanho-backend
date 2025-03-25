@@ -11,8 +11,8 @@ import (
 )
 
 type PageRepository[E entity.IEntity] interface {
-    getFields(sort string) (firstField string, secondField string)
-    createKey(sort string, lastEntry *E) (key string)
+    GetFields(sort string) (firstField string, secondField string)
+    CreateKey(sort string, lastEntry *E) (key string)
     Repository[E]
 }
 
@@ -50,7 +50,7 @@ func (q *PageRepositoryImpl[E]) verifyQueryParams(sort string, direction string)
 }
 
 func (r *PageRepositoryImpl[E]) buildPage(query string, sort string, args... any) (page *entity.Page[E], err error) {
-    sqlStatement, err:= selectQueryList(query, args...)
+    sqlStatement, err:= SelectQueryList(query, args...)
     if err != nil {
         return
     }
@@ -163,14 +163,14 @@ func (r *PageRepositoryImpl[E]) CreateNextCursor(sort string, array []E) (cursor
         return
     }
     lastEntry:=array[len(array) - 1]
-    key:= r.PageRepository.createKey(sort, &lastEntry)
+    key:= r.PageRepository.CreateKey(sort, &lastEntry)
     cursor = base64.StdEncoding.EncodeToString([]byte(key))
     return cursor, err
 }
 
 func (r *PageRepositoryImpl[E]) FindPage(sort string, direction string, cursor string) (page *entity.Page[E], err error) {
     sort, direction = r.verifyQueryParams(sort, direction)
-    firstField, secondField:= r.PageRepository.getFields(sort)
+    firstField, secondField:= r.PageRepository.GetFields(sort)
     nullOrdering:= r.getNullOrdering(direction)
 
     query:= new(util.QueryConstructor).FromQuery(r.Base.SelectQueryBody)
@@ -191,7 +191,7 @@ func (r *PageRepositoryImpl[E]) FindPage(sort string, direction string, cursor s
 func (r *PageRepositoryImpl[E]) FindRandomQueryPage(query *util.QueryConstructor, sort string, 
     direction string, cursor string, args... any) (page *entity.Page[E], err error) {
     sort, direction = r.verifyQueryParams(sort, direction)
-    firstField, secondField:= r.PageRepository.getFields(sort)
+    firstField, secondField:= r.PageRepository.GetFields(sort)
     nullOrderinrg:= r.getNullOrdering(direction)
     query.Order(firstField + nullOrderinrg).AndOrder(secondField + nullOrderinrg)
     query.Limit(PAGE_LIMIT)

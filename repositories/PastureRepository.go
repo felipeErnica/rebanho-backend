@@ -54,7 +54,7 @@ func (r *PastureRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Pastu
 }
 
 func (r *PastureRepository) saveOrUpdateScan(query string, model *entity.Pasture) error {
-    err:= execQuery(query, model.Id, model.Name, model.Bull.Id, model.CreatedAt)
+    err:= ExecQuery(query, model.Id, model.Name, model.Bull.Id, model.CreatedAt)
     return err
 }
 

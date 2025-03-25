@@ -1,15 +1,16 @@
-package repositories
+package animal
 
 import (
 	"database/sql"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/repositories"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type BirthEntryRepository struct {
-	Impl RepositoryImpl[entity.BirthEntry]
+	Impl repositories.RepositoryImpl[entity.BirthEntry]
 }
 
 func (r *BirthEntryRepository) Init() {
@@ -17,7 +18,7 @@ func (r *BirthEntryRepository) Init() {
         selectQuery.From("birth_entries", "")
     insertQuery:=new(util.QueryConstructor).Insert("birth_entries", "id", "calf_id", "observation")
     updateQuery:=new(util.QueryConstructor).Update("birth_entries", "id", "calf_id", "observation")
-    r.Impl = RepositoryImpl[entity.BirthEntry]{
+    r.Impl = repositories.RepositoryImpl[entity.BirthEntry]{
         TableName: "birth_entries",
         SelectQueryBody: selectQuery.Build(),
         InsertQuery: insertQuery.Build(),
@@ -26,18 +27,18 @@ func (r *BirthEntryRepository) Init() {
     }
 }
 
-func (r *BirthEntryRepository) setNewEntity(model *entity.BirthEntry, id string, createdAt time.Time) {
+func (r *BirthEntryRepository) SetNewEntity(model *entity.BirthEntry, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
 }
 
-func (r *BirthEntryRepository) buildEntity(row *sql.Row) (model *entity.BirthEntry, err error) {
+func (r *BirthEntryRepository) BuildEntity(row *sql.Row) (model *entity.BirthEntry, err error) {
     var entry entity.BirthEntry
     err = row.Scan(&entry.Id, &entry.Observation, &entry.CalfId)
     return &entry, err
 }
 
-func (r *BirthEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.BirthEntry, err error) {
+func (r *BirthEntryRepository) BuildListEntity(rows *sql.Rows) (arr *[]entity.BirthEntry, err error) {
     var entries []entity.BirthEntry
     for rows.Next() {
         var entry entity.BirthEntry
@@ -50,8 +51,8 @@ func (r *BirthEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Bi
     return &entries, err
 }
 
-func (r *BirthEntryRepository) saveOrUpdateScan(query string, model *entity.BirthEntry) error {
-    return execQuery(query, model.Id, model.CalfId, model.Observation)
+func (r *BirthEntryRepository) SaveOrUpdateScan(query string, model *entity.BirthEntry) error {
+    return repositories.ExecQuery(query, model.Id, model.CalfId, model.Observation)
 }
 
 func (r *BirthEntryRepository) Delete(id string) error {

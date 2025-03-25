@@ -12,13 +12,18 @@ import (
 
 var db *sql.DB
 const PAGE_LIMIT int = 500
+var userId *string;
 
 func InitRepository(dbConn *sql.DB) {
     db = dbConn
 	util.LogInfo("O Repositório foi iniciado com sucesso!")
 }
 
-func selectQueryList(query string, args ...any) (*sql.Rows, error) {
+func SetUserId(id *string) {
+    userId = id
+}
+
+func SelectQueryList(query string, args ...any) (*sql.Rows, error) {
     query = strings.Join(strings.Fields(query)," ")
     println()
     util.LogInfo("Enviando query->   " + query)
@@ -26,14 +31,14 @@ func selectQueryList(query string, args ...any) (*sql.Rows, error) {
     return sql, err
 }
 
-func selectQueryOne(query string, args ...any) *sql.Row {
+func SelectQueryOne(query string, args ...any) *sql.Row {
     query = strings.Join(strings.Fields(query)," ")
     println()
     util.LogInfo("Enviando query->   " + query)
     return db.QueryRow(query, args...)
 }
 
-func execQuery(query string, args ...any) error {
+func ExecQuery(query string, args ...any) error {
     query = strings.Join(strings.Fields(query)," ")
     util.LogInfo("Enviando query->   " + query)
     println()

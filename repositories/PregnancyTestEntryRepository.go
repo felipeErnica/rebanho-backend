@@ -63,7 +63,7 @@ func (r *PregancyTestEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]en
 }
 
 func (r *PregancyTestEntryRepository) saveOrUpdateScan(query string, model *entity.PregnancyTestEntry) error {
-    return execQuery(query, model.Id, model.Animal.Id, model.GroupId, model.IsPregnant, 
+    return ExecQuery(query, model.Id, model.Animal.Id, model.GroupId, model.IsPregnant, 
         model.BirthForecast, model.Calf.Id, model.Loss.Id, model.CreatedAt)
 }
 
