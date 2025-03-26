@@ -4,7 +4,8 @@ import "time"
 
 type BirthEntry struct {
 	Id          string
-	CalfId      string
+    Animal      AnimalShort
+	Calf        Calf
 	Observation string
 	CreatedAt   time.Time
 }

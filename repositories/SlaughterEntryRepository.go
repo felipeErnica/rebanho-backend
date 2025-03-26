@@ -55,7 +55,7 @@ func (r *SlaughterEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entit
 }
 
 func (r *SlaughterEntryRepository) saveOrUpdateScan(query string, model *entity.SlaughterEntry) error {
-    return ExecQuery(query, model.Id, model.Group.Id, model.Weight, model.DeadWeight, model.CreatedAt)
+    return execQuery(query, model.Id, model.Group.Id, model.Weight, model.DeadWeight, model.CreatedAt)
 }
 
 func (r *SlaughterEntryRepository) FindByGroupId(groupId string) (*[]entity.SlaughterEntry, error) {

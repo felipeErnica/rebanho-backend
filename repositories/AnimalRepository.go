@@ -1,4 +1,4 @@
-package animal
+package repositories
 
 import (
 	"database/sql"
@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/felipeErnica/rebanho-backend/repositories"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type AnimalRepository struct {
-    Base repositories.PageRepositoryImpl[entity.Animal]
+    Impl PageRepositoryImpl[entity.Animal]
+    SelectQuery *util.QueryConstructor
 }
 
 func (r *AnimalRepository) Init() {
@@ -22,50 +22,53 @@ func (r *AnimalRepository) Init() {
         "deleted_at",
     }
 
-    selectQueryBody:=new(util.QueryConstructor).Select("animals", "id", "name", "identification_number", "birth_date", "death_date",
-        "weaning_date", "status", "average_prod", "average_birth_interval", "max_peak", "children_quantity", 
-        "created_at", "deleted_at", "isr", "sex")
+    selectQueryBody:=new(util.QueryConstructor).Select("animals", "id", "name", "identification_number", "birth_date", "sex", "death_date",
+        "weaning_date", "status", "average_prod", "average_birth_interval", "max_peak", "isr", "children_quantity", "observation")
         selectQueryBody.AndSelect("mother", "id", "name", "identification_number")
         selectQueryBody.AndSelect("father", "id", "name", "identification_number")
         selectQueryBody.AndSelect("pastures", "id", "name")
-        selectQueryBody.From("animals_active", "animals")
+        selectQueryBody.From("animals", "")
         selectQueryBody.LeftJoin("animals", "father").On("father.id", "animals.father_id")
         selectQueryBody.LeftJoin("animals", "mother").On("mother.id", "animals.mother_id")
         selectQueryBody.LeftJoin("pastures", "").On("pastures.id", "animals.pasture_id")
-    insertQuery:=new(util.QueryConstructor).Insert("animals", "id", "name", "identification_number", "father_id", "mother_id",
-        "birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod", "average_birth_interval", "max_peak",
-        "children_quantity", "created_at", "isr")
-    updateQuery:=new(util.QueryConstructor).Update("animals", "name", "identification_number", "father_id", "mother_id",
-        "birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod", "average_birth_interval", "max_peak",
-        "children_quantity", "created_at", "isr")
+        selectQueryBody.Where("animals.deleted_at is null")
+    r.SelectQuery = selectQueryBody
 
-    baseRepo:= &repositories.RepositoryImpl[entity.Animal]{
+    insertQuery:=new(util.QueryConstructor).Insert("animals", "id", "name", "identification_number", "father_id", "mother_id",
+        "birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod", 
+        "average_birth_interval", "max_peak", "isr",
+        "children_quantity", "observation", "created_at")
+    updateQuery:=new(util.QueryConstructor).Update("animals", "id", "name", "identification_number", "father_id", "mother_id",
+        "birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod", 
+        "average_birth_interval", "max_peak", "isr",
+        "children_quantity", "observation", "created_at")
+
+    baseRepo:= &RepositoryImpl[entity.Animal]{
         Repository: r,
         TableName: "animals",
         SelectQueryBody: selectQueryBody.Build(),
         InsertQuery: insertQuery.Build(),
         UpdateQuery: updateQuery.Build(),
     }
-    r.Base = repositories.PageRepositoryImpl[entity.Animal]{
+    r.Impl = PageRepositoryImpl[entity.Animal]{
         Base: baseRepo,
         PageRepository: r,
         DateFields: dateFields,
     }
 }
 
-func (r *AnimalRepository) SetNewEntity(model *entity.Animal, id string, createdAt time.Time) {
+func (r *AnimalRepository) setNewEntity(model *entity.Animal, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
 }
 
-func (r *AnimalRepository) BuildListEntity(sqlRows *sql.Rows) (list *[]entity.Animal, err error) {
+func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.Animal, err error) {
     var animals []entity.Animal
     for sqlRows.Next() {
         var animal entity.Animal
-        err = sqlRows.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate,
+        err = sqlRows.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate, &animal.Sex,
             &animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd, 
-            &animal.AverageBirthInterval, &animal.MaxPeak,
-            &animal.ChildrenQuantity, &animal.CreatedAt, &animal.DeletedAt, &animal.Isr, &animal.Sex,
+            &animal.AverageBirthInterval, &animal.MaxPeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
             &animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber, 
             &animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
             &animal.Pasture.Id, &animal.Pasture.Name)
@@ -77,24 +80,24 @@ func (r *AnimalRepository) BuildListEntity(sqlRows *sql.Rows) (list *[]entity.An
     return &animals, err
 }
 
-func (r *AnimalRepository) BuildEntity(sqlStatement *sql.Row) (model *entity.Animal, err error) {
+func (r *AnimalRepository) buildEntity(sqlStatement *sql.Row) (model *entity.Animal, err error) {
     var animal entity.Animal
-    err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate,
-        &animal.DeathDate, &animal.Status, &animal.WeaningDate, &animal.AverageProd, &animal.AverageBirthInterval, &animal.MaxPeak,
-        &animal.ChildrenQuantity, &animal.CreatedAt, &animal.DeletedAt, &animal.Isr,
+    err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate, &animal.Sex,
+        &animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd, 
+        &animal.AverageBirthInterval, &animal.MaxPeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
         &animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber, 
         &animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
         &animal.Pasture.Id, &animal.Pasture.Name)
     return &animal, err
 }
 
-func (r *AnimalRepository) SaveOrUpdateScan(query string, animal *entity.Animal) error {
-    return repositories.ExecQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.Father.Id, animal.Mother.Id,
+func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal) error {
+    return execQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.Father.Id, animal.Mother.Id,
         animal.BirthDate, animal.DeathDate, animal.Pasture.Id, animal.WeaningDate, animal.Status, animal.AverageProd, 
-        animal.AverageBirthInterval, animal.MaxPeak, animal.ChildrenQuantity, animal.CreatedAt, animal.Isr)
+        animal.AverageBirthInterval, animal.MaxPeak, animal.Isr, animal.ChildrenQuantity, animal.Observation, animal.CreatedAt)
 }
 
-func (r *AnimalRepository) GetFields(sort string) (firstField string, secondField string) {
+func (r *AnimalRepository) getFields(sort string) (firstField string, secondField string) {
     switch (sort) {
     case "name": 
         return "animals.name", "animals.id"
@@ -121,7 +124,7 @@ func (r *AnimalRepository) GetFields(sort string) (firstField string, secondFiel
     }
 }
 
-func (r *AnimalRepository) CreateKey(sort string, lastEntry *entity.Animal) string {
+func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) string {
     var key string
     switch (sort) {
     case "name": 
@@ -166,45 +169,43 @@ func (r *AnimalRepository) CreateKey(sort string, lastEntry *entity.Animal) stri
 }
 
 func (r *AnimalRepository) FindPage(sort string, direction string, cursor string) (page *entity.Page[entity.Animal], err error) {
-    return r.Base.FindPage(sort, direction, cursor)
+    return r.Impl.FindRandomQueryPage(r.SelectQuery, sort, direction, cursor)
 }
 
 func (r *AnimalRepository) FindById(id string) (*entity.Animal, error) {
-    return r.Base.FindById(id)
-}
-
-func (r *AnimalRepository) FindByMotherId(motherId string) (*[]entity.Animal, error) {
-    return r.Base.FindListByQuery("WHERE mother.id = $1 ORDER BY birth_date ASC", motherId)
+    return r.Impl.FindById(id)
 }
 
 func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]entity.Animal, error) {
-    return r.Base.FindListByQuery("WHERE father.id = $1 ORDER BY birth_date ASC", fatherId)
+    query:=r.SelectQuery.And("mother.id = $1").Order("animals.birth_date asc")
+    return r.Impl.FindListByQuery(query, fatherId)
 }
 
 func (r *AnimalRepository) FindByPastureId(sort string, direction string, 
     cursor string, pastureId string) (page *entity.Page[entity.Animal], err error) {
-    query:= new(util.QueryConstructor).FromQuery(r.Base.Base.SelectQueryBody)
+    query:= new(util.QueryConstructor).FromQuery(r.Impl.Base.SelectQueryBody)
     query.Where("animals.pastureId = $1")
-    return r.Base.FindRandomQueryPage(query, sort, direction, cursor, pastureId)
+    return r.Impl.FindRandomQueryPage(query, sort, direction, cursor, pastureId)
 }
 
 func (r *AnimalRepository) FindByName(name string) (*[]entity.Animal, error) {
-    return r.Base.FindListByQuery("WHERE animals.name = $1", name)
+    query:=r.SelectQuery.And("animals.name = $1").And("animals.user_id = $2")
+    return r.Impl.FindListByQuery(query, name, GetUserId())
 }
 
 func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]entity.Animal, error) {
-    return r.Base.FindListByQuery("WHERE animals.identification_number = $1", number)
+    query:=r.SelectQuery.And("animals.name = $1").And("animals.user_id = $2")
+    return r.Impl.FindListByQuery(query, number, GetUserId())
 }
 
 func (r *AnimalRepository) Add(create entity.Animal) (*entity.Animal, error) {
-    return r.Base.Add(create)
+    return r.Impl.Add(create)
 }
 
 func (r *AnimalRepository) Save(animal *entity.Animal) error {
-    return r.Base.Save(animal)
+    return r.Impl.Save(animal)
 }
 
 func (r *AnimalRepository) Delete(id string) error {
-    return r.Base.SoftDelete(id)
+    return r.Impl.SoftDelete(id)
 }
-

@@ -51,7 +51,7 @@ func (r *UserRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.User, er
 }
 
 func (r *UserRepository) saveOrUpdateScan(query string, model *entity.User) error {
-    return ExecQuery(query, model.Id, model.Username, model.Password, model.CreatedAt)
+    return execQuery(query, model.Id, model.Username, model.Password, model.CreatedAt)
 }
 
 func (r *UserRepository) FindByUsername(username string) (*entity.User, error) {

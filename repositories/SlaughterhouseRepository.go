@@ -50,7 +50,7 @@ func (r *SlaughterhouseRepository) buildListEntity(rows *sql.Rows) (arr *[]entit
 }
 
 func (r *SlaughterhouseRepository) saveOrUpdateScan(query string, model *entity.Slaughterhouse) error {
-    return ExecQuery(query, model.Id, model.Name, model.TaxNumber, model.CreatedAt, model.UserId)
+    return execQuery(query, model.Id, model.Name, model.TaxNumber, model.CreatedAt, model.UserId)
 }
 
 func (r *SlaughterhouseRepository) FindAll() (*[]entity.Slaughterhouse, error) {

@@ -38,7 +38,7 @@ func (h *UserHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
         JsonServerError(err, w)
     }
     
-    userDatabase, err:= h.Repository.FindByUsername(user.Username)
+    userDatabase, err:= h.Repository.FindByUsername(user.Name)
     if err != nil {
         util.LogError(err.Error())
         w.WriteHeader(http.StatusUnauthorized)
@@ -68,5 +68,5 @@ func (h *UserHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
-
+    h.Impl.Add(w,r)
 }

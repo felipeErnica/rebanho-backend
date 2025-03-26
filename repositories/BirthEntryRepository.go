@@ -1,0 +1,77 @@
+package repositories
+
+import (
+	"database/sql"
+	"time"
+
+	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
+)
+
+type BirthEntryRepository struct {
+	Impl            PageRepositoryImpl[entity.BirthEntry]
+	SelectQueryBody *util.QueryConstructor
+}
+
+func (r *BirthEntryRepository) Init() {
+	selectQuery := new(util.QueryConstructor).Select("birth", "id", "observation")
+        selectQuery.AndSelect("calf", "id", "name", "identification_number", "sex", "birth_date")
+        selectQuery.AndSelect("mother", "id", "name", "identification_number", "animal_order")
+        selectQuery.AndSelect("father", "id", "name")
+        selectQuery.From("birth_entries", "")
+	insertQuery := new(util.QueryConstructor).Insert("birth_entries", "id", "animal_id", "calf_id", "observation")
+	updateQuery := new(util.QueryConstructor).Update("birth_entries", "id", "animal_id", "calf_id", "observation")
+    base:= RepositoryImpl[entity.BirthEntry]{
+		TableName:       "birth_entries",
+		SelectQueryBody: selectQuery,
+		InsertQuery:     insertQuery,
+		UpdateQuery:     updateQuery,
+		Repository:      r,
+	}
+    r.Impl = PageRepositoryImpl[entity.BirthEntry]{
+        Base: &base,
+    }
+}
+
+func (r *BirthEntryRepository) setNewEntity(model *entity.BirthEntry, id string, createdAt time.Time) {
+	model.Id = id
+	model.CreatedAt = createdAt
+}
+
+func (r *BirthEntryRepository) buildEntity(row *sql.Row) (model *entity.BirthEntry, err error) {
+	var entry entity.BirthEntry
+	err = row.Scan(&entry.Id, &entry.Observation,
+		&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.IdentificationNumber, &entry.Calf.Sex, &entry.Calf.BirthDate,
+		&entry.Calf.Father.Name,
+		&entry.Calf.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
+	return &entry, err
+}
+
+func (r *BirthEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.BirthEntry, err error) {
+	var entries []entity.BirthEntry
+	for rows.Next() {
+		var entry entity.BirthEntry
+		err = rows.Scan(&entry.Id, &entry.Observation,
+			&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.IdentificationNumber, &entry.Calf.Sex, &entry.Calf.BirthDate,
+			&entry.Calf.Father.Name,
+			&entry.Calf.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
+		if err != nil {
+			return
+		}
+		entries = append(entries, entry)
+	}
+	return &entries, err
+}
+
+func (r *BirthEntryRepository) saveOrUpdateScan(query string, model *entity.BirthEntry) error {
+	return execQuery(query, model.Id, model.Animal.Id, model.Calf.Id, model.Observation)
+}
+
+func (r *BirthEntryRepository) FindByMotherId(motherId string) (*[]entity.BirthEntry, error) {
+
+	return
+}
+
+func (r *BirthEntryRepository) Delete(id string) error {
+	return r.Impl.HardDelete(id)
+}

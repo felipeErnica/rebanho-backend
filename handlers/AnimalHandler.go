@@ -18,7 +18,7 @@ func InitAnimal(app *app.App) {
     repository.Init()
 
     impl:= HandlerImpl[entity.Animal]{
-        Repository: *repository.Base.Base,
+        Repository: *repository.Impl.Base,
     }
 
     handler:=AnimalHandler{ 

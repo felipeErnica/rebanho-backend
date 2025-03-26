@@ -7,8 +7,8 @@ type Animal struct {
 	Name                 *string      `json:"name"`
 	IdentificationNumber *string      `json:"identification_number"`
 	AnimalOrder          int          `json:"animal_order"`
-	Sex                  *string       `json:"sex"`
-	WeaningDate          *time.Time    `json:"weaning_date"`
+	Sex                  *string      `json:"sex"`
+	WeaningDate          *time.Time   `json:"weaning_date"`
 	Father               AnimalShort  `json:"father"`
 	Mother               AnimalShort  `json:"mother"`
 	BirthDate            *time.Time   `json:"birth_date"`
@@ -20,6 +20,7 @@ type Animal struct {
 	AverageBirthInterval float32      `json:"average_bitrh_interval"`
 	MaxPeak              float32      `json:"max_peak"`
 	ChildrenQuantity     int          `json:"children_quantity"`
+	Observation          string       `json:"observation"`
 	CreatedAt            time.Time    `json:"created_at"`
 	DeletedAt            *time.Time   `json:"deleted_at"`
 	UserId               string       `json:"user_id"`
@@ -50,9 +51,9 @@ type Calf struct {
 }
 
 type CalfShort struct {
-	Id                   *string     `json:"id"`
-	Sex                  *string     `json:"sex"`
-	BirthDate            *time.Time  `json:"birth_date"`
+	Id        *string    `json:"id"`
+	Sex       *string    `json:"sex"`
+	BirthDate *time.Time `json:"birth_date"`
 }
 
 type AnimalName struct {

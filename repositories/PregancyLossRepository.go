@@ -70,7 +70,7 @@ func (r *PregnancyLossRepository) buildListEntity(rows *sql.Rows) (arr *[]entity
 }
 
 func (r *PregnancyLossRepository) saveOrUpdateScan(query string, model *entity.PregnancyLoss) error {
-    return ExecQuery(query, model.Id, model.Animal.Id, model.LossType, model.LossDate, model.CreatedAt)
+    return execQuery(query, model.Id, model.Animal.Id, model.LossType, model.LossDate, model.CreatedAt)
 }
 
 func (r *PregnancyLossRepository) getFields(sort string) (firstField string, secondField string) {

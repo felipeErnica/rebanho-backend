@@ -50,7 +50,7 @@ func (r *WeightGroupRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.W
 }
 
 func (r *WeightGroupRepository) saveOrUpdateScan(query string, model *entity.WeightGroup) error {
-    return ExecQuery(query, model.Id, model.WeightDate, model.CreatedAt, model.UserId)
+    return execQuery(query, model.Id, model.WeightDate, model.CreatedAt, model.UserId)
 }
 
 func (r *WeightGroupRepository) FindAll() (*[]entity.WeightGroup, error) {

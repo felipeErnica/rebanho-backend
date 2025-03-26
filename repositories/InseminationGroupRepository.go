@@ -1,16 +1,15 @@
-package insemination
+package repositories
 
 import (
 	"database/sql"
 	"time"
 
-	"github.com/felipeErnica/rebanho-backend/entity/insemination"
-	"github.com/felipeErnica/rebanho-backend/repositories"
+	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type InseminationGroupRepository struct {
-	Impl repositories.RepositoryImpl[insemination.InseminationGroup]
+	Impl RepositoryImpl[entity.InseminationGroup]
 }
 
 func (r *InseminationGroupRepository) Init() {
@@ -26,7 +25,7 @@ func (r *InseminationGroupRepository) Init() {
         "insemination_date", "created_at", "user_id")
     updateQuery:= new(util.QueryConstructor).Update("insemination_groups", "bull_id", 
         "insemination_date", "created_at", "user_id")
-    r.Impl = repositories.RepositoryImpl[insemination.InseminationGroup]{
+    r.Impl = RepositoryImpl[entity.InseminationGroup]{
         TableName: "insemination_groups",
         SelectQueryBody: selectQuery.Build(),
         InsertQuery: insertQuery.Build(),
@@ -35,23 +34,23 @@ func (r *InseminationGroupRepository) Init() {
     }
 }
 
-func (r *InseminationGroupRepository) SetNewEntity(model *insemination.InseminationGroup, id string, createdAt time.Time) {
+func (r *InseminationGroupRepository) setNewEntity(model *entity.InseminationGroup, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
 }
 
-func (r *InseminationGroupRepository) BuildEntity(row *sql.Row) (model *insemination.InseminationGroup, err error) {
-    var group insemination.InseminationGroup
+func (r *InseminationGroupRepository) buildEntity(row *sql.Row) (model *entity.InseminationGroup, err error) {
+    var group entity.InseminationGroup
     err = row.Scan(&group.Id, &group.InseminationDate, &group.Bull.Id, &group.Bull.Name, 
         &group.Bull.Mother.Id, &group.Bull.Mother.Name, 
         &group.Bull.Father.Id, &group.Bull.Father.Name)
     return &group, err
 }
 
-func (r *InseminationGroupRepository) BuildListEntity(rows *sql.Rows) (arr *[]insemination.InseminationGroup, err error) {
-    var groups []insemination.InseminationGroup
+func (r *InseminationGroupRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.InseminationGroup, err error) {
+    var groups []entity.InseminationGroup
     for rows.Next() {
-        var group insemination.InseminationGroup
+        var group entity.InseminationGroup
         err = rows.Scan(&group.Id, &group.InseminationDate, &group.Bull.Id, &group.Bull.Name, 
             &group.Bull.Mother.Id, &group.Bull.Mother.Name, 
             &group.Bull.Father.Id, &group.Bull.Father.Name)
@@ -63,23 +62,23 @@ func (r *InseminationGroupRepository) BuildListEntity(rows *sql.Rows) (arr *[]in
     return &groups, err
 }
 
-func (r *InseminationGroupRepository) SaveOrUpdateScan(query string, model *insemination.InseminationGroup) error {
-    return repositories.ExecQuery(query, model.Id, model.Bull.Id, model.InseminationDate, model.CreatedAt, model.UserId)
+func (r *InseminationGroupRepository) saveOrUpdateScan(query string, model *entity.InseminationGroup) error {
+    return execQuery(query, model.Id, model.Bull.Id, model.InseminationDate, model.CreatedAt, model.UserId)
 }
 
-func (r *InseminationGroupRepository) FindAll() (*[]insemination.InseminationGroup, error) {
+func (r *InseminationGroupRepository) FindAll() (*[]entity.InseminationGroup, error) {
     return r.Impl.FindAll()
 }
 
-func (r *InseminationGroupRepository) FindById(id string) (*insemination.InseminationGroup, error) {
+func (r *InseminationGroupRepository) FindById(id string) (*entity.InseminationGroup, error) {
     return r.Impl.FindById(id)
 }
 
-func (r *InseminationGroupRepository) Add(newModel insemination.InseminationGroup) (*insemination.InseminationGroup, error) {
+func (r *InseminationGroupRepository) Add(newModel entity.InseminationGroup) (*entity.InseminationGroup, error) {
     return r.Impl.Add(newModel)
 }
 
-func (r *InseminationGroupRepository) Save(model *insemination.InseminationGroup) error {
+func (r *InseminationGroupRepository) Save(model *entity.InseminationGroup) error {
     return r.Impl.Save(model)
 }
 

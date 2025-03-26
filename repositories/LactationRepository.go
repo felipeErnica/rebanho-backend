@@ -1,4 +1,4 @@
-package lactation
+package repositories
 
 import (
 	"database/sql"
@@ -62,12 +62,12 @@ func (r *LactationRepository) Init() {
 
 }
 
-func (l *LactationRepository) SetNewEntity(model *entity.Lactation, id string, createdAt time.Time) {
+func (l *LactationRepository) setNewEntity(model *entity.Lactation, id string, createdAt time.Time) {
 	model.Id = id
 	model.CreatedAt = createdAt
 }
 
-func (l *LactationRepository) BuildEntity(row *sql.Row) (model *entity.Lactation, err error) {
+func (l *LactationRepository) buildEntity(row *sql.Row) (model *entity.Lactation, err error) {
 	var lactation entity.Lactation
 	err = row.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
 		&lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation,
@@ -80,7 +80,7 @@ func (l *LactationRepository) BuildEntity(row *sql.Row) (model *entity.Lactation
 	return &lactation, err
 }
 
-func (l *LactationRepository) BuildListEntity(rows *sql.Rows) (list *[]entity.Lactation, err error) {
+func (l *LactationRepository) buildListEntity(rows *sql.Rows) (list *[]entity.Lactation, err error) {
 	var lactations []entity.Lactation
 	for rows.Next() {
 		var lactation entity.Lactation
@@ -155,8 +155,8 @@ func (r *LactationRepository) createKey(sort string, lactation *entity.Lactation
 	}
 }
 
-func (l *LactationRepository) SaveOrUpdateScan(query string, lactation *entity.Lactation) error {
-	return repositories.ExecQuery(query, lactation.Id, lactation.Cow.Id, lactation.Calf.Id, lactation.StartDate, lactation.EndDate,
+func (l *LactationRepository) saveOrUpdateScan(query string, lactation *entity.Lactation) error {
+	return execQuery(query, lactation.Id, lactation.Cow.Id, lactation.Calf.Id, lactation.StartDate, lactation.EndDate,
 		lactation.ProductionPeriod, lactation.ProductionTotal, lactation.AverageProduction, lactation.PeakProduction,
 		lactation.Isr, lactation.Observation, lactation.CreatedAt, lactation.DeletedAt)
 }

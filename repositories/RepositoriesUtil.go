@@ -23,7 +23,11 @@ func SetUserId(id *string) {
     userId = id
 }
 
-func SelectQueryList(query string, args ...any) (*sql.Rows, error) {
+func GetUserId() string {
+    return *userId
+}
+
+func selectQueryList(query string, args ...any) (*sql.Rows, error) {
     query = strings.Join(strings.Fields(query)," ")
     println()
     util.LogInfo("Enviando query->   " + query)
@@ -31,14 +35,14 @@ func SelectQueryList(query string, args ...any) (*sql.Rows, error) {
     return sql, err
 }
 
-func SelectQueryOne(query string, args ...any) *sql.Row {
+func selectQueryOne(query string, args ...any) *sql.Row {
     query = strings.Join(strings.Fields(query)," ")
     println()
     util.LogInfo("Enviando query->   " + query)
     return db.QueryRow(query, args...)
 }
 
-func ExecQuery(query string, args ...any) error {
+func execQuery(query string, args ...any) error {
     query = strings.Join(strings.Fields(query)," ")
     util.LogInfo("Enviando query->   " + query)
     println()
