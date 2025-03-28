@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 type LactationRepository struct {
-	Base *PageRepositoryImpl[entity.Lactation]
+	Impl        *PageRepositoryImpl[entity.Lactation]
+	SelectQuery *util.QueryConstructor
 }
 
 func (r *LactationRepository) Init() {
@@ -21,40 +23,33 @@ func (r *LactationRepository) Init() {
 		"deleted_at",
 	}
 
-	selectQuery := `
-        SELECT lactations.id, lactations.start_date, lactations.end_date, lactations.production_period, lactations.production_total, lactations.average_production
-            lactations.peak_production, lactations.isr, lactations.observation,
-            animal.id as animal_id, animal.identificantion_number as animal_number, animal.name as animal_name, animal.status as animal_status,
-            cow_pasture.id, cow_pasture.name,
-            calf.id as calf_id, calf.sex as calf_sex, calf.birth_date as calf_birth
-            FROM lactations_active as lactations
-        LEFT JOIN animals as animal ON animal.id = lactations.animal_id
-        LEFT JOIN animals as calf ON calf.id = lactations.calf_id
-        LEFT JOIN pastures as cow_pasture ON cow_pasture.id = animal.pasture_id
-    `
+	selectQuery := new(util.QueryConstructor).Select("lactations", "id", "start_date", "end_date", "production_period",
+		"production_total", "average_production", "peak_production", "isr", "observation")
+	selectQuery.AndSelect("pastures", "id", "name")
+	selectQuery.AndSelect("cow", "id", "identificantion_number", "name", "status")
+	selectQuery.AndSelect("calf", "id", "sex", "birth_date")
+	selectQuery.From("lactations", "")
+	selectQuery.LeftJoin("pastures", "").On("pastures.id", "lactations.pasture_id")
+	selectQuery.LeftJoin("animals", "cow").On("cow.id", "lactations.animal_id")
+	selectQuery.LeftJoin("animals", "calf").On("calf.id", "lactations.calf_id")
 
-	insertQuery := `
-        INSERT INTO lactations(id, start_date, end_date, production_period, production_total, average_production, 
-            peak_production, isr, observation, animal_id, calf_id, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-    `
+	insertQuery := new(util.QueryConstructor).Insert("lactations", "id", "start_date", "end_date", "production_period",
+		"production_total", "average_production", "peak_production", "isr", "observation", "animal_id", "calf_id", "created_at",
+		"user_id")
 
-	updateQuery := `
-        UPDATE lactations
-        SET start_date = $2, end_date = $3, production_period = $4, production_total = $5, average_production = $6, 
-            peak_production = $7, isr = $8, observation = $9, animal_id = $10, calf_id = $11)
-        WHERE id = $1
-    `
+	updateQuery := new(util.QueryConstructor).Update("lactations", "id", "start_date", "end_date", "production_period",
+		"production_total", "average_production", "peak_production", "isr", "observation", "animal_id", "calf_id", "created_at",
+		"user_id")
 
 	base := RepositoryImpl[entity.Lactation]{
 		Repository:      r,
 		TableName:       "lactations",
-		SelectQueryBody: selectQuery,
-		InsertQuery:     insertQuery,
-		UpdateQuery:     updateQuery,
+		SelectQueryBody: *selectQuery,
+		InsertQuery:     *insertQuery,
+		UpdateQuery:     *updateQuery,
 	}
 
-	r.Base = &PageRepositoryImpl[entity.Lactation]{
+	r.Impl = &PageRepositoryImpl[entity.Lactation]{
 		Base:           &base,
 		PageRepository: r,
 		DateFields:     dateFields,
@@ -62,17 +57,18 @@ func (r *LactationRepository) Init() {
 
 }
 
-func (l *LactationRepository) setNewEntity(model *entity.Lactation, id string, createdAt time.Time) {
+func (r *LactationRepository) setNewEntity(model *entity.Lactation, id string, createdAt time.Time) {
 	model.Id = id
 	model.CreatedAt = createdAt
+	model.UserId = GetUserId()
 }
 
-func (l *LactationRepository) buildEntity(row *sql.Row) (model *entity.Lactation, err error) {
+func (r *LactationRepository) buildEntity(row *sql.Row) (model *entity.Lactation, err error) {
 	var lactation entity.Lactation
 	err = row.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
 		&lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation,
 		&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.Status,
-        &lactation.Cow.Pasture.Id, &lactation.Cow.Pasture.Name,
+		&lactation.Cow.Pasture.Id, &lactation.Cow.Pasture.Name,
 		&lactation.Calf.Id, &lactation.Calf.Sex, &lactation.Calf.BirthDate)
 	if err != nil {
 		return
@@ -80,14 +76,14 @@ func (l *LactationRepository) buildEntity(row *sql.Row) (model *entity.Lactation
 	return &lactation, err
 }
 
-func (l *LactationRepository) buildListEntity(rows *sql.Rows) (list *[]entity.Lactation, err error) {
+func (r *LactationRepository) buildListEntity(rows *sql.Rows) (list *[]entity.Lactation, err error) {
 	var lactations []entity.Lactation
 	for rows.Next() {
 		var lactation entity.Lactation
 		err = rows.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
 			&lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation,
 			&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.Status,
-            &lactation.Cow.Pasture.Id, &lactation.Cow.Pasture.Name,
+			&lactation.Cow.Pasture.Id, &lactation.Cow.Pasture.Name,
 			&lactation.Calf.Id, &lactation.Calf.Sex, &lactation.Calf.BirthDate)
 		if err != nil {
 			return
@@ -97,7 +93,7 @@ func (l *LactationRepository) buildListEntity(rows *sql.Rows) (list *[]entity.La
 	return &lactations, err
 }
 
-func (l *LactationRepository) getFields(sort string) (firstField string, secondField string) {
+func (r *LactationRepository) getFields(sort string) (firstField string, secondField string) {
 	switch sort {
 	case "name":
 		return "lactations.name", "lactations.id"
@@ -124,7 +120,7 @@ func (l *LactationRepository) getFields(sort string) (firstField string, secondF
 	}
 }
 
-func (r *LactationRepository) createKey(sort string, lactation *entity.Lactation)  string  {
+func (r *LactationRepository) createKey(sort string, lactation *entity.Lactation) string {
 	switch sort {
 	case "name":
 		return fmt.Sprintf("%s,%s", *lactation.Cow.Name, lactation.Id)
@@ -135,11 +131,11 @@ func (r *LactationRepository) createKey(sort string, lactation *entity.Lactation
 	case "start_date":
 		return fmt.Sprintf("%s,%s", lactation.StartDate, lactation.Id)
 	case "end_date":
-        key:=fmt.Sprintf("%s,%s", "null", lactation.Id)
-        if lactation.EndDate != nil {
-            key = fmt.Sprintf("%s,%s", lactation.EndDate, lactation.Id)
-        }
-        return key
+		key := fmt.Sprintf("%s,%s", "null", lactation.Id)
+		if lactation.EndDate != nil {
+			key = fmt.Sprintf("%s,%s", lactation.EndDate, lactation.Id)
+		}
+		return key
 	case "production_period":
 		return fmt.Sprintf("%d,%s", lactation.ProductionPeriod, lactation.Id)
 	case "production_total":
@@ -155,29 +151,30 @@ func (r *LactationRepository) createKey(sort string, lactation *entity.Lactation
 	}
 }
 
-func (l *LactationRepository) saveOrUpdateScan(query string, lactation *entity.Lactation) error {
+func (r *LactationRepository) saveOrUpdateScan(query string, lactation *entity.Lactation) error {
 	return execQuery(query, lactation.Id, lactation.Cow.Id, lactation.Calf.Id, lactation.StartDate, lactation.EndDate,
 		lactation.ProductionPeriod, lactation.ProductionTotal, lactation.AverageProduction, lactation.PeakProduction,
 		lactation.Isr, lactation.Observation, lactation.CreatedAt, lactation.DeletedAt)
 }
 
-func (l *LactationRepository) FindPage(sort string, direction string, cursor string) (page *entity.Page[entity.Lactation], err error) {
-    return l.Base.FindPage(sort, direction, cursor)
+func (r *LactationRepository) FindPage(sort string, direction string, cursor string) (page *entity.Page[entity.Lactation], err error) {
+	query := r.SelectQuery.Where("lactations.deleted_at is null").And("lactations.user_id = $1")
+	return r.Impl.FindRandomQueryPage(query, sort, direction, cursor, GetUserId())
 }
 
-func (l *LactationRepository) FindByAnimal(animalId string) (arr *[]entity.Lactation, err error) {
-    query:="WHERE lactations.animal_id = $1 ORDER BY lactations.birth_date"
-    return l.Base.FindListByQuery(query, animalId)
+func (r *LactationRepository) FindByAnimal(animalId string) (arr *[]entity.Lactation, err error) {
+	query := r.SelectQuery.Where("lactations.deleted_at is null").And("lactations.animal_id = $1")
+	return r.Impl.FindListByQuery(query, animalId)
 }
 
-func (l *LactationRepository) Add(newLactation entity.Lactation) (*entity.Lactation, error) {
-    return l.Base.Add(newLactation)
+func (r *LactationRepository) Add(newLactation *entity.Lactation) (*entity.Lactation, error) {
+	return r.Impl.Add(newLactation)
 }
 
-func (l *LactationRepository) Save(lactation *entity.Lactation) error {
-    return l.Base.Save(lactation)
+func (r *LactationRepository) Save(lactation *entity.Lactation) error {
+	return r.Impl.Save(lactation)
 }
 
-func (l *LactationRepository) Delete(id string) error {
-    return l.Base.SoftDelete(id)
+func (r *LactationRepository) Delete(id string) error {
+	return r.Impl.Delete(id)
 }

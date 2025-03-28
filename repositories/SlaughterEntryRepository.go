@@ -23,9 +23,9 @@ func (r *SlaughterEntryRepository) Init() {
         "dead_weight", "created_at")
     r.Impl = RepositoryImpl[entity.SlaughterEntry]{
         TableName: "slaughter_entries",
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
         Repository: r,
     }
 }
@@ -59,7 +59,7 @@ func (r *SlaughterEntryRepository) saveOrUpdateScan(query string, model *entity.
 }
 
 func (r *SlaughterEntryRepository) FindByGroupId(groupId string) (*[]entity.SlaughterEntry, error) {
-    query:="WHERE entry.group_id = $1"
+    query:= r.Impl.SelectQueryBody.Where("entry.user_id = $1").And("entry.deleted_at is null")
     return r.Impl.FindListByQuery(query, groupId)
 }
 
@@ -67,7 +67,7 @@ func (r *SlaughterEntryRepository) FindById(id string) (*entity.SlaughterEntry, 
     return r.Impl.FindById(id)
 }
 
-func (r *SlaughterEntryRepository) Add(newModel entity.SlaughterEntry) (*entity.SlaughterEntry, error) {
+func (r *SlaughterEntryRepository) Add(newModel *entity.SlaughterEntry) (*entity.SlaughterEntry, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -76,5 +76,5 @@ func (r *SlaughterEntryRepository) Save(model *entity.SlaughterEntry) error {
 }
 
 func (r *SlaughterEntryRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 }

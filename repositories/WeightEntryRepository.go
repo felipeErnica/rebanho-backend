@@ -23,9 +23,9 @@ func (r *WeightEntryRepository) Init() {
     
     r.Impl = RepositoryImpl[entity.WeightEntry] {
         Repository: r,
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
         TableName: "weight_entries",
     }
 
@@ -34,6 +34,7 @@ func (r *WeightEntryRepository) Init() {
 func (r *WeightEntryRepository) setNewEntity(model *entity.WeightEntry, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
+    model.UserId = GetUserId()
 }
 
 func (r *WeightEntryRepository) buildEntity(row *sql.Row) (model *entity.WeightEntry, err error) {
@@ -58,19 +59,24 @@ func (r *WeightEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.W
 }
 
 func (r *WeightEntryRepository) saveOrUpdateScan(query string, model *entity.WeightEntry) error {
-    return execQuery(query, model.Id, model.Animal.Id, model.GroupId, model.Weight, model.CreatedAt)
+    return execQuery(query, model.Id, model.Animal.Id, model.GroupId, model.Weight, model.CreatedAt, model.UserId)
 }
 
 func (r *WeightEntryRepository) FindByGroupId(groupId string) (*[]entity.WeightEntry, error) {
-    query:="WHERE weight.group_id = $1"
+    query := r.Impl.SelectQueryBody.Where("weight.group_id = $1").And("weight.deleted_at is null")
     return r.Impl.FindListByQuery(query, groupId)
+}
+
+func (r *WeightEntryRepository) FindByAnimalId(animalId string) (*[]entity.WeightEntry, error) {
+    query := r.Impl.SelectQueryBody.Where("weight.animal_id = $1").And("weight.deleted_at is null")
+    return r.Impl.FindListByQuery(query, animalId)
 }
 
 func (r *WeightEntryRepository) FindById(id string) (*entity.WeightEntry, error) {
     return r.Impl.FindById(id)
 }
 
-func (r *WeightEntryRepository) Add(newModel entity.WeightEntry) (*entity.WeightEntry, error) {
+func (r *WeightEntryRepository) Add(newModel *entity.WeightEntry) (*entity.WeightEntry, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -79,5 +85,5 @@ func (r *WeightEntryRepository) Save(model *entity.WeightEntry) error {
 }
 
 func (r *WeightEntryRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 }

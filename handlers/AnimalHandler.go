@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/felipeErnica/rebanho-backend/app"
@@ -26,8 +29,10 @@ func InitAnimal(app *app.App) {
         Impl: impl,
     }
 
-    app.HandleFunc("GET /animals/page", handler.FindPage)
+    app.HandleFunc("POST /animals/page", handler.FindPage)
     app.HandleFunc("GET /animals/{id}", handler.FindById)
+    app.HandleFunc("GET /animals/max-values", handler.FindMaxValues)
+    app.HandleFunc("GET /animals/min-values", handler.FindMinValues)
     app.HandleFunc("GET /animals/name/{name}", handler.FindByName)
     app.HandleFunc("GET /animals/number/{number}", handler.FindByNumber)
     app.HandleFunc("GET /animals/father/{fatherId}", handler.FindByFatherId)
@@ -39,9 +44,50 @@ func InitAnimal(app *app.App) {
     LogControllersInit("Animais")
 }
 
+func (h *AnimalHandler) FindMaxValues(w http.ResponseWriter, r *http.Request) {
+    maxValues, err := h.Repository.FindMaxValues()
+    if err != nil {
+        err = errors.New(fmt.Sprintf("Erro na formação de valores máximos: %s", err.Error()))
+        DatabaseGetError(err, w)
+    }
+
+    response, err:= json.Marshal(maxValues)
+    if err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    writeResponse(w, response)   
+}
+
+func (h *AnimalHandler) FindMinValues(w http.ResponseWriter, r *http.Request) {
+    minValues, err := h.Repository.FindMinValues()
+    if err != nil {
+        err = errors.New(fmt.Sprintf("Erro na formação de valores máximos: %s", err.Error()))
+        DatabaseGetError(err, w)
+    }
+
+    response, err:= json.Marshal(minValues)
+    if err != nil {
+        JsonServerError(err, w)
+        return
+    }
+
+    writeResponse(w, response)   
+}
+
 func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request)  {
+    var filter entity.AnimalFilter
+    
+    err := json.NewDecoder(r.Body).Decode(&filter)
+    if err != nil {
+        err = errors.New(fmt.Sprintf("Falha na decodificação do filtro: %s", err.Error()))
+        JsonServerError(err, w)
+        return
+    }
+
     cursor, sort, order:= h.Impl.GetPageParameters(r)
-    page, err:= h.Repository.FindPage(sort, order, cursor)
+    page, err:= h.Repository.FindPage(sort, order, cursor, &filter)
     h.Impl.SendPage(w, page, err)
 }
 

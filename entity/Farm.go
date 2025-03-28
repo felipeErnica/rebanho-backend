@@ -14,6 +14,11 @@ type Farm struct {
 	Owner     User      `json:"owner"`
 }
 
+type FarmShort struct {
+	Id        string    `json:"id"`
+	Name      string    `json:"name"`
+}
+
 type FarmFilter struct {
 	Name      *string `json:"name"`
 	State     *string `json:"state"`

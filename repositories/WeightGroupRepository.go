@@ -13,21 +13,22 @@ type WeightGroupRepository struct {
 }
 
 func (r *WeightGroupRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("", "id", "weighted_date").From("weight_groups", "")
+    selectQuery:=new(util.QueryConstructor).Select("group", "id", "weighted_date").From("weight_groups", "group")
     updateQuery:=new(util.QueryConstructor).Update("weight_groups", "weighted_date", "created_at", "user_id")
     insertQuery:=new(util.QueryConstructor).Insert("weight_groups", "id", "weighted_date", "created_at", "user_id")
 
     r.Impl = RepositoryImpl[entity.WeightGroup]{
         Repository: r,
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
     }
 }
 
 func (r *WeightGroupRepository) setNewEntity(model *entity.WeightGroup, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
+    model.UserId = GetUserId()
 }
 
 func (r *WeightGroupRepository) buildEntity(row *sql.Row) (model *entity.WeightGroup, err error) {
@@ -57,11 +58,16 @@ func (r *WeightGroupRepository) FindAll() (*[]entity.WeightGroup, error) {
     return r.Impl.FindAll()
 }
 
+func (r *WeightGroupRepository) FindBySlaughterhouse(slaughterhouseId string) (*[]entity.WeightGroup, error) {
+    query := r.Impl.SelectQueryBody.Where("group.slaughterhouse_id = $1").And("group.deleted_at is null")
+    return r.Impl.FindListByQuery(query, slaughterhouseId)
+}
+
 func (r *WeightGroupRepository) FindById(id string) (*entity.WeightGroup, error) {
     return r.Impl.FindById(id)
 }
 
-func (r *WeightGroupRepository) Add(newModel entity.WeightGroup) (*entity.WeightGroup, error) {
+func (r *WeightGroupRepository) Add(newModel *entity.WeightGroup) (*entity.WeightGroup, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -70,5 +76,5 @@ func (r *WeightGroupRepository) Save(model *entity.WeightGroup) error {
 }
 
 func (r *WeightGroupRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 }

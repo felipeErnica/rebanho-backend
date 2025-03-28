@@ -7,6 +7,7 @@ type Slaughterhouse struct {
     Name       string     `json:"name"`
     TaxNumber  string     `json:"tax_number"`
     CreatedAt  time.Time  `json:"created_at"`
+    DeletedAt  *time.Time `json:"deleted_at"`
     UserId     string     `json:"user_id"`
 }
 

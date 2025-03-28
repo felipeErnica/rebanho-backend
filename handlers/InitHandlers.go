@@ -23,6 +23,7 @@ func InitHandlers(app *app.App) {
     InitPregnancyTestEntry(app)
     InitInseminationGroup(app)
     InitInseminationEntry(app)
+    InitUserAuthentication(app)
 }
 
 func LogControllersInit(name string) {

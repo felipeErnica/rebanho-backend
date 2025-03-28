@@ -13,15 +13,15 @@ type UserRepository struct {
 }
 
 func (r *UserRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("", "id", "username")
-        selectQuery.From("users_active", "")
-    insertQuery:=new(util.QueryConstructor).Insert("users", "id", "username", "password", "created_at")
-    updateQuery:=new(util.QueryConstructor).Update("users", "username", "password", "created_at")
+    selectQuery:=new(util.QueryConstructor).Select("", "id", "name", "password", "email_address", "phone_number")
+        selectQuery.From("users", "")
+    insertQuery:=new(util.QueryConstructor).Insert("users", "id", "name", "password", "email_address", "phone_number", "created_at")
+    updateQuery:=new(util.QueryConstructor).Update("users", "name", "password", "email_address", "phone_number", "created_at")
     r.Impl = RepositoryImpl[entity.User]{
         TableName: "users",
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
         Repository: r,
     }
 }
@@ -33,7 +33,7 @@ func (r *UserRepository) setNewEntity(model *entity.User, id string, createdAt t
 
 func (r *UserRepository) buildEntity(row *sql.Row) (model *entity.User, err error) {
     var user entity.User
-    err = row.Scan(&user.Id, &user.Username)
+    err = row.Scan(&user.Id, &user.Name, &user.Password, &user.EmailAddress, &user.PhoneNumber)
     return &user, err
 }
 
@@ -41,7 +41,7 @@ func (r *UserRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.User, er
     var users []entity.User
     for rows.Next() {
         var user entity.User
-        err = rows.Scan(&user.Id, &user.Username)
+        err = rows.Scan(&user.Id, &user.Name, &user.Password, &user.EmailAddress, &user.PhoneNumber)
         if err != nil {
             return
         }
@@ -51,27 +51,20 @@ func (r *UserRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.User, er
 }
 
 func (r *UserRepository) saveOrUpdateScan(query string, model *entity.User) error {
-    return execQuery(query, model.Id, model.Username, model.Password, model.CreatedAt)
+    return execQuery(query, model.Id, model.Name, model.Password, model.EmailAddress, model.PhoneNumber, model.CreatedAt)
 }
 
-func (r *UserRepository) FindByUsername(username string) (*entity.User, error) {
-    query:="WHERE username = $1"
-    return r.Impl.FindByQuery(query, username)
+func (r *UserRepository) FindByName(name string) (*entity.User, error) {
+    query:=r.Impl.SelectQueryBody.Where("users.name = $1").And("users.deleted_at is null")
+    return r.Impl.FindByQuery(query, name)
 }
 
-func (r *UserRepository) FindById(id string) (*entity.User, error) {
-    return r.Impl.FindById(id)
+func (r *UserRepository) FindByEmailAddress(email string) (*[]entity.User, error) {
+    query:=r.Impl.SelectQueryBody.Where("users.email_address = $1").And("users.deleted_at is null")
+    return r.Impl.FindListByQuery(query, email)
 }
 
 func (r *UserRepository) ValidateUser(user entity.User) (*entity.User, error) {
-    query:="WHERE username = $1 AND password = $2"
-    return r.Impl.FindByQuery(query, user.Username, user.Password)
-}
-
-func (r *UserRepository) Add(user entity.User) (*entity.User, error) {
-    return r.Impl.Add(user)
-}
-
-func (r *UserRepository) Delete(id string) error {
-    return r.Impl.SoftDelete(id)
+    query:=r.Impl.SelectQueryBody.Where("users.name = $1").And("users.password = $2").And("users.deleted_at is null")
+    return r.Impl.FindByQuery(query, user.Name, user.Password)
 }

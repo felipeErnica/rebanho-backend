@@ -15,12 +15,12 @@ type SlaughterhouseRepository struct {
 func (r *SlaughterhouseRepository) Init() {
     selectQuery:=new(util.QueryConstructor).Select("", "id", "name", "tax_number").From("slaughterhouses","")
     updateQuery:=new(util.QueryConstructor).Update("slaughterhouses", "name", "tax_number", "created_at", "user_id")
-    InsertQuery:=new(util.QueryConstructor).Insert("slaughterhouses", "id", "name", "tax_number", "created_at", "user_id")
+    insertQuery:=new(util.QueryConstructor).Insert("slaughterhouses", "id", "name", "tax_number", "created_at", "user_id")
     r.Impl = RepositoryImpl[entity.Slaughterhouse]{
         Repository: r,
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: InsertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
         TableName: "slaughterhouses",
     }
 }
@@ -28,6 +28,7 @@ func (r *SlaughterhouseRepository) Init() {
 func (r *SlaughterhouseRepository) setNewEntity(model *entity.Slaughterhouse, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
+    model.UserId = GetUserId()
 }
 
 func (r *SlaughterhouseRepository) buildEntity(row *sql.Row) (model *entity.Slaughterhouse, err error) {
@@ -61,7 +62,7 @@ func (r *SlaughterhouseRepository) FindById(id string) (*entity.Slaughterhouse, 
     return r.Impl.FindById(id)
 }
 
-func (r *SlaughterhouseRepository) Add(newModel entity.Slaughterhouse) (*entity.Slaughterhouse, error) {
+func (r *SlaughterhouseRepository) Add(newModel *entity.Slaughterhouse) (*entity.Slaughterhouse, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -70,5 +71,5 @@ func (r *SlaughterhouseRepository) Save(model *entity.Slaughterhouse) error {
 }
 
 func (r *SlaughterhouseRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 }

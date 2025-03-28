@@ -26,9 +26,9 @@ func (r *FarmRepository) Init() {
 	base := RepositoryImpl[entity.Farm]{
 		Repository:      r,
 		TableName:       "farms",
-		SelectQueryBody: selectQuery.Build(),
-		InsertQuery:     insertQuery.Build(),
-		UpdateQuery:     updateQuery.Build(),
+		SelectQueryBody: *selectQuery,
+		InsertQuery:     *insertQuery,
+		UpdateQuery:     *updateQuery,
 	}
 
 	r.Impl = PageRepositoryImpl[entity.Farm]{
@@ -127,12 +127,22 @@ func (r *FarmRepository) FindById(id string) (*entity.Farm, error) {
     return r.Impl.FindById(id)
 }
 
-func (r *FarmRepository) FindByOwner(ownerId string) (*[]entity.Farm, error) {
+func (r *FarmRepository) FindByOwner() (*[]entity.Farm, error) {
     query:=r.SelectQuery.Where("owner.id = $1")
-    return r.Impl.FindListByQuery(query, ownerId)
+    return r.Impl.FindListByQuery(query, GetUserId())
 }
 
-func (r *FarmRepository) Add(newModel entity.Farm) (*entity.Farm, error) {
+func (r *FarmRepository) FindByNameAndOwner(farm entity.Farm) (*[]entity.Farm, error) {
+    query:=r.SelectQuery.Where("owner.id = $1").And("farms.name = $2").And("farms.city = $3").And("farms.state = $3")
+    return r.Impl.FindListByQuery(query, GetUserId(), farm.Name, farm.City, farm.State)
+}
+
+func (r *FarmRepository) FindByTaxNumberAndOwner(taxNumber string) (*[]entity.Farm, error) {
+    query:=r.SelectQuery.Where("owner.id = $1").And("farms.tax_number = $2")
+    return r.Impl.FindListByQuery(query, GetUserId(), taxNumber)
+}
+
+func (r *FarmRepository) Add(newModel *entity.Farm) (*entity.Farm, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -141,5 +151,5 @@ func (r *FarmRepository) Save(model *entity.Farm) error {
 }
 
 func (r *FarmRepository) Delete(id string) error {
-	return r.Impl.SoftDelete(id)
+	return r.Impl.Delete(id)
 }

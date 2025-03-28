@@ -19,7 +19,7 @@ func InitMilk(app *app.App) {
     repository.Init()
 
     impl:=HandlerImpl[entity.MilkEntry]{
-        Repository: *repository.Base.Base,
+        Repository: *repository.Impl.Base,
     }
 
     handler:= MilkHandler{

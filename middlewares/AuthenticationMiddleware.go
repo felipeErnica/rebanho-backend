@@ -18,6 +18,7 @@ func AuthenticationMiddleware(handler http.HandlerFunc) http.HandlerFunc {
         userId, err:= util.VerifyToken(authorizationString)
         if err != nil {
             serverErrors.AuthenticationError(w, err)
+            return
         }
         repositories.SetUserId(&userId)
         handler.ServeHTTP(w,r)

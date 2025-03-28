@@ -12,4 +12,6 @@ type PregnancyTestEntry struct {
     Loss          LossShort   `json:"loss"`
     Calf          CalfShort   `json:"calf"`
 	CreatedAt     time.Time   `json:"created_at"`
+    DeletedAt     *time.Time  `json:"deleted_at"`
+    UserId        string      `json:"user_id"`
 }

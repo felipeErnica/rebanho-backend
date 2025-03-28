@@ -27,9 +27,9 @@ func (r *InseminationGroupRepository) Init() {
         "insemination_date", "created_at", "user_id")
     r.Impl = RepositoryImpl[entity.InseminationGroup]{
         TableName: "insemination_groups",
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
         Repository: r,
     }
 }
@@ -74,7 +74,7 @@ func (r *InseminationGroupRepository) FindById(id string) (*entity.InseminationG
     return r.Impl.FindById(id)
 }
 
-func (r *InseminationGroupRepository) Add(newModel entity.InseminationGroup) (*entity.InseminationGroup, error) {
+func (r *InseminationGroupRepository) Add(newModel *entity.InseminationGroup) (*entity.InseminationGroup, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -83,5 +83,5 @@ func (r *InseminationGroupRepository) Save(model *entity.InseminationGroup) erro
 }
 
 func (r *InseminationGroupRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 }

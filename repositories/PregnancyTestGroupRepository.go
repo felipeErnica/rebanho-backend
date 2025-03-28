@@ -19,9 +19,9 @@ func (r *PregnancyTestGroupRepository) Init() {
     updateQuery:=new(util.QueryConstructor).Update("pregnancy_test_groups", "id", "test_date", "number_entries", "number_pregnants")
     r.Impl = RepositoryImpl[entity.PregancyTestGroup]{
         TableName: "pregnancy_test_groups",
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
         Repository: r,
     }
 }
@@ -29,6 +29,7 @@ func (r *PregnancyTestGroupRepository) Init() {
 func (r *PregnancyTestGroupRepository) setNewEntity(model *entity.PregancyTestGroup, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
+    model.UserId = GetUserId()
 }
 
 func (r *PregnancyTestGroupRepository) buildEntity(row *sql.Row) (model *entity.PregancyTestGroup, err error) {
@@ -51,7 +52,7 @@ func (r *PregnancyTestGroupRepository) buildListEntity(rows *sql.Rows) (arr *[]e
 }
 
 func (r *PregnancyTestGroupRepository) saveOrUpdateScan(query string, model *entity.PregancyTestGroup) error {
-    return execQuery(query, model.Id, model.TestDate, model.NumberEntries, model.NumberPregnants)
+    return execQuery(query, model.Id, model.TestDate, model.NumberEntries, model.NumberPregnants, model.CreatedAt, model.UserId)
 }
 
 func (r *PregnancyTestGroupRepository) FindAll() (*[]entity.PregancyTestGroup, error) {
@@ -62,7 +63,7 @@ func (r *PregnancyTestGroupRepository) FindById(id string) (*entity.PregancyTest
     return r.Impl.FindById(id)
 } 
 
-func (r *PregnancyTestGroupRepository) Add(newModel entity.PregancyTestGroup) (*entity.PregancyTestGroup, error) {
+func (r *PregnancyTestGroupRepository) Add(newModel *entity.PregancyTestGroup) (*entity.PregancyTestGroup, error) {
     return r.Impl.Add(newModel)
 } 
 
@@ -71,6 +72,6 @@ func (r *PregnancyTestGroupRepository) Save(model *entity.PregancyTestGroup) err
 } 
 
 func (r *PregnancyTestGroupRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 } 
 

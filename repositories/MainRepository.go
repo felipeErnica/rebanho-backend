@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
@@ -14,19 +15,19 @@ type Repository[E entity.IEntity] interface {
 	buildEntity(row *sql.Row) (model *E, err error)
 	buildListEntity(rows *sql.Rows) (arr *[]E, err error)
 	saveOrUpdateScan(query string, model *E) error
-    Delete(id string) error
 }
 
 type RepositoryImpl[E entity.IEntity] struct {
     TableName       string
 	Repository      Repository[E]
-	SelectQueryBody *util.QueryConstructor
-	InsertQuery     *util.QueryConstructor
-	UpdateQuery     *util.QueryConstructor
+	SelectQueryBody util.QueryConstructor
+	InsertQuery     util.QueryConstructor
+	UpdateQuery     util.QueryConstructor
 }
 
 func (r *RepositoryImpl[E]) FindAll() (arr *[]E, err error) {
-    sqlRows, err:=selectQueryList(r.SelectQueryBody.Build())
+    query := r.SelectQueryBody.Where(fmt.Sprintf("%s.user_id = $1", r.TableName)).Build()
+    sqlRows, err:=selectQueryList(query)
     if err != nil {
         return
     }
@@ -36,8 +37,9 @@ func (r *RepositoryImpl[E]) FindAll() (arr *[]E, err error) {
 }
 
 func (r *RepositoryImpl[E]) FindById(id string) (*E, error) {
-    query:=new(util.QueryConstructor).FromQuery(r.SelectQueryBody.Build()).Where(r.TableName + ".id = $1").Build()
-    sqlRow:=selectQueryOne(query, id)
+    query := r.SelectQueryBody
+    query.Where(r.TableName + ".id = $1")
+    sqlRow:=selectQueryOne(query.Build(), id)
     entity, err:= r.Repository.buildEntity(sqlRow)
     return entity, err
 }
@@ -58,12 +60,12 @@ func (r *RepositoryImpl[E]) FindListByQuery(query *util.QueryConstructor, args..
     return entity, err
 }
 
-func (r *RepositoryImpl[E]) Add(model E) (*E, error) {
+func (r *RepositoryImpl[E]) Add(model *E) (*E, error) {
     id:=uuid.NewString()
     createdAt:=time.Now()
-    r.Repository.setNewEntity(&model, id, createdAt)
-    err:= r.Repository.saveOrUpdateScan(r.InsertQuery.Build(), &model)
-    return &model, err
+    r.Repository.setNewEntity(model, id, createdAt)
+    err:= r.Repository.saveOrUpdateScan(r.InsertQuery.Build(), model)
+    return model, err
 }
 
 func (r *RepositoryImpl[E]) Save(model *E) error {
@@ -71,17 +73,8 @@ func (r *RepositoryImpl[E]) Save(model *E) error {
     return err
 }
 
-func (r *RepositoryImpl[E]) SoftDelete(id string) error {
-    timeDeletion:=time.Now()
-    query:=new(util.QueryConstructor).SoftDelete(r.TableName).Build()
-    return execQuery(query, timeDeletion, id)
-}
-
-func (r *RepositoryImpl[E]) HardDelete(id string) error {
-    query:=new(util.QueryConstructor).Delete(r.TableName).Build()
-    return execQuery(query, id)
-}
-
 func (r *RepositoryImpl[E]) Delete(id string) error {
-    return r.Repository.Delete(id)
+    timeDeletion:=time.Now()
+    query:=new(util.QueryConstructor).Delete(r.TableName).Build()
+    return execQuery(query, timeDeletion, id)
 }

@@ -27,9 +27,9 @@ func (r *PregancyTestEntryRepository) Init() {
         "is_pregnant", "birth_forecast", "loss_id", "calf_id", "created_at", "user_id")
     r.Impl = RepositoryImpl[entity.PregnancyTestEntry]{
         TableName: "pregancy_test_entries",
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
         Repository: r,
     }
 }
@@ -37,6 +37,7 @@ func (r *PregancyTestEntryRepository) Init() {
 func (r *PregancyTestEntryRepository) setNewEntity(model *entity.PregnancyTestEntry, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
+    model.UserId = GetUserId()
 }
 
 func (r *PregancyTestEntryRepository) buildEntity(row *sql.Row) (model *entity.PregnancyTestEntry, err error) {
@@ -64,19 +65,24 @@ func (r *PregancyTestEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]en
 
 func (r *PregancyTestEntryRepository) saveOrUpdateScan(query string, model *entity.PregnancyTestEntry) error {
     return execQuery(query, model.Id, model.Animal.Id, model.GroupId, model.IsPregnant, 
-        model.BirthForecast, model.Calf.Id, model.Loss.Id, model.CreatedAt)
+        model.BirthForecast, model.Calf.Id, model.Loss.Id, model.CreatedAt, model.UserId)
 }
 
 func (r *PregancyTestEntryRepository) FindByGroupId(groupId string) (*[]entity.PregnancyTestEntry, error) {
-    query:="WHERE entry.group_id = $1"
+    query:=r.Impl.SelectQueryBody.Where("entry.group_id = $1").And("entry.deleted_at is null")
     return r.Impl.FindListByQuery(query, groupId)
+}
+
+func (r *PregancyTestEntryRepository) FindByAnimalId(animalId string) (*[]entity.PregnancyTestEntry, error) {
+    query:=r.Impl.SelectQueryBody.Where("entry.animal_id = $1").And("entry.deleted_at is null")
+    return r.Impl.FindListByQuery(query, animalId)
 }
 
 func (r *PregancyTestEntryRepository) FindById(id string) (*entity.PregnancyTestEntry, error) {
     return r.Impl.FindById(id)
 }
 
-func (r *PregancyTestEntryRepository) Add(newModel entity.PregnancyTestEntry) (*entity.PregnancyTestEntry, error) {
+func (r *PregancyTestEntryRepository) Add(newModel *entity.PregnancyTestEntry) (*entity.PregnancyTestEntry, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -85,5 +91,5 @@ func (r *PregancyTestEntryRepository) Save(model *entity.PregnancyTestEntry) err
 }
 
 func (r *PregancyTestEntryRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 }

@@ -10,202 +10,422 @@ import (
 )
 
 type AnimalRepository struct {
-    Impl PageRepositoryImpl[entity.Animal]
-    SelectQuery *util.QueryConstructor
+	Impl        PageRepositoryImpl[entity.Animal]
+	SelectQuery util.QueryConstructor
 }
 
 func (r *AnimalRepository) Init() {
-    dateFields:= []string{
-        "birth_date",
-        "death_date",
-        "created_at",
-        "deleted_at",
-    }
+	dateFields := []string{
+		"birth_date",
+		"death_date",
+		"created_at",
+		"deleted_at",
+	}
 
-    selectQueryBody:=new(util.QueryConstructor).Select("animals", "id", "name", "identification_number", "birth_date", "sex", "death_date",
-        "weaning_date", "status", "average_prod", "average_birth_interval", "max_peak", "isr", "children_quantity", "observation")
-        selectQueryBody.AndSelect("mother", "id", "name", "identification_number")
-        selectQueryBody.AndSelect("father", "id", "name", "identification_number")
-        selectQueryBody.AndSelect("pastures", "id", "name")
-        selectQueryBody.From("animals", "")
-        selectQueryBody.LeftJoin("animals", "father").On("father.id", "animals.father_id")
-        selectQueryBody.LeftJoin("animals", "mother").On("mother.id", "animals.mother_id")
-        selectQueryBody.LeftJoin("pastures", "").On("pastures.id", "animals.pasture_id")
-        selectQueryBody.Where("animals.deleted_at is null")
-    r.SelectQuery = selectQueryBody
+	selectQueryBody := new(util.QueryConstructor).Select("animals", "id", "name", "identification_number", "birth_date", "sex", "death_date",
+		"weaning_date", "status", "average_prod", "average_birth_interval", "average_peak", "isr", "children_quantity", "observation")
+	selectQueryBody.AndSelect("mother", "id", "name", "identification_number")
+	selectQueryBody.AndSelect("father", "id", "name", "identification_number")
+	selectQueryBody.AndSelect("pastures", "id", "name")
+	selectQueryBody.From("animals", "")
+	selectQueryBody.LeftJoin("animals", "father").On("father.id", "animals.father_id")
+	selectQueryBody.LeftJoin("animals", "mother").On("mother.id", "animals.mother_id")
+	selectQueryBody.LeftJoin("pastures", "").On("pastures.id", "animals.pasture_id")
+	r.SelectQuery = *selectQueryBody
 
-    insertQuery:=new(util.QueryConstructor).Insert("animals", "id", "name", "identification_number", "father_id", "mother_id",
-        "birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod", 
-        "average_birth_interval", "max_peak", "isr",
-        "children_quantity", "observation", "created_at")
-    updateQuery:=new(util.QueryConstructor).Update("animals", "id", "name", "identification_number", "father_id", "mother_id",
-        "birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod", 
-        "average_birth_interval", "max_peak", "isr",
-        "children_quantity", "observation", "created_at")
+	insertQuery := new(util.QueryConstructor).Insert("animals", "id", "name", "identification_number", "father_id", "mother_id",
+		"birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod",
+		"average_birth_interval", "average_peak", "isr",
+		"children_quantity", "observation", "created_at", "user_id")
+	updateQuery := new(util.QueryConstructor).Update("animals", "id", "name", "identification_number", "father_id", "mother_id",
+		"birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod",
+		"average_birth_interval", "average_peak", "isr",
+		"children_quantity", "observation", "created_at", "user_id")
 
-    baseRepo:= &RepositoryImpl[entity.Animal]{
-        Repository: r,
-        TableName: "animals",
-        SelectQueryBody: selectQueryBody.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
-    }
-    r.Impl = PageRepositoryImpl[entity.Animal]{
-        Base: baseRepo,
-        PageRepository: r,
-        DateFields: dateFields,
-    }
+	baseRepo := &RepositoryImpl[entity.Animal]{
+		Repository:      r,
+		TableName:       "animals",
+		SelectQueryBody: *selectQueryBody,
+		InsertQuery:     *insertQuery,
+		UpdateQuery:     *updateQuery,
+	}
+	r.Impl = PageRepositoryImpl[entity.Animal]{
+		Base:           baseRepo,
+		PageRepository: r,
+		DateFields:     dateFields,
+	}
 }
 
 func (r *AnimalRepository) setNewEntity(model *entity.Animal, id string, createdAt time.Time) {
-    model.Id = id
-    model.CreatedAt = createdAt
+	model.Id = id
+	model.CreatedAt = createdAt
+	model.UserId = GetUserId()
 }
 
 func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.Animal, err error) {
-    var animals []entity.Animal
-    for sqlRows.Next() {
-        var animal entity.Animal
-        err = sqlRows.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate, &animal.Sex,
-            &animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd, 
-            &animal.AverageBirthInterval, &animal.MaxPeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
-            &animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber, 
-            &animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
-            &animal.Pasture.Id, &animal.Pasture.Name)
-        if err != nil {
-            return nil, err
-        }
-        animals = append(animals, animal)
-    }
-    return &animals, err
+	var animals []entity.Animal
+	for sqlRows.Next() {
+		var animal entity.Animal
+		err = sqlRows.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate, &animal.Sex,
+			&animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd,
+			&animal.AverageBirthInterval, &animal.AveragePeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
+			&animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber,
+			&animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
+			&animal.Pasture.Id, &animal.Pasture.Name)
+		if err != nil {
+			return nil, err
+		}
+		animals = append(animals, animal)
+	}
+	return &animals, err
 }
 
 func (r *AnimalRepository) buildEntity(sqlStatement *sql.Row) (model *entity.Animal, err error) {
-    var animal entity.Animal
-    err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate, &animal.Sex,
-        &animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd, 
-        &animal.AverageBirthInterval, &animal.MaxPeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
-        &animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber, 
-        &animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
-        &animal.Pasture.Id, &animal.Pasture.Name)
-    return &animal, err
+	var animal entity.Animal
+	err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate, &animal.Sex,
+		&animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd,
+		&animal.AverageBirthInterval, &animal.AveragePeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
+		&animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber,
+		&animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
+		&animal.Pasture.Id, &animal.Pasture.Name)
+	return &animal, err
 }
 
 func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal) error {
-    return execQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.Father.Id, animal.Mother.Id,
-        animal.BirthDate, animal.DeathDate, animal.Pasture.Id, animal.WeaningDate, animal.Status, animal.AverageProd, 
-        animal.AverageBirthInterval, animal.MaxPeak, animal.Isr, animal.ChildrenQuantity, animal.Observation, animal.CreatedAt)
+	return execQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.Father.Id, animal.Mother.Id,
+		animal.BirthDate, animal.DeathDate, animal.Pasture.Id, animal.WeaningDate, animal.Status, animal.AverageProd,
+		animal.AverageBirthInterval, animal.AveragePeak, animal.Isr, animal.ChildrenQuantity, animal.Observation, animal.CreatedAt)
 }
 
 func (r *AnimalRepository) getFields(sort string) (firstField string, secondField string) {
-    switch (sort) {
-    case "name": 
-        return "animals.name", "animals.id"
-    case "identification_number": 
-        return "animals.animal_order", "animals.id"
-    case "birth_date":
-        return "animals.birth_date", "animals.id"
-    case "death_date":
-        return "animals.death_date", "animals.id"
-    case "average_prod":
-        return "animals.average_prod", "animals.id"
-    case "average_birth_interval":
-        return "animals.average_birth_interval", "animals.id"
-    case "max_peak":
-        return "animals.max_peak", "animals.id"
-    case "children_quantity":
-        return "animals.children_quantity", "animals.id"
-    case "isr":
-        return "animals.isr", "animals.id"
-    case "deleted_at":
-        return "animals.deleted_at", "animals.id"
-    default:
-        return "animals.created_at", "animals.id"
-    }
+	switch sort {
+	case "name":
+		return "animals.name", "animals.id"
+	case "identification_number":
+		return "animals.animal_order", "animals.id"
+	case "birth_date":
+		return "animals.birth_date", "animals.id"
+	case "death_date":
+		return "animals.death_date", "animals.id"
+	case "average_prod":
+		return "animals.average_prod", "animals.id"
+	case "average_birth_interval":
+		return "animals.average_birth_interval", "animals.id"
+	case "average_peak":
+		return "animals.average_peak", "animals.id"
+	case "children_quantity":
+		return "animals.children_quantity", "animals.id"
+	case "isr":
+		return "animals.isr", "animals.id"
+	case "deleted_at":
+		return "animals.deleted_at", "animals.id"
+	default:
+		return "animals.created_at", "animals.id"
+	}
 }
 
 func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) string {
-    var key string
-    switch (sort) {
-    case "name": 
-        key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
-        if lastEntry.Name != nil {
-            key = fmt.Sprintf("%s,%s", *lastEntry.Name, lastEntry.Id) 
-        }
-    case "identification_number": 
-        key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
-        if lastEntry.IdentificationNumber != nil {
-            key = fmt.Sprintf("%s,%s", *lastEntry.IdentificationNumber, lastEntry.Id) 
-        }
-    case "birth_date":
-        key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
-        if lastEntry.BirthDate != nil {
-            key = fmt.Sprintf("%s,%s", lastEntry.BirthDate.Format(time.RFC3339Nano), lastEntry.Id) 
-        }
-    case "death_date":
-        key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
-        if lastEntry.DeathDate != nil {
-            key = fmt.Sprintf("%s,%s", lastEntry.DeathDate.Format(time.RFC3339Nano), lastEntry.Id) 
-        }
-    case "average_prod":
-        key = fmt.Sprintf("%f,%s", lastEntry.AverageProd, lastEntry.Id) 
-    case "average_birth_interval":
-        key = fmt.Sprintf("%f,%s", lastEntry.AverageBirthInterval, lastEntry.Id) 
-    case "max_peak":
-        key = fmt.Sprintf("%f,%s", lastEntry.MaxPeak, lastEntry.Id) 
-    case "children_quantity":
-        key = fmt.Sprintf("%d,%s", lastEntry.ChildrenQuantity, lastEntry.Id) 
-    case "isr":
-        key = fmt.Sprintf("%f,%s", lastEntry.Isr, lastEntry.Id) 
-    case "deleted_at":
-        key = fmt.Sprintf("%s,%s", "null", lastEntry.Id) 
-        if lastEntry.DeletedAt != nil {
-            key = fmt.Sprintf("%s,%s", lastEntry.DeletedAt.Format(time.RFC3339Nano), lastEntry.Id) 
-        }
-    default:
-        key = fmt.Sprintf("%s,%s", lastEntry.CreatedAt.Format(time.RFC3339Nano), lastEntry.Id) 
-    }
-    return key
+	var key string
+	switch sort {
+	case "name":
+		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+		if lastEntry.Name != nil {
+			key = fmt.Sprintf("%s,%s", *lastEntry.Name, lastEntry.Id)
+		}
+	case "identification_number":
+		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+		if lastEntry.IdentificationNumber != nil {
+			key = fmt.Sprintf("%s,%s", *lastEntry.IdentificationNumber, lastEntry.Id)
+		}
+	case "birth_date":
+		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+		if lastEntry.BirthDate != nil {
+			key = fmt.Sprintf("%s,%s", lastEntry.BirthDate.Format(time.RFC3339Nano), lastEntry.Id)
+		}
+	case "death_date":
+		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+		if lastEntry.DeathDate != nil {
+			key = fmt.Sprintf("%s,%s", lastEntry.DeathDate.Format(time.RFC3339Nano), lastEntry.Id)
+		}
+	case "average_prod":
+		key = fmt.Sprintf("%f,%s", lastEntry.AverageProd, lastEntry.Id)
+	case "average_birth_interval":
+		key = fmt.Sprintf("%f,%s", lastEntry.AverageBirthInterval, lastEntry.Id)
+	case "average_peak":
+		key = fmt.Sprintf("%f,%s", lastEntry.AveragePeak, lastEntry.Id)
+	case "children_quantity":
+		key = fmt.Sprintf("%d,%s", lastEntry.ChildrenQuantity, lastEntry.Id)
+	case "isr":
+		key = fmt.Sprintf("%f,%s", lastEntry.Isr, lastEntry.Id)
+	case "deleted_at":
+		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+		if lastEntry.DeletedAt != nil {
+			key = fmt.Sprintf("%s,%s", lastEntry.DeletedAt.Format(time.RFC3339Nano), lastEntry.Id)
+		}
+	default:
+		key = fmt.Sprintf("%s,%s", lastEntry.CreatedAt.Format(time.RFC3339Nano), lastEntry.Id)
+	}
+	return key
 }
 
-func (r *AnimalRepository) FindPage(sort string, direction string, cursor string) (page *entity.Page[entity.Animal], err error) {
-    return r.Impl.FindRandomQueryPage(r.SelectQuery, sort, direction, cursor)
+func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.QueryConstructor, args []any) {
+	query = r.SelectQuery
+	query.Where("animals.user_id = $1").And("animals.deleted_at is null")
+	args = append(args, GetUserId())
+	numParam := 2
+
+	if !filter.IsFiltered {
+		return
+	}
+
+	if filter.Name != nil {
+		query.And(fmt.Sprintf("animals.name like $%d", numParam))
+		numParam++
+		name := fmt.Sprintf("%%%s%%", *filter.Name)
+		args = append(args, name)
+	}
+
+	if filter.IdentificationNumber != nil {
+		query.And(fmt.Sprintf("animals.identification_number like $%d", numParam))
+		numParam++
+		name := fmt.Sprintf("%%%s%%", *filter.IdentificationNumber)
+		args = append(args, name)
+	}
+
+	if filter.Sex != nil {
+		query.And(fmt.Sprintf("animals.sex = $%d", numParam))
+		numParam++
+		args = append(args, *filter.Sex)
+	}
+
+	if filter.MinWeaningDate != nil {
+		query.And(fmt.Sprintf("animals.weaning_date >= $%d", numParam))
+		numParam++
+		query.And(fmt.Sprintf("animals.weaning_date <= $%d", numParam))
+		numParam++
+		args = append(args, *filter.MinWeaningDate)
+		args = append(args, *filter.MaxWeaningDate)
+	}
+
+	if filter.Fathers != nil {
+		arr := *filter.Fathers
+		params := fmt.Sprintf("$%d", numParam)
+		numParam++
+		args = append(args, arr[0])
+		for i := 1; i < len(arr); i++ {
+			params += fmt.Sprintf(", $%d", numParam)
+			args = append(args, arr[i])
+			numParam++
+		}
+		query.And(fmt.Sprintf("animals.father_id IN (%s)", params))
+		numParam++
+	}
+
+	if filter.Mothers != nil {
+		arr := *filter.Mothers
+		params := fmt.Sprintf("$%d", numParam)
+		numParam++
+		args = append(args, arr[0])
+		for i := 1; i < len(arr); i++ {
+			params += fmt.Sprintf(", $%d", numParam)
+			args = append(args, arr[i])
+			numParam++
+		}
+		query.And(fmt.Sprintf("animals.mother_id IN (%s)", params))
+		numParam++
+	}
+
+	if filter.MinBirthDate != nil {
+		query.And(fmt.Sprintf("animals.birth_date >= $%d", numParam))
+		numParam++
+		query.And(fmt.Sprintf("animals.birth_date <= $%d", numParam))
+		numParam++
+		args = append(args, *filter.MinBirthDate)
+		args = append(args, *filter.MaxBirthDate)
+	}
+
+	if filter.MinDeathDate != nil {
+		query.And(fmt.Sprintf("animals.death_date >= $%d", numParam))
+		numParam++
+		query.And(fmt.Sprintf("animals.death_date <= $%d", numParam))
+		numParam++
+		args = append(args, *filter.MinDeathDate)
+		args = append(args, *filter.MaxDeathDate)
+	}
+
+	if filter.Pastures != nil {
+		arr := *filter.Pastures
+		params := fmt.Sprintf("$%d", numParam)
+		numParam++
+		args = append(args, arr[0])
+		for i := 1; i < len(arr); i++ {
+			params += fmt.Sprintf(", $%d", numParam)
+			args = append(args, arr[i])
+			numParam++
+		}
+		query.And(fmt.Sprintf("animals.pasture_id IN (%s)", params))
+		numParam++
+	}
+
+	if filter.Status != nil {
+		arr := *filter.Status
+		params := fmt.Sprintf("$%d", numParam)
+		numParam++
+		args = append(args, arr[0])
+		for i := 1; i < len(arr); i++ {
+			params += fmt.Sprintf(", $%d", numParam)
+			args = append(args, arr[i])
+			numParam++
+		}
+		query.And(fmt.Sprintf("animals.status IN (%s)", params))
+		numParam++
+	}
+
+	if filter.MinIsr != nil {
+		query.And(fmt.Sprintf("animals.isr >= $%d", numParam))
+		numParam++
+		query.And(fmt.Sprintf("animals.isr <= $%d", numParam))
+		numParam++
+		args = append(args, *filter.MinIsr)
+		args = append(args, *filter.MaxIsr)
+	}
+
+	if filter.MinAverageBirthInterval != nil {
+		query.And(fmt.Sprintf("animals.average_birth_interval >= $%d", numParam))
+		numParam++
+		query.And(fmt.Sprintf("animals.average_birth_interval <= $%d", numParam))
+		numParam++
+		args = append(args, *filter.MinAverageBirthInterval)
+		args = append(args, *filter.MaxAverageBirthInterval)
+	}
+
+	if filter.MinAverageProd != nil {
+		query.And(fmt.Sprintf("animals.average_prod >= $%d", numParam))
+		numParam++
+		query.And(fmt.Sprintf("animals.average_prod <= $%d", numParam))
+		numParam++
+		args = append(args, *filter.MinAverageProd)
+		args = append(args, *filter.MaxAverageProd)
+	}
+
+	if filter.MinAveragePeak != nil {
+		query.And(fmt.Sprintf("animals.average_peak >= $%d", numParam))
+		numParam++
+		query.And(fmt.Sprintf("animals.average_peak <= $%d", numParam))
+		numParam++
+		args = append(args, *filter.MinAveragePeak)
+		args = append(args, *filter.MaxAveragePeak)
+	}
+
+	if filter.MinChildrenQuantity != nil {
+		query.And(fmt.Sprintf("animals.children_quantity >= $%d", numParam))
+		numParam++
+		query.And(fmt.Sprintf("animals.children_quantity <= $%d", numParam))
+		numParam++
+		args = append(args, *filter.MinChildrenQuantity)
+		args = append(args, *filter.MaxChildrenQuantity)
+	}
+
+	return query, args
+}
+
+func (r *AnimalRepository) FindPage(sort string, direction string,
+	cursor string, filter *entity.AnimalFilter) (page *entity.Page[entity.Animal], err error) {
+	query, args := r.filterQuery(filter)
+	return r.Impl.FindRandomQueryPage(&query, sort, direction, cursor, args...)
+}
+
+func (r *AnimalRepository) FindMaxValues() (maxValues *entity.AnimalMaxValues, err error) {
+	query := new(util.QueryConstructor).SelectMax("",
+		"weaning_date",
+		"birth_date",
+		"death_date",
+		"isr",
+		"average_birth_interval",
+		"average_prod",
+		"average_peak",
+		"children_quantity").From("animals", "").Where("user_id = $1").And("deleted_at is null")
+	row := selectQueryOne(query.Build(), GetUserId())
+	maxValues = new(entity.AnimalMaxValues)
+
+	err = row.Scan(
+		&maxValues.MaxWeaningDate,
+		&maxValues.MaxBirthDate,
+		&maxValues.MaxDeathDate,
+		&maxValues.MaxIsr,
+		&maxValues.MaxAverageBirthInterval,
+		&maxValues.MaxAverageProd,
+		&maxValues.MaxAveragePeak,
+		&maxValues.MaxChildrenQuantity,
+	)
+	if err != nil {
+		return
+	}
+
+	return maxValues, err
+}
+
+func (r *AnimalRepository) FindMinValues() (minValues *entity.AnimalMinValues, err error) {
+	query := new(util.QueryConstructor).SelectMin("",
+		"weaning_date",
+		"birth_date",
+		"death_date",
+	).From("animals", "").Where("user_id = $1").And("deleted_at is null")
+	row := selectQueryOne(query.Build(), GetUserId())
+	minValues = new(entity.AnimalMinValues)
+
+	err = row.Scan(
+		&minValues.MinWeaningDate,
+		&minValues.MinBirthDate,
+		&minValues.MinDeathDate,
+	)
+	if err != nil {
+		return
+	}
+
+	return minValues, err
 }
 
 func (r *AnimalRepository) FindById(id string) (*entity.Animal, error) {
-    return r.Impl.FindById(id)
+	return r.Impl.FindById(id)
 }
 
 func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]entity.Animal, error) {
-    query:=r.SelectQuery.And("mother.id = $1").Order("animals.birth_date asc")
-    return r.Impl.FindListByQuery(query, fatherId)
+	query := r.SelectQuery.Where("animals.father_id = $1").And("animals.deleted_at is null")
+	query.Order("animals.birth_date asc")
+	return r.Impl.FindListByQuery(query, fatherId)
 }
 
-func (r *AnimalRepository) FindByPastureId(sort string, direction string, 
-    cursor string, pastureId string) (page *entity.Page[entity.Animal], err error) {
-    query:= new(util.QueryConstructor).FromQuery(r.Impl.Base.SelectQueryBody)
-    query.Where("animals.pastureId = $1")
-    return r.Impl.FindRandomQueryPage(query, sort, direction, cursor, pastureId)
+func (r *AnimalRepository) FindByMotherId(motherId string) (*[]entity.Animal, error) {
+	query := r.SelectQuery.Where("animals.mother_id = $1").And("animals.deleted_at is null")
+	query.Order("animals.birth_date asc")
+	return r.Impl.FindListByQuery(query, motherId)
+}
+
+func (r *AnimalRepository) FindByPastureId(sort string, direction string,
+	cursor string, pastureId string) (page *entity.Page[entity.Animal], err error) {
+	query := r.SelectQuery.Where("animals.pastureId = $1")
+	return r.Impl.FindRandomQueryPage(query, sort, direction, cursor, pastureId)
 }
 
 func (r *AnimalRepository) FindByName(name string) (*[]entity.Animal, error) {
-    query:=r.SelectQuery.And("animals.name = $1").And("animals.user_id = $2")
-    return r.Impl.FindListByQuery(query, name, GetUserId())
+	query := r.SelectQuery.Where("animals.name = $1").And("animals.user_id = $2").And("animals.deleted_at is null")
+	return r.Impl.FindListByQuery(query, name, GetUserId())
 }
 
 func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]entity.Animal, error) {
-    query:=r.SelectQuery.And("animals.name = $1").And("animals.user_id = $2")
-    return r.Impl.FindListByQuery(query, number, GetUserId())
+	query := r.SelectQuery.Where("animals.name = $1").And("animals.user_id = $2").And("animals.deleted_at is null")
+	return r.Impl.FindListByQuery(query, number, GetUserId())
 }
 
-func (r *AnimalRepository) Add(create entity.Animal) (*entity.Animal, error) {
-    return r.Impl.Add(create)
+func (r *AnimalRepository) Add(create *entity.Animal) (*entity.Animal, error) {
+	return r.Impl.Add(create)
 }
 
 func (r *AnimalRepository) Save(animal *entity.Animal) error {
-    return r.Impl.Save(animal)
+	return r.Impl.Save(animal)
 }
 
 func (r *AnimalRepository) Delete(id string) error {
-    return r.Impl.SoftDelete(id)
+	return r.Impl.Delete(id)
 }

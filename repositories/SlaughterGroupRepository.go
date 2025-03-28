@@ -24,15 +24,16 @@ func (r *SlaughterGroupRepository) Init() {
     
     r.Impl = RepositoryImpl[entity.SlaughterGroup]{
         TableName: "slaughter_groups",
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
     }
 }
 
 func (r *SlaughterGroupRepository) setNewEntity(model *entity.SlaughterGroup, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
+    model.UserId = GetUserId()
 }
 
 func (r *SlaughterGroupRepository) buildEntity(row *sql.Row) (model *entity.SlaughterGroup, err error) {
@@ -67,7 +68,7 @@ func (r *SlaughterGroupRepository) FindId(id string) (*entity.SlaughterGroup, er
     return r.Impl.FindById(id)
 }
 
-func (r *SlaughterGroupRepository) Add(newModel entity.SlaughterGroup) (*entity.SlaughterGroup, error) {
+func (r *SlaughterGroupRepository) Add(newModel *entity.SlaughterGroup) (*entity.SlaughterGroup, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -76,5 +77,5 @@ func (r *SlaughterGroupRepository) Save(model *entity.SlaughterGroup) error {
 }
 
 func (r *SlaughterGroupRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 }

@@ -81,7 +81,7 @@ func (h *HandlerImpl[E]) FindById(w http.ResponseWriter, r *http.Request)  {
 }
 
 func (h *HandlerImpl[E]) Add(w http.ResponseWriter, r *http.Request) {
-    var create E
+    var create *E
     if err:= json.NewDecoder(r.Body).Decode(&create); err != nil {
         JsonServerError(err, w)
         return

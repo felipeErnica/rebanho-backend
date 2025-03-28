@@ -10,7 +10,7 @@ import (
 
 type BirthEntryRepository struct {
 	Impl            PageRepositoryImpl[entity.BirthEntry]
-	SelectQueryBody *util.QueryConstructor
+	SelectQueryBody util.QueryConstructor
 }
 
 func (r *BirthEntryRepository) Init() {
@@ -23,9 +23,9 @@ func (r *BirthEntryRepository) Init() {
 	updateQuery := new(util.QueryConstructor).Update("birth_entries", "id", "animal_id", "calf_id", "observation")
     base:= RepositoryImpl[entity.BirthEntry]{
 		TableName:       "birth_entries",
-		SelectQueryBody: selectQuery,
-		InsertQuery:     insertQuery,
-		UpdateQuery:     updateQuery,
+		SelectQueryBody: *selectQuery,
+		InsertQuery:     *insertQuery,
+		UpdateQuery:     *updateQuery,
 		Repository:      r,
 	}
     r.Impl = PageRepositoryImpl[entity.BirthEntry]{
@@ -68,10 +68,10 @@ func (r *BirthEntryRepository) saveOrUpdateScan(query string, model *entity.Birt
 }
 
 func (r *BirthEntryRepository) FindByMotherId(motherId string) (*[]entity.BirthEntry, error) {
-
-	return
+    query:=r.SelectQueryBody.Where("mother.id = $1")
+	return r.Impl.FindListByQuery(query, motherId)
 }
 
 func (r *BirthEntryRepository) Delete(id string) error {
-	return r.Impl.HardDelete(id)
+	return r.Impl.Delete(id)
 }

@@ -11,7 +11,7 @@ import (
 )
 
 var db *sql.DB
-const PAGE_LIMIT int = 500
+const PAGE_LIMIT int = 200
 var userId *string;
 
 func InitRepository(dbConn *sql.DB) {

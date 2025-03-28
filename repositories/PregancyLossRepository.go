@@ -20,18 +20,20 @@ func (r *PregnancyLossRepository) Init() {
     }
 
     selectQuery:=new(util.QueryConstructor).Select("loss","id", "loss_type", "loss_date", "created_at")
-        selectQuery.AndSelect("animals", "id", "identification_number", "name", "animal_order")
+        selectQuery.AndSelect("animal", "id", "identification_number", "name", "animal_order")
         selectQuery.From("pregnancy_losses", "loss")
-        selectQuery.LeftJoin("animals","").On("animal.id", "loss.animal_id")
+        selectQuery.LeftJoin("animals","animal").On("animal.id", "loss.animal_id")
     
-    updateQuery:=new(util.QueryConstructor).Update("pregnancy_losses", "animal_id", "loss_type", "loss_date", "created_at")
-    insertQuery:=new(util.QueryConstructor).Insert("pregnancy_losses", "id", "animal_id", "loss_type", "loss_date", "created_at")
+    updateQuery:=new(util.QueryConstructor).Update("pregnancy_losses", "animal_id", "loss_type", 
+        "loss_date", "created_at", "user_id")
+    insertQuery:=new(util.QueryConstructor).Insert("pregnancy_losses", "id", "animal_id", "loss_type", 
+        "loss_date", "created_at", "user_id")
 
     base:=RepositoryImpl[entity.PregnancyLoss]{
         Repository: r,
-        SelectQueryBody: selectQuery.Build(),
-        InsertQuery: insertQuery.Build(),
-        UpdateQuery: updateQuery.Build(),
+        SelectQueryBody: *selectQuery,
+        InsertQuery: *insertQuery,
+        UpdateQuery: *updateQuery,
         TableName: "pregnancy_losses",
     }
 
@@ -46,6 +48,7 @@ func (r *PregnancyLossRepository) Init() {
 func (r *PregnancyLossRepository) setNewEntity(model *entity.PregnancyLoss, id string, createdAt time.Time) {
     model.Id = id
     model.CreatedAt = createdAt
+    model.UserId = GetUserId()
 }
 
 func (r *PregnancyLossRepository) buildEntity(row *sql.Row) (model *entity.PregnancyLoss, err error) {
@@ -70,7 +73,7 @@ func (r *PregnancyLossRepository) buildListEntity(rows *sql.Rows) (arr *[]entity
 }
 
 func (r *PregnancyLossRepository) saveOrUpdateScan(query string, model *entity.PregnancyLoss) error {
-    return execQuery(query, model.Id, model.Animal.Id, model.LossType, model.LossDate, model.CreatedAt)
+    return execQuery(query, model.Id, model.Animal.Id, model.LossType, model.LossDate, model.CreatedAt, model.UserId)
 }
 
 func (r *PregnancyLossRepository) getFields(sort string) (firstField string, secondField string) {
@@ -104,7 +107,7 @@ func (r *PregnancyLossRepository) FindPage(cursor string, sort string, order str
 }
 
 func (r *PregnancyLossRepository) FindByAnimalId(animalId string) (*[]entity.PregnancyLoss, error) {
-    query:="WHERE loss.animal_id = $1"
+    query := r.Impl.Base.SelectQueryBody.Where("loss.animal_id = $1").And("loss.deleted_at is null")
     return r.Impl.FindListByQuery(query)
 }
 
@@ -112,7 +115,7 @@ func (r *PregnancyLossRepository) FindById(id string) (*entity.PregnancyLoss, er
     return r.Impl.FindById(id)
 }
 
-func (r *PregnancyLossRepository) Add(newModel entity.PregnancyLoss) (*entity.PregnancyLoss, error) {
+func (r *PregnancyLossRepository) Add(newModel *entity.PregnancyLoss) (*entity.PregnancyLoss, error) {
     return r.Impl.Add(newModel)
 }
 
@@ -121,5 +124,5 @@ func (r *PregnancyLossRepository) Save(model *entity.PregnancyLoss) error {
 }
 
 func (r *PregnancyLossRepository) Delete(id string) error {
-    return r.Impl.HardDelete(id)
+    return r.Impl.Delete(id)
 }

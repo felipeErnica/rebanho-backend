@@ -32,10 +32,62 @@ func (q *QueryConstructor) Select(alias string, fields... string) *QueryConstruc
         return q
     }
 
-    fieldDeclaration:=fmt.Sprintf(" %s.%s", alias, fields[0])
+    fieldDeclaration:=fmt.Sprintf("%s", fields[0])
     buffer.WriteString(fieldDeclaration)
     for i:=1; i < len(fields); i++ {
-        fieldDeclaration:=fmt.Sprintf(", %s.%s", alias, fields[i])
+        fieldDeclaration:=fmt.Sprintf(", %s", fields[i])
+        buffer.WriteString(fieldDeclaration)
+    }
+    
+    q.mainBody = buffer.String()
+    return q
+}
+
+func (q *QueryConstructor) SelectMax(alias string, fields... string) *QueryConstructor {
+    var buffer bytes.Buffer
+    buffer.WriteString("SELECT ")
+
+    if alias != "" {
+        fieldDeclaration:=fmt.Sprintf(" max(%s.%s)", alias, fields[0])
+        buffer.WriteString(fieldDeclaration)
+        for i:=1; i < len(fields); i++ {
+            fieldDeclaration:=fmt.Sprintf(", max(%s.%s)", alias, fields[i])
+            buffer.WriteString(fieldDeclaration)
+        }
+        q.mainBody = buffer.String()
+        return q
+    }
+
+    fieldDeclaration:=fmt.Sprintf("max(%s)", fields[0])
+    buffer.WriteString(fieldDeclaration)
+    for i:=1; i < len(fields); i++ {
+        fieldDeclaration:=fmt.Sprintf(", max(%s)", fields[i])
+        buffer.WriteString(fieldDeclaration)
+    }
+    
+    q.mainBody = buffer.String()
+    return q
+}
+
+func (q *QueryConstructor) SelectMin(alias string, fields... string) *QueryConstructor {
+    var buffer bytes.Buffer
+    buffer.WriteString("SELECT ")
+
+    if alias != "" {
+        fieldDeclaration:=fmt.Sprintf(" min(%s.%s)", alias, fields[0])
+        buffer.WriteString(fieldDeclaration)
+        for i:=1; i < len(fields); i++ {
+            fieldDeclaration:=fmt.Sprintf(", min(%s.%s)", alias, fields[i])
+            buffer.WriteString(fieldDeclaration)
+        }
+        q.mainBody = buffer.String()
+        return q
+    }
+
+    fieldDeclaration:=fmt.Sprintf("min(%s)", fields[0])
+    buffer.WriteString(fieldDeclaration)
+    for i:=1; i < len(fields); i++ {
+        fieldDeclaration:=fmt.Sprintf(", min(%s)", fields[i])
         buffer.WriteString(fieldDeclaration)
     }
     
@@ -125,13 +177,8 @@ func (q *QueryConstructor) Update(tableName string, fields... string) *QueryCons
     return q
 }
 
-func (q *QueryConstructor) SoftDelete(tableName string) *QueryConstructor {
-    q.mainBody = fmt.Sprintf("UPDATE %s SET deleted_at = $1 WHERE id = $2", tableName)
-    return q
-}
-
 func (q *QueryConstructor) Delete(tableName string) *QueryConstructor {
-    q.mainBody = fmt.Sprintf("DELETE FROM %s WHERE id = $1", tableName)
+    q.mainBody = fmt.Sprintf("UPDATE %s SET deleted_at = $1 WHERE id = $2", tableName)
     return q
 }
 

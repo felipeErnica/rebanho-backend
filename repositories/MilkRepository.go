@@ -6,136 +6,129 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
 )
 
-type MilkRepository struct{
-    Base PageRepositoryImpl[entity.MilkEntry]
+type MilkRepository struct {
+	Impl        PageRepositoryImpl[entity.MilkEntry]
+	SelectQuery util.QueryConstructor
 }
 
-func (m *MilkRepository) Init() {
-    
-    dateFields:= []string{
-        "entry_date",
-        "created_at",
-    }
+func (r *MilkRepository) Init() {
 
-    selectQuery:=`
-        SELECT milk_entries.id, milk_entries.entry_date, milk_entries.milk_quantity, milk_entries.lactation_id
-            animal.id as animal_id, animal.identification_number as animal_number, animal.ring_order as animal_order,
-            animal.name as animal_name,
-            pasture.id as pasture_id, pasture.name as pasture_name
-        FROM milk_actives AS milk_entries
-        LEFT JOIN animals AS animal ON animal.id = milk_entries.animal_id
-        LEFT JOIN pastures AS pasture ON pasture.id = milk_entries.pasture_id
-    `
-    
-    insertQuery:=`
-        INSERT INTO milk_entries (id, entry_date, milk_quantity, animal_id, pasture_id, lactation_id, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `
+	dateFields := []string{
+		"entry_date",
+		"created_at",
+	}
 
-    updateQuery:=`
-        UPDATE milk_entries 
-        SET entry_date = $2, milk_quantity = $3, animal_id = $4, pasture_id = $5, lactation_id = $6, created_at = $7)
-        WHERE id = $1
-    `
+    r.SelectQuery = *new(util.QueryConstructor).Select("milk", "id", "entry_date", "milk_quantity", "milk_entries.lactation_id")
+    r.SelectQuery.AndSelect("animal", "id", "identification_number", "animal_order", "name")
+    r.SelectQuery.AndSelect("pasture", "id", "name")
+    r.SelectQuery.From("milk_entries", "milk")
+    r.SelectQuery.LeftJoin("animals", "animal").On("animal.id", "milk.animal_id")
+    r.SelectQuery.LeftJoin("pastures", "pasture").On("pasture.id", "milk.pasture_id")
 
-    mainRepository:=&RepositoryImpl[entity.MilkEntry]{
-        Repository: m,
-        SelectQueryBody: selectQuery,
-        UpdateQuery: updateQuery,
-        InsertQuery: insertQuery,
-        TableName: "milk_entries",
-    }
+    insertQuery := new(util.QueryConstructor).Insert("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
+        "pasture_id", "lactation_id", "created_at", "user_id")
+    updateQuery := new(util.QueryConstructor).Update("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
+        "pasture_id", "lactation_id", "created_at", "user_id")
 
-    m.Base = PageRepositoryImpl[entity.MilkEntry] {
-        Base: mainRepository,
-        PageRepository: m,
-        DateFields: dateFields,
-    }
+	mainRepository := &RepositoryImpl[entity.MilkEntry]{
+		Repository:      r,
+		SelectQueryBody: r.SelectQuery,
+		UpdateQuery:     *updateQuery,
+		InsertQuery:     *insertQuery,
+		TableName:       "milk_entries",
+	}
+
+	r.Impl = PageRepositoryImpl[entity.MilkEntry]{
+		Base:           mainRepository,
+		PageRepository: r,
+		DateFields:     dateFields,
+	}
 }
 
-func (m *MilkRepository) getFields(sort string) (firstField string, secondField string) {
-    switch (sort) {
-    case "name": 
-        return "animal.name", "milk_entries.id"
-    case "identification_number": 
-        return "animal.animal_order", "milk_entries.id"
-    case "entry_date":
-        return "milk_entries.entry_date", "milk_entries.id"
-    default:
-        return "milk_entries.created_at", "milk_entries.id"
-    }
+func (r *MilkRepository) getFields(sort string) (firstField string, secondField string) {
+	switch sort {
+	case "name":
+		return "animal.name", "milk_entries.id"
+	case "identification_number":
+		return "animal.animal_order", "milk_entries.id"
+	case "entry_date":
+		return "milk_entries.entry_date", "milk_entries.id"
+	default:
+		return "milk_entries.created_at", "milk_entries.id"
+	}
 }
 
-func (m *MilkRepository) createKey(sort string, lastEntry *entity.MilkEntry) (key string) {
-    switch (sort) {
-    case "name": 
-        return fmt.Sprintf("%s,%s", *lastEntry.Animal.Name, lastEntry.Id)
-    case "identification_number": 
-        return fmt.Sprintf("%d,%s", *lastEntry.Animal.AnimalOrder, lastEntry.Id)
-    case "entry_date":
-        return fmt.Sprintf("%s,%s", lastEntry.EntryDate, lastEntry.Id)
-    default:
-        return fmt.Sprintf("%s,%s", lastEntry.CreatedAt, lastEntry.Id)
-    }
+func (r *MilkRepository) createKey(sort string, lastEntry *entity.MilkEntry) (key string) {
+	switch sort {
+	case "name":
+		return fmt.Sprintf("%s,%s", *lastEntry.Animal.Name, lastEntry.Id)
+	case "identification_number":
+		return fmt.Sprintf("%d,%s", *lastEntry.Animal.AnimalOrder, lastEntry.Id)
+	case "entry_date":
+		return fmt.Sprintf("%s,%s", lastEntry.EntryDate, lastEntry.Id)
+	default:
+		return fmt.Sprintf("%s,%s", lastEntry.CreatedAt, lastEntry.Id)
+	}
 }
 
-func (m *MilkRepository) setNewEntity(model *entity.MilkEntry, id string, createdAt time.Time) {
-    model.Id = id
-    model.CreatedAt = createdAt
+func (r *MilkRepository) setNewEntity(model *entity.MilkEntry, id string, createdAt time.Time) {
+	model.Id = id
+	model.CreatedAt = createdAt
 }
 
-func (m *MilkRepository) buildEntity(row *sql.Row) (model *entity.MilkEntry, err error) {
-    var milk entity.MilkEntry
-    err = row.Scan(&milk.Id, &milk.EntryDate, &milk.MilkQuantity, &milk.LactationId,
-        &milk.Animal.Id, &milk.Animal.IdentificationNumber, &milk.Animal.AnimalOrder, &milk.Animal.Name,
-        &milk.Pasture.Id, &milk.Pasture.Name)
-    return &milk, err
+func (r *MilkRepository) buildEntity(row *sql.Row) (model *entity.MilkEntry, err error) {
+	var milk entity.MilkEntry
+	err = row.Scan(&milk.Id, &milk.EntryDate, &milk.MilkQuantity, &milk.LactationId,
+		&milk.Animal.Id, &milk.Animal.IdentificationNumber, &milk.Animal.AnimalOrder, &milk.Animal.Name,
+		&milk.Pasture.Id, &milk.Pasture.Name)
+	return &milk, err
 }
 
-func (m *MilkRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.MilkEntry, err error) {
-    var entries []entity.MilkEntry
-    for rows.Next() {
-        var milk entity.MilkEntry
-        err = rows.Scan(&milk.Id, &milk.EntryDate, &milk.MilkQuantity, &milk.LactationId,
-            &milk.Animal.Id, &milk.Animal.IdentificationNumber, &milk.Animal.AnimalOrder, &milk.Animal.Name,
-            &milk.Pasture.Id, &milk.Pasture.Name)
-        if err != nil {
-            return  
-        }
-        entries = append(entries, milk)
-    }
-    return &entries, err
-}
-	
-func (m *MilkRepository) saveOrUpdateScan(query string, model *entity.MilkEntry) error {
-    return execQuery(query, model.Id, model.EntryDate, model.MilkQuantity, 
-        model.Animal.Id, model.Pasture.Id, model.LactationId, model.CreatedAt)
+func (r *MilkRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.MilkEntry, err error) {
+	var entries []entity.MilkEntry
+	for rows.Next() {
+		var milk entity.MilkEntry
+		err = rows.Scan(&milk.Id, &milk.EntryDate, &milk.MilkQuantity, &milk.LactationId,
+			&milk.Animal.Id, &milk.Animal.IdentificationNumber, &milk.Animal.AnimalOrder, &milk.Animal.Name,
+			&milk.Pasture.Id, &milk.Pasture.Name)
+		if err != nil {
+			return
+		}
+		entries = append(entries, milk)
+	}
+	return &entries, err
 }
 
-func (m *MilkRepository) FindPage(sort string, direction string, cursor string) (*entity.Page[entity.MilkEntry], error) {
-    return m.Base.FindPage(sort, direction, cursor)
+func (r *MilkRepository) saveOrUpdateScan(query string, model *entity.MilkEntry) error {
+	return execQuery(query, model.Id, model.EntryDate, model.MilkQuantity,
+		model.Animal.Id, model.Pasture.Id, model.LactationId, model.CreatedAt)
 }
 
-func (m *MilkRepository) FindByAnimal(animalId string) (*[]entity.MilkEntry, error) {
-    query:= "WHERE milk_entries.animal_id = $1"
-    return m.Base.FindListByQuery(query, animalId)
+func (r *MilkRepository) FindPage(sort string, direction string, cursor string) (*entity.Page[entity.MilkEntry], error) {
+	return r.Impl.FindPage(sort, direction, cursor)
 }
 
-func (m *MilkRepository) FindByEntryDate(entryDate time.Time) (*[]entity.MilkEntry, error) {
-    query:= "WHERE milk_entries.entryDate = $1"
-    return m.Base.FindListByQuery(query, entryDate)
+func (r *MilkRepository) FindByAnimal(animalId string) (*[]entity.MilkEntry, error) {
+	query := r.SelectQuery.Where("milk_entries.deleted_at is null").And("milk_entries.animal_id = $1")
+	return r.Impl.FindListByQuery(query, animalId)
 }
 
-func (m *MilkRepository) Add(newMilk entity.MilkEntry) (*entity.MilkEntry, error) {
-    return m.Base.Add(newMilk)
+func (r *MilkRepository) FindByEntryDate(entryDate time.Time) (*[]entity.MilkEntry, error) {
+	query := r.SelectQuery.Where("milk_entries.deleted_at is null").And("milk_entries.entry_date = $1")
+	return r.Impl.FindListByQuery(query, entryDate)
 }
 
-func (m *MilkRepository) Save(milk *entity.MilkEntry) error {
-    return m.Base.Save(milk)
+func (r *MilkRepository) Add(newMilk *entity.MilkEntry) (*entity.MilkEntry, error) {
+	return r.Impl.Add(newMilk)
 }
 
-func (m *MilkRepository) Delete(id string) error {
-    return m.Base.SoftDelete(id)
+func (r *MilkRepository) Save(milk *entity.MilkEntry) error {
+	return r.Impl.Save(milk)
+}
+
+func (r *MilkRepository) Delete(id string) error {
+	return r.Impl.Delete(id)
 }

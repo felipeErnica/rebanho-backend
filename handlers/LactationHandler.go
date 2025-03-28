@@ -18,7 +18,7 @@ func InitLactation(app *app.App) {
     repository.Init()
 
     impl:=HandlerImpl[entity.Lactation]{
-        Repository: *repository.Base.Base,
+        Repository: *repository.Impl.Base,
     }
 
     handler:=LactationHandler{
