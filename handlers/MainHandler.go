@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
@@ -35,6 +37,7 @@ func (h *HandlerImpl[E]) SendPage(w http.ResponseWriter, page *entity.Page[E], e
 
     response, err:= json.Marshal(page)
     if err != nil {
+        err = errors.New(fmt.Sprintf("Erro na formatação do JSON: %s", err.Error()))
         JsonServerError(err, w)
         return
     }

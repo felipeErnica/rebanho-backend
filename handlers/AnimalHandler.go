@@ -31,8 +31,8 @@ func InitAnimal(app *app.App) {
 
     app.HandleFunc("POST /animals/page", handler.FindPage)
     app.HandleFunc("GET /animals/{id}", handler.FindById)
-    app.HandleFunc("GET /animals/max-values", handler.FindMaxValues)
-    app.HandleFunc("GET /animals/min-values", handler.FindMinValues)
+    app.HandleFunc("GET /animals/info/max-values", handler.FindMaxValues)
+    app.HandleFunc("GET /animals/info/min-values", handler.FindMinValues)
     app.HandleFunc("GET /animals/name/{name}", handler.FindByName)
     app.HandleFunc("GET /animals/number/{number}", handler.FindByNumber)
     app.HandleFunc("GET /animals/father/{fatherId}", handler.FindByFatherId)
