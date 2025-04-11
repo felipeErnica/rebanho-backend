@@ -4,12 +4,13 @@ import (
 	"net/http"
 
 	"github.com/felipeErnica/rebanho-backend/app"
+	"github.com/felipeErnica/rebanho-backend/middlewares"
 )
 
 //Inicia o end-point necessário para verificar os testes de options do front-end
 
 func InitCorsOptions(app *app.App) {
-    app.HandleFunc("OPTIONS /", HandleOptionsTest)
+    app.HandleFuncNoMiddleware("OPTIONS /", middlewares.CorsMiddleware(HandleOptionsTest))
     LogControllersInit("CORS")
 }
 

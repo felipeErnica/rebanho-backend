@@ -5,29 +5,29 @@ import "time"
 type Animal struct {
 	Id                   string       `json:"id"`
 	Name                 *string      `json:"name"`
-	IdentificationNumber *string      `json:"identification_number"`
-	AnimalOrder          int          `json:"animal_order"`
+	IdentificationNumber *string      `json:"ringNumber"`
+	AnimalOrder          int          `json:"animalOrder"`
 	Sex                  *string      `json:"sex"`
-	WeaningDate          *time.Time   `json:"weaning_date"`
+	WeaningDate          *time.Time   `json:"weaningDate"`
 	Father               AnimalShort  `json:"father"`
 	Mother               AnimalShort  `json:"mother"`
-	BirthDate            *time.Time   `json:"birth_date"`
-	DeathDate            *time.Time   `json:"death_date"`
+	BirthDate            *time.Time   `json:"birthDate"`
+	DeathDate            *time.Time   `json:"deathDate"`
 	Pasture              PastureShort `json:"pasture"`
 	Status               string       `json:"status"`
 	Isr                  float32      `json:"isr"`
-	AverageProd          float32      `json:"average_prod"`
-	AverageBirthInterval float32      `json:"average_birth_interval"`
-	AveragePeak          float32      `json:"average_peak"`
-	ChildrenQuantity     int          `json:"children_quantity"`
+	AverageProd          float32      `json:"averageProd"`
+	AverageBirthInterval float32      `json:"averageBirthInterval"`
+	AveragePeak          float32      `json:"averagePeak"`
+	ChildrenQuantity     int          `json:"childrenQuantity"`
 	Observation          *string      `json:"observation"`
-	CreatedAt            time.Time    `json:"created_at"`
-	DeletedAt            *time.Time   `json:"deleted_at"`
-	UserId               string       `json:"user_id"`
+	CreatedAt            time.Time    `json:"createdAt"`
+	DeletedAt            *time.Time   `json:"deletedAt"`
+	UserId               string       `json:"userId"`
 }
 
 type AnimalFilter struct {
-	IsFiltered              bool       `json:"is_filtered"`
+	IsFiltered              bool       `json:"isFiltered"`
 	Name                    *string    `json:"name"`
 	IdentificationNumber    *string    `json:"identification_number"`
 	Sex                     *string    `json:"sex"`
