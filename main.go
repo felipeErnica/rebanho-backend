@@ -15,41 +15,44 @@ import (
 )
 
 func main() {
-    
-    util.LogInfo("Iniciando server....")
 
-    app:=app.NewApp()
-    app.UseGroup(middlewares.AuthenticationMiddleware)
+	util.LogInfo("Iniciando server....")
 
-    dataBaseInfo:= db.ConnectPostgres().ReturnDatabaseInfo()
-    db, err := sql.Open("postgres", dataBaseInfo)
-    db.SetMaxOpenConns(15)
-    db.SetMaxIdleConns(15)
-    db.SetConnMaxLifetime(5 * time.Minute)
-    defer db.Close()
+	app := app.NewApp()
+	app.UseGroup(
+		middlewares.CorsMiddleware,
+		middlewares.AuthenticationMiddleware,
+	)
 
-    if err != nil {
-        util.LogError("Não foi possível conectar ao banco de dados!")
-        serverErrors.InitServerError(err)
-    }
+	dataBaseInfo := db.ConnectPostgres().ReturnDatabaseInfo()
+	db, err := sql.Open("postgres", dataBaseInfo)
+	db.SetMaxOpenConns(15)
+	db.SetMaxIdleConns(15)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	defer db.Close()
 
-    err = db.Ping()
+	if err != nil {
+		util.LogError("Não foi possível conectar ao banco de dados!")
+		serverErrors.InitServerError(err)
+	}
 
-    if err != nil {
-        util.LogError("Não foi possível conectar ao banco de dados!")
-        serverErrors.InitServerError(err)
-    }
+	err = db.Ping()
 
-    handlers.InitHandlers(app)
-    repositories.InitRepository(db)
-    
-    err = app.ListenAndServe("localhost:8080")
+	if err != nil {
+		util.LogError("Não foi possível conectar ao banco de dados!")
+		serverErrors.InitServerError(err)
+	}
 
-    if err != nil {
-        util.LogError("Não foi possível conectar a porta do host especificado!")
-        serverErrors.InitServerError(err)
-    }
+	handlers.InitHandlers(app)
+	repositories.InitRepository(db)
 
-    util.LogInfo("Server encerrado com sucesso!")
+	err = app.ListenAndServe("localhost:8080")
+
+	if err != nil {
+		util.LogError("Não foi possível conectar a porta do host especificado!")
+		serverErrors.InitServerError(err)
+	}
+
+	util.LogInfo("Server encerrado com sucesso!")
 
 }

@@ -8,6 +8,8 @@ import (
 )
 
 func InitHandlers(app *app.App) {
+
+    InitCorsOptions(app)
     InitAnimal(app)
     InitLactation(app)
     InitMilk(app)
