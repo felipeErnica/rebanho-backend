@@ -22,20 +22,18 @@ func (r *AnimalRepository) Init() {
 		"deleted_at",
 	}
 
-	selectQueryBody := util.NewSelectQuery(util.SELECT, 
+	r.SelectQuery = *util.NewSelectQuery(util.SELECT, 
 		*util.NewNamedGroup("animals", "id", "name", "identification_number", "birth_date", "sex", "death_date",
 		"weaning_date", "status", "average_prod", "average_birth_interval", 
 		"average_peak", "isr", "children_quantity", "observation"),
-		*util.NewGroup("mother", "id", "name", "identification_number"), 
-		*util.NewGroup("father", "id", "name", "identification_number"),
-		*util.NewGroup("pastures", "id", "name")).
+		*util.NewNamedGroup("mother", "id", "name", "identification_number"), 
+		*util.NewNamedGroup("father", "id", "name", "identification_number"),
+		*util.NewNamedGroup("pastures", "id", "name")).
 		From("animals").
 		Joins(
 			"left join animals as father on father.id = animals.father_id", 
 			"left join animals as mother on mother.id = animals.mother_id", 
-			"left join pastures on pastures.id = animals.pasture_id",
-		)
-	r.SelectQuery = *selectQueryBody
+			"left join pastures on pastures.id = animals.pasture_id")
 
 	insertQuery := util.NewInsertQuery("animals", "id", "name", "identification_number", "father_id", "mother_id",
 		"birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod",
@@ -49,7 +47,7 @@ func (r *AnimalRepository) Init() {
 	baseRepo := &RepositoryImpl[entity.Animal]{
 		Repository:      r,
 		TableName:       "animals",
-		SelectQueryBody: *selectQueryBody,
+		SelectQueryBody: r.SelectQuery,
 		InsertQuery:     *insertQuery,
 		UpdateQuery:     *updateQuery,
 	}
@@ -174,7 +172,7 @@ func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) stri
 
 func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.SelectConstructor, args []any) {
 	query = r.SelectQuery
-	query.Where("animals.user_id = $1", "and animals.deleted_at is null")
+	query.Where("animals.user_id = $1 and animals.deleted_at is null")
 	args = append(args, GetUserId())
 	numParam := 2
 
@@ -340,10 +338,11 @@ func (r *AnimalRepository) FindPage(sort string, direction string,
 }
 
 func (r *AnimalRepository) FindMaxValues() (maxValues *entity.AnimalMaxValues, err error) {
-	query := util.NewSelectQuery(util.MAX, *util.NewGroup( "weaning_date", "birth_date", "death_date",
+	query := util.NewSelectQuery(util.MAX, 
+        *util.NewGroup( "weaning_date", "birth_date", "death_date",
 		"isr", "average_birth_interval", "average_prod", "average_peak", "children_quantity")).
 		From("animals").
-		Where("user_id = $1", "and deleted_at is null")
+		Where("user_id = $1 and deleted_at is null")
 	row := selectQueryOne(query.Build(), GetUserId())
 	maxValues = new(entity.AnimalMaxValues)
 
@@ -366,7 +365,7 @@ func (r *AnimalRepository) FindMaxValues() (maxValues *entity.AnimalMaxValues, e
 
 func (r *AnimalRepository) FindMinValues() (minValues *entity.AnimalMinValues, err error) {
 	query := util.NewSelectQuery(util.MIN, *util.NewGroup( "weaning_date", "birth_date", "death_date",)).
-		From("animals").Where("user_id = $1", "and deleted_at is null")
+		From("animals").Where("user_id = $1 and deleted_at is null")
 	row := selectQueryOne(query.Build(), GetUserId())
 	minValues = new(entity.AnimalMinValues)
 
@@ -387,13 +386,13 @@ func (r *AnimalRepository) FindById(id string) (*entity.Animal, error) {
 }
 
 func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]entity.Animal, error) {
-	query := r.SelectQuery.Where("animals.father_id = $1", "and animals.deleted_at is null").
+	query := r.SelectQuery.Where("animals.father_id = $1 and animals.deleted_at is null").
 		OrderBy("animals.birth_date asc")
 	return r.Impl.FindListByQuery(query, fatherId)
 }
 
 func (r *AnimalRepository) FindByMotherId(motherId string) (*[]entity.Animal, error) {
-	query := r.SelectQuery.Where("animals.mother_id = $1", "and animals.deleted_at is null").
+	query := r.SelectQuery.Where("animals.mother_id = $1 and animals.deleted_at is null").
 		OrderBy("animals.birth_date asc")
 	return r.Impl.FindListByQuery(query, motherId)
 }
@@ -405,12 +404,12 @@ func (r *AnimalRepository) FindByPastureId(sort string, direction string,
 }
 
 func (r *AnimalRepository) FindByName(name string) (*[]entity.Animal, error) {
-	query := r.SelectQuery. Where("animals.name = $1", "and animals.user_id = $2", "animals.deleted_at is null")
+	query := r.SelectQuery. Where("animals.name = $1 and animals.user_id = $2 and animals.deleted_at is null")
 	return r.Impl.FindListByQuery(query, name, GetUserId())
 }
 
 func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]entity.Animal, error) {
-	query := r.SelectQuery.Where("animals.name = $1", "and animals.user_id = $2", "and animals.deleted_at is null")
+	query := r.SelectQuery.Where("animals.name = $1 and animals.user_id = $2 and animals.deleted_at is null")
 	return r.Impl.FindListByQuery(query, number, GetUserId())
 }
 

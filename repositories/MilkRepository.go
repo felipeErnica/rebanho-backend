@@ -21,16 +21,18 @@ func (r *MilkRepository) Init() {
 		"created_at",
 	}
 
-    r.SelectQuery = *new(util.SelectConstructor).Select("milk", "id", "entry_date", "milk_quantity", "milk_entries.lactation_id")
-    r.SelectQuery.AndSelect("animal", "id", "identification_number", "animal_order", "name")
-    r.SelectQuery.AndSelect("pasture", "id", "name")
-    r.SelectQuery.From("milk_entries", "milk")
-    r.SelectQuery.LeftJoin("animals", "animal").On("animal.id", "milk.animal_id")
-    r.SelectQuery.LeftJoin("pastures", "pasture").On("pasture.id", "milk.pasture_id")
+    r.SelectQuery = *util.NewSelectQuery(util.SELECT, 
+        *util.NewNamedGroup("milk", "id", "entry_date", "milk_quantity", "milk_entries.lactation_id"),
+        *util.NewNamedGroup("animal", "id", "identification_number", "animal_order", "name"),
+        *util.NewNamedGroup("pasture", "id", "name")).
+        From("milk_entries as milk").
+        Joins(
+            "left join animals as animal on animal.id = milk.animal_id",
+            "left join pastures as pasture on pasture.id = milk.pasture_id")
 
-    insertQuery := new(util.SelectConstructor).Insert("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
+    insertQuery := util.NewInsertQuery("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
         "pasture_id", "lactation_id", "created_at", "user_id")
-    updateQuery := new(util.SelectConstructor).Update("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
+    updateQuery := util.NewUpdateQuery("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
         "pasture_id", "lactation_id", "created_at", "user_id")
 
 	mainRepository := &RepositoryImpl[entity.MilkEntry]{
@@ -112,12 +114,12 @@ func (r *MilkRepository) FindPage(sort string, direction string, cursor string) 
 }
 
 func (r *MilkRepository) FindByAnimal(animalId string) (*[]entity.MilkEntry, error) {
-	query := r.SelectQuery.Where("milk_entries.deleted_at is null").And("milk_entries.animal_id = $1")
+	query := r.SelectQuery.Where("milk_entries.deleted_at is null and milk_entries.animal_id = $1")
 	return r.Impl.FindListByQuery(query, animalId)
 }
 
 func (r *MilkRepository) FindByEntryDate(entryDate time.Time) (*[]entity.MilkEntry, error) {
-	query := r.SelectQuery.Where("milk_entries.deleted_at is null").And("milk_entries.entry_date = $1")
+	query := r.SelectQuery.Where("milk_entries.deleted_at is null and milk_entries.entry_date = $1")
 	return r.Impl.FindListByQuery(query, entryDate)
 }
 

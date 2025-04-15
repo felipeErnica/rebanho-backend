@@ -22,17 +22,18 @@ func (r *PastureEntryRepository) Init() {
 		"created_at",
 	}
 
-	selectQuery := new(util.SelectConstructor).Select("entries", "id", "entry_date", "exit_date")
-	selectQuery.AndSelect("animals", "id", "identification_number", "animal_order", "name")
-	selectQuery.AndSelect("pastures", "id", "identification_number", "animal_order", "name")
-	selectQuery.From("pasture_entries", "entries")
-	selectQuery.LeftJoin("pastures", "").On("pastures.id", "entries.pasture_id")
-	selectQuery.LeftJoin("animals", "").On("animals.id", "entries.animal_id")
-	r.SelectQuery = *selectQuery
+	r.SelectQuery = *util.NewSelectQuery(util.SELECT, 
+        *util.NewNamedGroup("entries", "id", "entry_date", "exit_date"),
+	    *util.NewNamedGroup("animals", "id", "identification_number", "animal_order", "name"),
+	    *util.NewNamedGroup("pastures", "id", "identification_number", "animal_order", "name")).
+	    From("pasture_entries as entries").
+        Joins(
+            "left join pastures on pastures.id = entries.pasture_id",
+	        "left join animals on animals.id = entries.animal_id")
 
-    insertQuery := new(util.SelectConstructor).Insert("pasture_entries", "id", "entry_date", "exit_date", "animal_id", "pasture_id", 
+    insertQuery := util.NewInsertQuery("pasture_entries", "id", "entry_date", "exit_date", "animal_id", "pasture_id", 
         "created_at", "user_id")
-    updateQuery := new(util.SelectConstructor).Update("pasture_entries", "id", "entry_date", "exit_date", "animal_id", "pasture_id", 
+    updateQuery := util.NewUpdateQuery("pasture_entries", "id", "entry_date", "exit_date", "animal_id", "pasture_id", 
         "created_at", "user_id")
 
 	mainRepository := RepositoryImpl[entity.PastureEntry]{
@@ -121,13 +122,13 @@ func (r *PastureEntryRepository) FindByPastureId(sort string, direction string,
 }
 
 func (r *PastureEntryRepository) FindByAnimalId(animalId string) (*[]entity.PastureEntry, error) {
-    query := r.SelectQuery.Where("entries.deleted_at is null").And("entries.pasture_id = $1")
+    query := r.SelectQuery.Where("entries.deleted_at is null and entries.pasture_id = $1")
 	return r.Base.FindListByQuery(query, animalId)
 }
 
 func (r *PastureEntryRepository) FindByDeletedPasturePage(sort string, direction string,
 	cursor string, pastureId string) (*entity.Page[entity.PastureEntry], error) {
-    query := r.SelectQuery.Where("entries.deleted_at is not null").And("entries.pasture_id = $1")
+    query := r.SelectQuery.Where("entries.deleted_at is not null and entries.pasture_id = $1")
 	return r.Base.FindRandomQueryPage(query, sort, direction, cursor, pastureId)
 }
 

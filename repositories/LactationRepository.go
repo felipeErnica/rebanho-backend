@@ -23,21 +23,23 @@ func (r *LactationRepository) Init() {
 		"deleted_at",
 	}
 
-	selectQuery := new(util.SelectConstructor).Select("lactations", "id", "start_date", "end_date", "production_period",
-		"production_total", "average_production", "peak_production", "isr", "observation")
-	selectQuery.AndSelect("pastures", "id", "name")
-	selectQuery.AndSelect("cow", "id", "identificantion_number", "name", "status")
-	selectQuery.AndSelect("calf", "id", "sex", "birth_date")
-	selectQuery.From("lactations", "")
-	selectQuery.LeftJoin("pastures", "").On("pastures.id", "lactations.pasture_id")
-	selectQuery.LeftJoin("animals", "cow").On("cow.id", "lactations.animal_id")
-	selectQuery.LeftJoin("animals", "calf").On("calf.id", "lactations.calf_id")
+	selectQuery := util.NewSelectQuery(util.SELECT,
+		*util.NewNamedGroup("lactations", "id", "start_date", "end_date", "production_period",
+			"production_total", "average_production", "peak_production", "isr", "observation"),
+		*util.NewNamedGroup("pastures", "id", "name"),
+		*util.NewNamedGroup("cow", "id", "identificantion_number", "name", "status"),
+		*util.NewNamedGroup("calf", "id", "sex", "birth_date")).
+		From("lactations").
+	Joins(
+        "left join pastures on pastures.id = lactations.pasture_id",
+        "left join animals as cow on cow.id = lactations.animal_id", 
+        "left join animals as calf as calf.id = lactations.calf_id")
 
-	insertQuery := new(util.SelectConstructor).Insert("lactations", "id", "start_date", "end_date", "production_period",
+	insertQuery := util.NewInsertQuery("lactations", "id", "start_date", "end_date", "production_period",
 		"production_total", "average_production", "peak_production", "isr", "observation", "animal_id", "calf_id", "created_at",
 		"user_id")
 
-	updateQuery := new(util.SelectConstructor).Update("lactations", "id", "start_date", "end_date", "production_period",
+	updateQuery := util.NewUpdateQuery("lactations", "id", "start_date", "end_date", "production_period",
 		"production_total", "average_production", "peak_production", "isr", "observation", "animal_id", "calf_id", "created_at",
 		"user_id")
 
@@ -158,12 +160,12 @@ func (r *LactationRepository) saveOrUpdateScan(query string, lactation *entity.L
 }
 
 func (r *LactationRepository) FindPage(sort string, direction string, cursor string) (page *entity.Page[entity.Lactation], err error) {
-	query := r.SelectQuery.Where("lactations.deleted_at is null").And("lactations.user_id = $1")
+	query := r.SelectQuery.Where("lactations.deleted_at is null and lactations.user_id = $1")
 	return r.Impl.FindRandomQueryPage(query, sort, direction, cursor, GetUserId())
 }
 
 func (r *LactationRepository) FindByAnimal(animalId string) (arr *[]entity.Lactation, err error) {
-	query := r.SelectQuery.Where("lactations.deleted_at is null").And("lactations.animal_id = $1")
+	query := r.SelectQuery.Where("lactations.deleted_at is null and lactations.animal_id = $1")
 	return r.Impl.FindListByQuery(query, animalId)
 }
 

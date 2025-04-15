@@ -23,9 +23,9 @@ type PageRepositoryImpl[E entity.IEntity] struct {
 }
 
 func (p *PageRepositoryImpl[E]) getNullOrdering(direction string) string {
-	nullDirection := " DESC NULLS LAST"
+	nullDirection := " desc nulls last"
 	if direction == "asc" {
-		nullDirection = " ASC NULLS FIRST"
+		nullDirection = " asc nulls first"
 	}
 	return nullDirection
 }
@@ -138,7 +138,7 @@ func (r *PageRepositoryImpl[E]) nextRandomPageDate(cursor string, query *util.Se
     signal:= r.getSignal(direction)
     paramNumber:= len(args) + 1
     if firstParam == nil {
-        query.AppendWhere("and " + firstField + " IS NULL", fmt.Sprintf("and %s %s $%d", secondField, signal, paramNumber))
+        query.AppendWhere("and " + firstField + " is null", fmt.Sprintf("and %s %s $%d", secondField, signal, paramNumber))
         args = append(args, secondParam)
         return r.buildPage(query.Build(), sort, args...)
     } else {
@@ -175,8 +175,7 @@ func (r *PageRepositoryImpl[E]) FindPage(sort string, direction string, cursor s
 
     query := r.Base.SelectQueryBody.Where(
 		fmt.Sprintf("%s.user_id = $1", r.Base.TableName), 
-		fmt.Sprintf("and %s.deleted_at is null", r.Base.TableName),
-		).
+		fmt.Sprintf("and %s.deleted_at is null", r.Base.TableName)).
 		OrderBy(firstField + nullOrdering, secondField + " " + direction).
 		Limit(PAGE_LIMIT)
 

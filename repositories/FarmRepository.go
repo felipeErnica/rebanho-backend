@@ -15,18 +15,18 @@ type FarmRepository struct {
 }
 
 func (r *FarmRepository) Init() {
-	selectQuery := new(util.SelectConstructor).Select("farms", "id", "name", "state", "city", "tax_number", "status")
-	    selectQuery.AndSelect("owner", "id", "name")
-	    selectQuery.From("farms", "")
-	    selectQuery.LeftJoin("users", "owner").On("owner.id", "farms.owner_id")
-	r.SelectQuery = selectQuery
+	r.SelectQuery = util.NewSelectQuery(util.SELECT, 
+        *util.NewNamedGroup("farms", "id", "name", "state", "city", "tax_number", "status"),
+	    *util.NewNamedGroup("owner", "id", "name")).
+        From("farms").
+        Joins("left join users as owner on owner.id = farms.owner_id")
 
-	insertQuery := new(util.SelectConstructor).Insert("farms", "id", "name", "state", "city", "tax_number", "created_at")
-	updateQuery := new(util.SelectConstructor).Update("farms", "name", "state", "city", "tax_number", "owner_id", "created_at")
+	insertQuery := util.NewInsertQuery("farms", "id", "name", "state", "city", "tax_number", "created_at")
+	updateQuery := util.NewUpdateQuery("farms", "name", "state", "city", "tax_number", "owner_id", "created_at")
 	base := RepositoryImpl[entity.Farm]{
 		Repository:      r,
 		TableName:       "farms",
-		SelectQueryBody: *selectQuery,
+		SelectQueryBody: *r.SelectQuery,
 		InsertQuery:     *insertQuery,
 		UpdateQuery:     *updateQuery,
 	}
@@ -73,11 +73,11 @@ func (r *FarmRepository) getFields(sort string) (firstField string, secondField 
 }
 
 func (r *FarmRepository) createKey(sort string, lastEntry *entity.Farm) (key string) {
-	return fmt.Sprintf("%s,%s", &lastEntry.Name, &lastEntry.Id)
+	return fmt.Sprintf("%s,%s", lastEntry.Name, lastEntry.Id)
 }
 
 func (r *FarmRepository) buildFilterQuery(filter *entity.FarmFilter) (*util.SelectConstructor, *[]any) {
-    query:=r.SelectQuery.Where("farms.deleted_at IS NULL").And("farms.status = $1")
+    query:=r.SelectQuery.Where("farms.deleted_at is null and farms.status = $1")
     args:=[]any{ "ACTIVE", } 
 
     if filter == nil {
@@ -85,32 +85,32 @@ func (r *FarmRepository) buildFilterQuery(filter *entity.FarmFilter) (*util.Sele
     }
     numParam:=2
     if filter.Name != nil {
-        condition:=fmt.Sprintf("farms.name LIKE %$%d%", numParam)
-        query.And(condition)
+        condition:=fmt.Sprintf("and farms.name LIKE $%d", numParam)
+        query.AppendWhere(condition)
         args = append(args, filter.Name)
         numParam++
     }
     if filter.TaxNumber != nil {
-        condition:=fmt.Sprintf("farms.tax_number LIKE %$%d%", numParam)
-        query.And(condition)
+        condition:=fmt.Sprintf("and farms.tax_number LIKE $%d", numParam)
+        query.AppendWhere(condition)
         args = append(args, filter.TaxNumber)
         numParam++
     }
     if filter.City != nil {
-        condition:=fmt.Sprintf("farms.city LIKE %$%d%", numParam)
-        query.And(condition)
+        condition:=fmt.Sprintf("and farms.city LIKE $%d", numParam)
+        query.AppendWhere(condition)
         args = append(args, filter.City)
         numParam++
     }
     if filter.State != nil {
-        condition:=fmt.Sprintf("farms.state LIKE %$%d%", numParam)
-        query.And(condition)
+        condition:=fmt.Sprintf("and farms.state LIKE $%d", numParam)
+        query.AppendWhere(condition)
         args = append(args, filter.State)
         numParam++
     }
     if filter.OwnerName != nil {
-        condition:=fmt.Sprintf("owner.name LIKE %$%d%", numParam)
-        query.And(condition)
+        condition:=fmt.Sprintf("and owner.name LIKE $%d", numParam)
+        query.AppendWhere(condition)
         args = append(args, filter.OwnerName)
         numParam++
     }
@@ -133,12 +133,12 @@ func (r *FarmRepository) FindByOwner() (*[]entity.Farm, error) {
 }
 
 func (r *FarmRepository) FindByNameAndOwner(farm entity.Farm) (*[]entity.Farm, error) {
-    query:=r.SelectQuery.Where("owner.id = $1").And("farms.name = $2").And("farms.city = $3").And("farms.state = $3")
+    query:=r.SelectQuery.Where("owner.id = $1 and farms.name = $2 and farms.city = $3 and farms.state = $3")
     return r.Impl.FindListByQuery(query, GetUserId(), farm.Name, farm.City, farm.State)
 }
 
 func (r *FarmRepository) FindByTaxNumberAndOwner(taxNumber string) (*[]entity.Farm, error) {
-    query:=r.SelectQuery.Where("owner.id = $1").And("farms.tax_number = $2")
+    query:=r.SelectQuery.Where("owner.id = $1 and farms.tax_number = $2")
     return r.Impl.FindListByQuery(query, GetUserId(), taxNumber)
 }
 

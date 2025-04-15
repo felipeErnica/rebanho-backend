@@ -9,67 +9,67 @@ import (
 )
 
 type SlaughterhouseRepository struct {
-    Impl RepositoryImpl[entity.Slaughterhouse]
+	Impl RepositoryImpl[entity.Slaughterhouse]
 }
 
 func (r *SlaughterhouseRepository) Init() {
-    selectQuery:=new(util.SelectConstructor).Select("", "id", "name", "tax_number").From("slaughterhouses","")
-    updateQuery:=new(util.SelectConstructor).Update("slaughterhouses", "name", "tax_number", "created_at", "user_id")
-    insertQuery:=new(util.SelectConstructor).Insert("slaughterhouses", "id", "name", "tax_number", "created_at", "user_id")
-    r.Impl = RepositoryImpl[entity.Slaughterhouse]{
-        Repository: r,
-        SelectQueryBody: *selectQuery,
-        InsertQuery: *insertQuery,
-        UpdateQuery: *updateQuery,
-        TableName: "slaughterhouses",
-    }
+	selectQuery := util.NewSelectQuery(util.SELECT, *util.NewGroup("id", "name", "tax_number")).From("slaughterhouses")
+	updateQuery := util.NewUpdateQuery("slaughterhouses", "name", "tax_number", "created_at", "user_id")
+	insertQuery := util.NewInsertQuery("slaughterhouses", "id", "name", "tax_number", "created_at", "user_id")
+	r.Impl = RepositoryImpl[entity.Slaughterhouse]{
+		Repository:      r,
+		SelectQueryBody: *selectQuery,
+		InsertQuery:     *insertQuery,
+		UpdateQuery:     *updateQuery,
+		TableName:       "slaughterhouses",
+	}
 }
 
 func (r *SlaughterhouseRepository) setNewEntity(model *entity.Slaughterhouse, id string, createdAt time.Time) {
-    model.Id = id
-    model.CreatedAt = createdAt
-    model.UserId = GetUserId()
+	model.Id = id
+	model.CreatedAt = createdAt
+	model.UserId = GetUserId()
 }
 
 func (r *SlaughterhouseRepository) buildEntity(row *sql.Row) (model *entity.Slaughterhouse, err error) {
-    var slaughterhouse entity.Slaughterhouse
-    err = row.Scan(&slaughterhouse.Id, &slaughterhouse.Name, &slaughterhouse.TaxNumber)
-    return &slaughterhouse, err
+	var slaughterhouse entity.Slaughterhouse
+	err = row.Scan(&slaughterhouse.Id, &slaughterhouse.Name, &slaughterhouse.TaxNumber)
+	return &slaughterhouse, err
 }
 
 func (r *SlaughterhouseRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Slaughterhouse, err error) {
-    var slaughterhouses []entity.Slaughterhouse
-    for rows.Next() {
-        var slaughterhouse entity.Slaughterhouse
-        err = rows.Scan(&slaughterhouse.Id, &slaughterhouse.Name, &slaughterhouse.TaxNumber)
-        if err != nil {
-            return
-        }
-        slaughterhouses = append(slaughterhouses, slaughterhouse)
-    }
-    return &slaughterhouses, err
+	var slaughterhouses []entity.Slaughterhouse
+	for rows.Next() {
+		var slaughterhouse entity.Slaughterhouse
+		err = rows.Scan(&slaughterhouse.Id, &slaughterhouse.Name, &slaughterhouse.TaxNumber)
+		if err != nil {
+			return
+		}
+		slaughterhouses = append(slaughterhouses, slaughterhouse)
+	}
+	return &slaughterhouses, err
 }
 
 func (r *SlaughterhouseRepository) saveOrUpdateScan(query string, model *entity.Slaughterhouse) error {
-    return execQuery(query, model.Id, model.Name, model.TaxNumber, model.CreatedAt, model.UserId)
+	return execQuery(query, model.Id, model.Name, model.TaxNumber, model.CreatedAt, model.UserId)
 }
 
 func (r *SlaughterhouseRepository) FindAll() (*[]entity.Slaughterhouse, error) {
-    return r.Impl.FindAll()
+	return r.Impl.FindAll()
 }
 
 func (r *SlaughterhouseRepository) FindById(id string) (*entity.Slaughterhouse, error) {
-    return r.Impl.FindById(id)
+	return r.Impl.FindById(id)
 }
 
 func (r *SlaughterhouseRepository) Add(newModel *entity.Slaughterhouse) (*entity.Slaughterhouse, error) {
-    return r.Impl.Add(newModel)
+	return r.Impl.Add(newModel)
 }
 
 func (r *SlaughterhouseRepository) Save(model *entity.Slaughterhouse) error {
-    return r.Impl.Save(model)
+	return r.Impl.Save(model)
 }
 
 func (r *SlaughterhouseRepository) Delete(id string) error {
-    return r.Impl.Delete(id)
+	return r.Impl.Delete(id)
 }

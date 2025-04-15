@@ -6,6 +6,8 @@ type BirthEntry struct {
 	Id          string      `json:"id"`
 	Animal      AnimalShort `json:"animal"`
 	Calf        Calf        `json:"calf"`
+    WeightBirth int         `json:"weightBirth"`
+    Color       string   
 	Observation string      `json:"observation"`
 	CreatedAt   time.Time   `json:"created_at"`
 	DeletedAt   *time.Time  `json:"deleted_at"`

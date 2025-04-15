@@ -26,7 +26,7 @@ type RepositoryImpl[E entity.IEntity] struct {
 }
 
 func (r *RepositoryImpl[E]) FindAll() (arr *[]E, err error) {
-	query := r.SelectQueryBody.Where(fmt.Sprintf("%s.user_id = $1", r.TableName)).Build()
+	query := r.SelectQueryBody.Where(fmt.Sprintf("%[1]s.user_id = $1 and %[1]s.deleted_at is null", r.TableName)).Build()
 	sqlRows, err := selectQueryList(query)
 	if err != nil {
 		return
