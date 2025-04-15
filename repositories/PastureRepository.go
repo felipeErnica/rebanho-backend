@@ -13,14 +13,14 @@ type PastureRepository struct {
 }
 
 func (r *PastureRepository) Init() {
-	selectQuery := new(util.QueryConstructor).Select("pasture", "id", "name")
+	selectQuery := new(util.SelectConstructor).Select("pasture", "id", "name")
 	selectQuery.AndSelect("bull", "id", "name")
 	selectQuery.AndSelect("farm", "id", "name")
 	selectQuery.From("pastures", "pasture")
 	selectQuery.LeftJoin("animals", "bull").On("bull.id", "pasture.bull_id")
 	selectQuery.LeftJoin("farms", "farm").On("farm.id", "pasture.farm_id")
-	updateQuery := new(util.QueryConstructor).Update("pastures", "name", "bull_id", "farm_id", "created_at", "user_id")
-	insertQuery := new(util.QueryConstructor).Insert("pastures", "id", "name", "bull_id", "farm_id", "created_at", "user_id")
+	updateQuery := new(util.SelectConstructor).Update("pastures", "name", "bull_id", "farm_id", "created_at", "user_id")
+	insertQuery := new(util.SelectConstructor).Insert("pastures", "id", "name", "bull_id", "farm_id", "created_at", "user_id")
 
 	r.Impl = RepositoryImpl[entity.Pasture]{
 		TableName:       "pastures",

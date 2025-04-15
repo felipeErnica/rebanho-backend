@@ -18,63 +18,62 @@ type Repository[E entity.IEntity] interface {
 }
 
 type RepositoryImpl[E entity.IEntity] struct {
-    TableName       string
+	TableName       string
 	Repository      Repository[E]
-	SelectQueryBody util.QueryConstructor
-	InsertQuery     util.QueryConstructor
-	UpdateQuery     util.QueryConstructor
+	SelectQueryBody util.SelectConstructor
+	InsertQuery     util.InsertQuery
+	UpdateQuery     util.UpdateQuery
 }
 
 func (r *RepositoryImpl[E]) FindAll() (arr *[]E, err error) {
-    query := r.SelectQueryBody.Where(fmt.Sprintf("%s.user_id = $1", r.TableName)).Build()
-    sqlRows, err:=selectQueryList(query)
-    if err != nil {
-        return
-    }
-    list, err:= r.Repository.buildListEntity(sqlRows)
-    sqlRows.Close()
-    return list, err
+	query := r.SelectQueryBody.Where(fmt.Sprintf("%s.user_id = $1", r.TableName)).Build()
+	sqlRows, err := selectQueryList(query)
+	if err != nil {
+		return
+	}
+	list, err := r.Repository.buildListEntity(sqlRows)
+	sqlRows.Close()
+	return list, err
 }
 
 func (r *RepositoryImpl[E]) FindById(id string) (*E, error) {
-    query := r.SelectQueryBody
-    query.Where(r.TableName + ".id = $1")
-    sqlRow:=selectQueryOne(query.Build(), id)
-    entity, err:= r.Repository.buildEntity(sqlRow)
-    return entity, err
+	query := r.SelectQueryBody.Where(r.TableName + ".id = $1")
+	sqlRow := selectQueryOne(query.Build(), id)
+	entity, err := r.Repository.buildEntity(sqlRow)
+	return entity, err
 }
 
-func (r *RepositoryImpl[E]) FindByQuery(query *util.QueryConstructor, args... any) (*E, error) {
-    sqlRow:=selectQueryOne(query.Build(), args...)
-    entity, err:= r.Repository.buildEntity(sqlRow)
-    return entity, err
+func (r *RepositoryImpl[E]) FindByQuery(query *util.SelectConstructor, args ...any) (*E, error) {
+	sqlRow := selectQueryOne(query.Build(), args...)
+	entity, err := r.Repository.buildEntity(sqlRow)
+	return entity, err
 }
 
-func (r *RepositoryImpl[E]) FindListByQuery(query *util.QueryConstructor, args... any) (list *[]E, err error) {
-    sqlRow, err:=selectQueryList(query.Build(), args...)
-    if err != nil {
-        return
-    }
-    entity, err:= r.Repository.buildListEntity(sqlRow)
-    sqlRow.Close()
-    return entity, err
+func (r *RepositoryImpl[E]) FindListByQuery(query *util.SelectConstructor, args ...any) (list *[]E, err error) {
+	sqlRow, err := selectQueryList(query.Build(), args...)
+	if err != nil {
+		return
+	}
+	entity, err := r.Repository.buildListEntity(sqlRow)
+	sqlRow.Close()
+	return entity, err
 }
 
 func (r *RepositoryImpl[E]) Add(model *E) (*E, error) {
-    id:=uuid.NewString()
-    createdAt:=time.Now()
-    r.Repository.setNewEntity(model, id, createdAt)
-    err:= r.Repository.saveOrUpdateScan(r.InsertQuery.Build(), model)
-    return model, err
+	id := uuid.NewString()
+	createdAt := time.Now()
+	r.Repository.setNewEntity(model, id, createdAt)
+	err := r.Repository.saveOrUpdateScan(r.InsertQuery.Build(), model)
+	return model, err
 }
 
 func (r *RepositoryImpl[E]) Save(model *E) error {
-    err:= r.Repository.saveOrUpdateScan(r.UpdateQuery.Build(), model)
-    return err
+	err := r.Repository.saveOrUpdateScan(r.UpdateQuery.Build(), model)
+	return err
 }
 
 func (r *RepositoryImpl[E]) Delete(id string) error {
-    timeDeletion:=time.Now()
-    query:=new(util.QueryConstructor).Delete(r.TableName).Build()
-    return execQuery(query, timeDeletion, id)
+	timeDeletion := time.Now()
+	query := util.NewDeleteQuery(r.TableName)
+	return execQuery(query, timeDeletion, id)
 }

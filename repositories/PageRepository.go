@@ -74,7 +74,7 @@ func (r *PageRepositoryImpl[E]) buildPage(query string, sort string, args... any
     return page, err
 }
 
-func (r *PageRepositoryImpl[E]) nextPage(cursor string, query *util.QueryConstructor, 
+func (r *PageRepositoryImpl[E]) nextPage(cursor string, query *util.SelectConstructor, 
     sort string, direction string, firstField string, secondField string) (page *entity.Page[E], err error) {
     firstParam, secondParam, err:= decodeCursor(cursor) 
     if err != nil {
@@ -83,15 +83,15 @@ func (r *PageRepositoryImpl[E]) nextPage(cursor string, query *util.QueryConstru
 
     signal:= r.getSignal(direction)
     if firstParam == "null" {
-        query.And(firstField + " IS NULL").And(fmt.Sprintf("%s %s $2", secondField, signal))
+        query.AppendWhere("and " + firstField + " is null", fmt.Sprintf("and %s %s $2", secondField, signal))
         return r.buildPage(query.Build(), sort, GetUserId(), secondParam)
     } else {
-        query.And(fmt.Sprintf("(%s,%s) %s ($2, $3)", firstField, secondField, signal))
+        query.AppendWhere(fmt.Sprintf("and (%s,%s) %s ($2, $3)", firstField, secondField, signal))
         return r.buildPage(query.Build(), sort, GetUserId(), firstParam, secondParam)
     }
 }
 
-func (r *PageRepositoryImpl[E]) nextPageDate(cursor string, query *util.QueryConstructor, 
+func (r *PageRepositoryImpl[E]) nextPageDate(cursor string, query *util.SelectConstructor, 
     sort string, direction string, firstField string, secondField string) (page *entity.Page[E], err error) {
     firstParam, secondParam, err:= decodeCursorTime(cursor) 
     if err != nil {
@@ -100,15 +100,15 @@ func (r *PageRepositoryImpl[E]) nextPageDate(cursor string, query *util.QueryCon
 
     signal:= r.getSignal(direction)
     if firstParam == nil {
-        query.And(firstField + " IS NULL").And(fmt.Sprintf("%s %s $2", secondField, signal))
+        query.AppendWhere("and " + firstField + " is null", fmt.Sprintf("and %s %s $2", secondField, signal))
         return r.buildPage(query.Build(), sort, secondParam)
     } else {
-        query.And(fmt.Sprintf("(%s,%s) %s ($2 $3)", firstField, secondField, signal))
+        query.AppendWhere(fmt.Sprintf("and (%s,%s) %s ($2 $3)", firstField, secondField, signal))
         return r.buildPage(query.Build(), sort, firstParam, secondParam)
     }
 }
 
-func (r *PageRepositoryImpl[E]) nextRandomPage(cursor string, query *util.QueryConstructor, 
+func (r *PageRepositoryImpl[E]) nextRandomPage(cursor string, query *util.SelectConstructor, 
     sort string, direction string, firstField string, secondField string, args... any) (page *entity.Page[E], err error) {
     firstParam, secondParam, err:= decodeCursor(cursor) 
     if err != nil {
@@ -118,17 +118,17 @@ func (r *PageRepositoryImpl[E]) nextRandomPage(cursor string, query *util.QueryC
     signal:= r.getSignal(direction)
     paramNumber:= len(args) + 1
     if firstParam == "null" {
-        query.And(firstField + " IS NULL").And(fmt.Sprintf("%s %s $%d", secondField, signal, paramNumber))
+        query.AppendWhere("and " + firstField + " is null", fmt.Sprintf("and %s %s $%d", secondField, signal, paramNumber))
         args = append(args, secondField)
         return r.buildPage(query.Build(), sort, args...)
     } else {
-        query.And(fmt.Sprintf("(%s,%s) %s ($%d, $%d)", firstField, secondField, signal, paramNumber, paramNumber + 1))
+        query.AppendWhere(fmt.Sprintf("and (%s,%s) %s ($%d, $%d)", firstField, secondField, signal, paramNumber, paramNumber + 1))
         args = append(args, firstParam, secondParam)
         return r.buildPage(query.Build(), sort, args...)
     }
 }
 
-func (r *PageRepositoryImpl[E]) nextRandomPageDate(cursor string, query *util.QueryConstructor, 
+func (r *PageRepositoryImpl[E]) nextRandomPageDate(cursor string, query *util.SelectConstructor, 
     sort string, direction string, firstField string, secondField string, args... any) (page *entity.Page[E], err error){
     firstParam, secondParam, err:= decodeCursorTime(cursor) 
     if err != nil {
@@ -138,11 +138,11 @@ func (r *PageRepositoryImpl[E]) nextRandomPageDate(cursor string, query *util.Qu
     signal:= r.getSignal(direction)
     paramNumber:= len(args) + 1
     if firstParam == nil {
-        query.And(firstField + " IS NULL").And(fmt.Sprintf("%s %s $%d", secondField, signal, paramNumber))
+        query.AppendWhere("and " + firstField + " IS NULL", fmt.Sprintf("and %s %s $%d", secondField, signal, paramNumber))
         args = append(args, secondParam)
         return r.buildPage(query.Build(), sort, args...)
     } else {
-        query.And(fmt.Sprintf("(%s,%s) %s ($%d, $%d)", firstField, secondField, signal, paramNumber, paramNumber + 1))
+        query.AppendWhere(fmt.Sprintf("and (%s,%s) %s ($%d, $%d)", firstField, secondField, signal, paramNumber, paramNumber + 1))
         args = append(args, firstParam, secondParam)
         return r.buildPage(query.Build(), sort, args...)
     }
@@ -173,42 +173,41 @@ func (r *PageRepositoryImpl[E]) FindPage(sort string, direction string, cursor s
     firstField, secondField:= r.PageRepository.getFields(sort)
     nullOrdering:= r.getNullOrdering(direction)
 
-    query := r.Base.SelectQueryBody
-    query.Where(fmt.Sprintf("%s.user_id = $1", r.Base.TableName))
-    query.And(fmt.Sprintf("%s.deleted_at is null", r.Base.TableName))
-    query.Order(firstField + nullOrdering).AndOrder(secondField + " " + direction)
-    query.Limit(PAGE_LIMIT)
+    query := r.Base.SelectQueryBody.Where(
+		fmt.Sprintf("%s.user_id = $1", r.Base.TableName), 
+		fmt.Sprintf("and %s.deleted_at is null", r.Base.TableName),
+		).
+		OrderBy(firstField + nullOrdering, secondField + " " + direction).
+		Limit(PAGE_LIMIT)
 
-    println("Usuário: " + GetUserId())
 	if cursor == "" {
 		return r.buildPage(query.Build(), sort, GetUserId())
     }
 
     if r.isDateField(sort) {
-        return r.nextPageDate(cursor, &query, sort, direction, firstField, secondField)
+        return r.nextPageDate(cursor, query, sort, direction, firstField, secondField)
     }
 		
-    return r.nextPage(cursor, &query, sort, direction, firstField, secondField)
+    return r.nextPage(cursor, query, sort, direction, firstField, secondField)
 }
 
-func (r *PageRepositoryImpl[E]) FindRandomQueryPage(query *util.QueryConstructor, sort string, 
+func (r *PageRepositoryImpl[E]) FindRandomQueryPage(query *util.SelectConstructor, sort string, 
     direction string, cursor string, args... any) (page *entity.Page[E], err error) {
     sort, direction = r.verifyQueryParams(sort, direction)
     firstField, secondField:= r.PageRepository.getFields(sort)
     nullOrderinrg:= r.getNullOrdering(direction)
 
-    newQuery := *query
-    newQuery.Order(firstField + nullOrderinrg).AndOrder(secondField + nullOrderinrg)
-    newQuery.Limit(PAGE_LIMIT)
+    query.OrderBy(firstField + nullOrderinrg, secondField + nullOrderinrg).
+		Limit(PAGE_LIMIT)
 
 	if cursor == "" {
-		return r.buildPage(newQuery.Build(), sort, args...)
+		return r.buildPage(query.Build(), sort, args...)
     }
 
     if r.isDateField(sort) {
-        return r.nextRandomPageDate(cursor, &newQuery, sort, direction, firstField, secondField, args...)
+        return r.nextRandomPageDate(cursor, query, sort, direction, firstField, secondField, args...)
     }
-	return r.nextRandomPage(cursor, &newQuery, sort, direction, firstField, secondField, args...)
+	return r.nextRandomPage(cursor, query, sort, direction, firstField, secondField, args...)
 } 
 
 func (r *PageRepositoryImpl[E]) FindAll() (*[]E, error) {
@@ -219,11 +218,11 @@ func (r *PageRepositoryImpl[E]) FindById(id string) (*E, error) {
     return r.Base.FindById(id)
 }
 
-func (r *PageRepositoryImpl[E]) FindByQuery(query *util.QueryConstructor, args... any) (*E, error) {
+func (r *PageRepositoryImpl[E]) FindByQuery(query *util.SelectConstructor, args... any) (*E, error) {
     return r.Base.FindByQuery(query, args...)
 }
 
-func (r *PageRepositoryImpl[E]) FindListByQuery(query *util.QueryConstructor, args... any) (list *[]E, err error) {
+func (r *PageRepositoryImpl[E]) FindListByQuery(query *util.SelectConstructor, args... any) (list *[]E, err error) {
     return r.Base.FindListByQuery(query, args...)
 }
 

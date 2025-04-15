@@ -19,14 +19,14 @@ func (r *PregnancyLossRepository) Init() {
         "loss_date",
     }
 
-    selectQuery:=new(util.QueryConstructor).Select("loss","id", "loss_type", "loss_date", "created_at")
+    selectQuery:=new(util.SelectConstructor).Select("loss","id", "loss_type", "loss_date", "created_at")
         selectQuery.AndSelect("animal", "id", "identification_number", "name", "animal_order")
         selectQuery.From("pregnancy_losses", "loss")
         selectQuery.LeftJoin("animals","animal").On("animal.id", "loss.animal_id")
     
-    updateQuery:=new(util.QueryConstructor).Update("pregnancy_losses", "animal_id", "loss_type", 
+    updateQuery:=new(util.SelectConstructor).Update("pregnancy_losses", "animal_id", "loss_type", 
         "loss_date", "created_at", "user_id")
-    insertQuery:=new(util.QueryConstructor).Insert("pregnancy_losses", "id", "animal_id", "loss_type", 
+    insertQuery:=new(util.SelectConstructor).Insert("pregnancy_losses", "id", "animal_id", "loss_type", 
         "loss_date", "created_at", "user_id")
 
     base:=RepositoryImpl[entity.PregnancyLoss]{

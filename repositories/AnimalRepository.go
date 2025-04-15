@@ -11,7 +11,7 @@ import (
 
 type AnimalRepository struct {
 	Impl        PageRepositoryImpl[entity.Animal]
-	SelectQuery util.QueryConstructor
+	SelectQuery util.SelectConstructor
 }
 
 func (r *AnimalRepository) Init() {
@@ -22,22 +22,26 @@ func (r *AnimalRepository) Init() {
 		"deleted_at",
 	}
 
-	selectQueryBody := new(util.QueryConstructor).Select("animals", "id", "name", "identification_number", "birth_date", "sex", "death_date",
-		"weaning_date", "status", "average_prod", "average_birth_interval", "average_peak", "isr", "children_quantity", "observation")
-	selectQueryBody.AndSelect("mother", "id", "name", "identification_number")
-	selectQueryBody.AndSelect("father", "id", "name", "identification_number")
-	selectQueryBody.AndSelect("pastures", "id", "name")
-	selectQueryBody.From("animals", "")
-	selectQueryBody.LeftJoin("animals", "father").On("father.id", "animals.father_id")
-	selectQueryBody.LeftJoin("animals", "mother").On("mother.id", "animals.mother_id")
-	selectQueryBody.LeftJoin("pastures", "").On("pastures.id", "animals.pasture_id")
+	selectQueryBody := util.NewSelectQuery(util.SELECT, 
+		*util.NewNamedGroup("animals", "id", "name", "identification_number", "birth_date", "sex", "death_date",
+		"weaning_date", "status", "average_prod", "average_birth_interval", 
+		"average_peak", "isr", "children_quantity", "observation"),
+		*util.NewGroup("mother", "id", "name", "identification_number"), 
+		*util.NewGroup("father", "id", "name", "identification_number"),
+		*util.NewGroup("pastures", "id", "name")).
+		From("animals").
+		Joins(
+			"left join animals as father on father.id = animals.father_id", 
+			"left join animals as mother on mother.id = animals.mother_id", 
+			"left join pastures on pastures.id = animals.pasture_id",
+		)
 	r.SelectQuery = *selectQueryBody
 
-	insertQuery := new(util.QueryConstructor).Insert("animals", "id", "name", "identification_number", "father_id", "mother_id",
+	insertQuery := util.NewInsertQuery("animals", "id", "name", "identification_number", "father_id", "mother_id",
 		"birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod",
 		"average_birth_interval", "average_peak", "isr",
 		"children_quantity", "observation", "created_at", "user_id")
-	updateQuery := new(util.QueryConstructor).Update("animals", "id", "name", "identification_number", "father_id", "mother_id",
+	updateQuery := util.NewUpdateQuery("animals", "id", "name", "identification_number", "father_id", "mother_id",
 		"birth_date", "death_date", "pasture_id", "weaning_date", "status", "average_prod",
 		"average_birth_interval", "average_peak", "isr",
 		"children_quantity", "observation", "created_at", "user_id")
@@ -168,9 +172,9 @@ func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) stri
 	return key
 }
 
-func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.QueryConstructor, args []any) {
+func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.SelectConstructor, args []any) {
 	query = r.SelectQuery
-	query.Where("animals.user_id = $1").And("animals.deleted_at is null")
+	query.Where("animals.user_id = $1", "and animals.deleted_at is null")
 	args = append(args, GetUserId())
 	numParam := 2
 
@@ -179,29 +183,29 @@ func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.
 	}
 
 	if filter.Name != nil {
-		query.And(fmt.Sprintf("animals.name like $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.name like $%d", numParam))
 		numParam++
 		name := fmt.Sprintf("%%%s%%", *filter.Name)
 		args = append(args, name)
 	}
 
 	if filter.IdentificationNumber != nil {
-		query.And(fmt.Sprintf("animals.identification_number like $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.identification_number like $%d", numParam))
 		numParam++
 		name := fmt.Sprintf("%%%s%%", *filter.IdentificationNumber)
 		args = append(args, name)
 	}
 
 	if filter.Sex != nil {
-		query.And(fmt.Sprintf("animals.sex = $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.sex = $%d", numParam))
 		numParam++
 		args = append(args, *filter.Sex)
 	}
 
 	if filter.MinWeaningDate != nil {
-		query.And(fmt.Sprintf("animals.weaning_date >= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.weaning_date >= $%d", numParam))
 		numParam++
-		query.And(fmt.Sprintf("animals.weaning_date <= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.weaning_date <= $%d", numParam))
 		numParam++
 		args = append(args, *filter.MinWeaningDate)
 		args = append(args, *filter.MaxWeaningDate)
@@ -217,7 +221,7 @@ func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.
 			args = append(args, arr[i])
 			numParam++
 		}
-		query.And(fmt.Sprintf("animals.father_id IN (%s)", params))
+		query.AppendWhere(fmt.Sprintf("and animals.father_id IN (%s)", params))
 		numParam++
 	}
 
@@ -231,23 +235,23 @@ func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.
 			args = append(args, arr[i])
 			numParam++
 		}
-		query.And(fmt.Sprintf("animals.mother_id IN (%s)", params))
+		query.AppendWhere(fmt.Sprintf("and animals.mother_id IN (%s)", params))
 		numParam++
 	}
 
 	if filter.MinBirthDate != nil {
-		query.And(fmt.Sprintf("animals.birth_date >= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.birth_date >= $%d", numParam))
 		numParam++
-		query.And(fmt.Sprintf("animals.birth_date <= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.birth_date <= $%d", numParam))
 		numParam++
 		args = append(args, *filter.MinBirthDate)
 		args = append(args, *filter.MaxBirthDate)
 	}
 
 	if filter.MinDeathDate != nil {
-		query.And(fmt.Sprintf("animals.death_date >= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.death_date >= $%d", numParam))
 		numParam++
-		query.And(fmt.Sprintf("animals.death_date <= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.death_date <= $%d", numParam))
 		numParam++
 		args = append(args, *filter.MinDeathDate)
 		args = append(args, *filter.MaxDeathDate)
@@ -263,7 +267,7 @@ func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.
 			args = append(args, arr[i])
 			numParam++
 		}
-		query.And(fmt.Sprintf("animals.pasture_id IN (%s)", params))
+		query.AppendWhere(fmt.Sprintf("and animals.pasture_id IN (%s)", params))
 		numParam++
 	}
 
@@ -277,50 +281,50 @@ func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.
 			args = append(args, arr[i])
 			numParam++
 		}
-		query.And(fmt.Sprintf("animals.status IN (%s)", params))
+		query.AppendWhere(fmt.Sprintf("and animals.status IN (%s)", params))
 		numParam++
 	}
 
 	if filter.MinIsr != nil {
-		query.And(fmt.Sprintf("animals.isr >= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.isr >= $%d", numParam))
 		numParam++
-		query.And(fmt.Sprintf("animals.isr <= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.isr <= $%d", numParam))
 		numParam++
 		args = append(args, *filter.MinIsr)
 		args = append(args, *filter.MaxIsr)
 	}
 
 	if filter.MinAverageBirthInterval != nil {
-		query.And(fmt.Sprintf("animals.average_birth_interval >= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.average_birth_interval >= $%d", numParam))
 		numParam++
-		query.And(fmt.Sprintf("animals.average_birth_interval <= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.average_birth_interval <= $%d", numParam))
 		numParam++
 		args = append(args, *filter.MinAverageBirthInterval)
 		args = append(args, *filter.MaxAverageBirthInterval)
 	}
 
 	if filter.MinAverageProd != nil {
-		query.And(fmt.Sprintf("animals.average_prod >= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.average_prod >= $%d", numParam))
 		numParam++
-		query.And(fmt.Sprintf("animals.average_prod <= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.average_prod <= $%d", numParam))
 		numParam++
 		args = append(args, *filter.MinAverageProd)
 		args = append(args, *filter.MaxAverageProd)
 	}
 
 	if filter.MinAveragePeak != nil {
-		query.And(fmt.Sprintf("animals.average_peak >= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.average_peak >= $%d", numParam))
 		numParam++
-		query.And(fmt.Sprintf("animals.average_peak <= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.average_peak <= $%d", numParam))
 		numParam++
 		args = append(args, *filter.MinAveragePeak)
 		args = append(args, *filter.MaxAveragePeak)
 	}
 
 	if filter.MinChildrenQuantity != nil {
-		query.And(fmt.Sprintf("animals.children_quantity >= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.children_quantity >= $%d", numParam))
 		numParam++
-		query.And(fmt.Sprintf("animals.children_quantity <= $%d", numParam))
+		query.AppendWhere(fmt.Sprintf("and animals.children_quantity <= $%d", numParam))
 		numParam++
 		args = append(args, *filter.MinChildrenQuantity)
 		args = append(args, *filter.MaxChildrenQuantity)
@@ -336,15 +340,10 @@ func (r *AnimalRepository) FindPage(sort string, direction string,
 }
 
 func (r *AnimalRepository) FindMaxValues() (maxValues *entity.AnimalMaxValues, err error) {
-	query := new(util.QueryConstructor).SelectMax("",
-		"weaning_date",
-		"birth_date",
-		"death_date",
-		"isr",
-		"average_birth_interval",
-		"average_prod",
-		"average_peak",
-		"children_quantity").From("animals", "").Where("user_id = $1").And("deleted_at is null")
+	query := util.NewSelectQuery(util.MAX, *util.NewGroup( "weaning_date", "birth_date", "death_date",
+		"isr", "average_birth_interval", "average_prod", "average_peak", "children_quantity")).
+		From("animals").
+		Where("user_id = $1", "and deleted_at is null")
 	row := selectQueryOne(query.Build(), GetUserId())
 	maxValues = new(entity.AnimalMaxValues)
 
@@ -366,11 +365,8 @@ func (r *AnimalRepository) FindMaxValues() (maxValues *entity.AnimalMaxValues, e
 }
 
 func (r *AnimalRepository) FindMinValues() (minValues *entity.AnimalMinValues, err error) {
-	query := new(util.QueryConstructor).SelectMin("",
-		"weaning_date",
-		"birth_date",
-		"death_date",
-	).From("animals", "").Where("user_id = $1").And("deleted_at is null")
+	query := util.NewSelectQuery(util.MIN, *util.NewGroup( "weaning_date", "birth_date", "death_date",)).
+		From("animals").Where("user_id = $1", "and deleted_at is null")
 	row := selectQueryOne(query.Build(), GetUserId())
 	minValues = new(entity.AnimalMinValues)
 
@@ -391,14 +387,14 @@ func (r *AnimalRepository) FindById(id string) (*entity.Animal, error) {
 }
 
 func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]entity.Animal, error) {
-	query := r.SelectQuery.Where("animals.father_id = $1").And("animals.deleted_at is null")
-	query.Order("animals.birth_date asc")
+	query := r.SelectQuery.Where("animals.father_id = $1", "and animals.deleted_at is null").
+		OrderBy("animals.birth_date asc")
 	return r.Impl.FindListByQuery(query, fatherId)
 }
 
 func (r *AnimalRepository) FindByMotherId(motherId string) (*[]entity.Animal, error) {
-	query := r.SelectQuery.Where("animals.mother_id = $1").And("animals.deleted_at is null")
-	query.Order("animals.birth_date asc")
+	query := r.SelectQuery.Where("animals.mother_id = $1", "and animals.deleted_at is null").
+		OrderBy("animals.birth_date asc")
 	return r.Impl.FindListByQuery(query, motherId)
 }
 
@@ -409,12 +405,12 @@ func (r *AnimalRepository) FindByPastureId(sort string, direction string,
 }
 
 func (r *AnimalRepository) FindByName(name string) (*[]entity.Animal, error) {
-	query := r.SelectQuery.Where("animals.name = $1").And("animals.user_id = $2").And("animals.deleted_at is null")
+	query := r.SelectQuery. Where("animals.name = $1", "and animals.user_id = $2", "animals.deleted_at is null")
 	return r.Impl.FindListByQuery(query, name, GetUserId())
 }
 
 func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]entity.Animal, error) {
-	query := r.SelectQuery.Where("animals.name = $1").And("animals.user_id = $2").And("animals.deleted_at is null")
+	query := r.SelectQuery.Where("animals.name = $1", "and animals.user_id = $2", "and animals.deleted_at is null")
 	return r.Impl.FindListByQuery(query, number, GetUserId())
 }
 

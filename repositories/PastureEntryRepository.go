@@ -11,7 +11,7 @@ import (
 
 type PastureEntryRepository struct {
 	Base        PageRepositoryImpl[entity.PastureEntry]
-	SelectQuery util.QueryConstructor
+	SelectQuery util.SelectConstructor
 }
 
 func (r *PastureEntryRepository) Init() {
@@ -22,7 +22,7 @@ func (r *PastureEntryRepository) Init() {
 		"created_at",
 	}
 
-	selectQuery := new(util.QueryConstructor).Select("entries", "id", "entry_date", "exit_date")
+	selectQuery := new(util.SelectConstructor).Select("entries", "id", "entry_date", "exit_date")
 	selectQuery.AndSelect("animals", "id", "identification_number", "animal_order", "name")
 	selectQuery.AndSelect("pastures", "id", "identification_number", "animal_order", "name")
 	selectQuery.From("pasture_entries", "entries")
@@ -30,9 +30,9 @@ func (r *PastureEntryRepository) Init() {
 	selectQuery.LeftJoin("animals", "").On("animals.id", "entries.animal_id")
 	r.SelectQuery = *selectQuery
 
-    insertQuery := new(util.QueryConstructor).Insert("pasture_entries", "id", "entry_date", "exit_date", "animal_id", "pasture_id", 
+    insertQuery := new(util.SelectConstructor).Insert("pasture_entries", "id", "entry_date", "exit_date", "animal_id", "pasture_id", 
         "created_at", "user_id")
-    updateQuery := new(util.QueryConstructor).Update("pasture_entries", "id", "entry_date", "exit_date", "animal_id", "pasture_id", 
+    updateQuery := new(util.SelectConstructor).Update("pasture_entries", "id", "entry_date", "exit_date", "animal_id", "pasture_id", 
         "created_at", "user_id")
 
 	mainRepository := RepositoryImpl[entity.PastureEntry]{

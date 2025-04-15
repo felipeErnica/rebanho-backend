@@ -13,7 +13,7 @@ type InseminationGroupRepository struct {
 }
 
 func (r *InseminationGroupRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("group", "id", "insemination_date")
+    selectQuery:=new(util.SelectConstructor).Select("group", "id", "insemination_date")
         selectQuery.AndSelect("bull", "id", "name")
         selectQuery.AndSelect("bull_mother", "id", "name")
         selectQuery.AndSelect("bull_father", "id", "name")
@@ -21,9 +21,9 @@ func (r *InseminationGroupRepository) Init() {
         selectQuery.LeftJoin("animals", "bull").On("bull.id", "group.bull_id")
         selectQuery.LeftJoin("animals", "bull_mother").On("bull_mother.id", "bull.mother_id")
         selectQuery.LeftJoin("animals", "bull_father").On("bull_father.id", "bull.father_id")
-    insertQuery:= new(util.QueryConstructor).Insert("insemination_groups", "id", "bull_id", 
+    insertQuery:= new(util.SelectConstructor).Insert("insemination_groups", "id", "bull_id", 
         "insemination_date", "created_at", "user_id")
-    updateQuery:= new(util.QueryConstructor).Update("insemination_groups", "bull_id", 
+    updateQuery:= new(util.SelectConstructor).Update("insemination_groups", "bull_id", 
         "insemination_date", "created_at", "user_id")
     r.Impl = RepositoryImpl[entity.InseminationGroup]{
         TableName: "insemination_groups",

@@ -10,17 +10,17 @@ import (
 
 type BirthEntryRepository struct {
 	Impl            PageRepositoryImpl[entity.BirthEntry]
-	SelectQueryBody util.QueryConstructor
+	SelectQueryBody util.SelectConstructor
 }
 
 func (r *BirthEntryRepository) Init() {
-	selectQuery := new(util.QueryConstructor).Select("birth", "id", "observation")
+	selectQuery := new(util.SelectConstructor).Select("birth", "id", "observation")
         selectQuery.AndSelect("calf", "id", "name", "identification_number", "sex", "birth_date")
         selectQuery.AndSelect("mother", "id", "name", "identification_number", "animal_order")
         selectQuery.AndSelect("father", "id", "name")
         selectQuery.From("birth_entries", "")
-	insertQuery := new(util.QueryConstructor).Insert("birth_entries", "id", "animal_id", "calf_id", "observation")
-	updateQuery := new(util.QueryConstructor).Update("birth_entries", "id", "animal_id", "calf_id", "observation")
+	insertQuery := new(util.SelectConstructor).Insert("birth_entries", "id", "animal_id", "calf_id", "observation")
+	updateQuery := new(util.SelectConstructor).Update("birth_entries", "id", "animal_id", "calf_id", "observation")
     base:= RepositoryImpl[entity.BirthEntry]{
 		TableName:       "birth_entries",
 		SelectQueryBody: *selectQuery,

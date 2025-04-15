@@ -14,12 +14,12 @@ type WeightEntryRepository struct {
 
 func (r *WeightEntryRepository) Init() {
 
-    selectQuery:=new(util.QueryConstructor).Select("weight", "id", "group_id", "weight")
+    selectQuery:=new(util.SelectConstructor).Select("weight", "id", "group_id", "weight")
         selectQuery.AndSelect("animals", "id", "name", "identification_number", "animal_order")
         selectQuery.From("weight_entries_activate", "weight")
         selectQuery.LeftJoin("animals","").On("animals.id", "weight_entries.animal_id")
-    updateQuery:=new(util.QueryConstructor).Update("weight_entries", "animal_id", "group_id", "weight", "created_at")
-    insertQuery:=new(util.QueryConstructor).Insert("weight_entries", "id", "animal_id", "group_id", "weight", "created_at")
+    updateQuery:=new(util.SelectConstructor).Update("weight_entries", "animal_id", "group_id", "weight", "created_at")
+    insertQuery:=new(util.SelectConstructor).Insert("weight_entries", "id", "animal_id", "group_id", "weight", "created_at")
     
     r.Impl = RepositoryImpl[entity.WeightEntry] {
         Repository: r,

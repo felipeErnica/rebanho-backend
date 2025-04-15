@@ -13,9 +13,9 @@ type SlaughterhouseRepository struct {
 }
 
 func (r *SlaughterhouseRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("", "id", "name", "tax_number").From("slaughterhouses","")
-    updateQuery:=new(util.QueryConstructor).Update("slaughterhouses", "name", "tax_number", "created_at", "user_id")
-    insertQuery:=new(util.QueryConstructor).Insert("slaughterhouses", "id", "name", "tax_number", "created_at", "user_id")
+    selectQuery:=new(util.SelectConstructor).Select("", "id", "name", "tax_number").From("slaughterhouses","")
+    updateQuery:=new(util.SelectConstructor).Update("slaughterhouses", "name", "tax_number", "created_at", "user_id")
+    insertQuery:=new(util.SelectConstructor).Insert("slaughterhouses", "id", "name", "tax_number", "created_at", "user_id")
     r.Impl = RepositoryImpl[entity.Slaughterhouse]{
         Repository: r,
         SelectQueryBody: *selectQuery,

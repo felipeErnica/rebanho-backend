@@ -13,10 +13,10 @@ type UserRepository struct {
 }
 
 func (r *UserRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("", "id", "name", "password", "email_address", "phone_number")
+    selectQuery:=new(util.SelectConstructor).Select("", "id", "name", "password", "email_address", "phone_number")
         selectQuery.From("users", "")
-    insertQuery:=new(util.QueryConstructor).Insert("users", "id", "name", "password", "email_address", "phone_number", "created_at")
-    updateQuery:=new(util.QueryConstructor).Update("users", "name", "password", "email_address", "phone_number", "created_at")
+    insertQuery:=new(util.SelectConstructor).Insert("users", "id", "name", "password", "email_address", "phone_number", "created_at")
+    updateQuery:=new(util.SelectConstructor).Update("users", "name", "password", "email_address", "phone_number", "created_at")
     r.Impl = RepositoryImpl[entity.User]{
         TableName: "users",
         SelectQueryBody: *selectQuery,
@@ -55,16 +55,19 @@ func (r *UserRepository) saveOrUpdateScan(query string, model *entity.User) erro
 }
 
 func (r *UserRepository) FindByName(name string) (*entity.User, error) {
-    query:=r.Impl.SelectQueryBody.Where("users.name = $1").And("users.deleted_at is null")
-    return r.Impl.FindByQuery(query, name)
+    query:=r.Impl.SelectQueryBody
+	query.Where("users.name = $1").And("users.deleted_at is null")
+    return r.Impl.FindByQuery(&query, name)
 }
 
 func (r *UserRepository) FindByEmailAddress(email string) (*[]entity.User, error) {
-    query:=r.Impl.SelectQueryBody.Where("users.email_address = $1").And("users.deleted_at is null")
-    return r.Impl.FindListByQuery(query, email)
+    query:=r.Impl.SelectQueryBody
+	query.Where("users.email_address = $1").And("users.deleted_at is null")
+    return r.Impl.FindListByQuery(&query, email)
 }
 
 func (r *UserRepository) ValidateUser(user entity.User) (*entity.User, error) {
-    query:=r.Impl.SelectQueryBody.Where("users.name = $1").And("users.password = $2").And("users.deleted_at is null")
-    return r.Impl.FindByQuery(query, user.Name, user.Password)
+    query:=r.Impl.SelectQueryBody
+	query.Where("users.name = $1").And("users.password = $2").And("users.deleted_at is null")
+    return r.Impl.FindByQuery(&query, user.Name, user.Password)
 }

@@ -11,7 +11,7 @@ import (
 
 type MilkRepository struct {
 	Impl        PageRepositoryImpl[entity.MilkEntry]
-	SelectQuery util.QueryConstructor
+	SelectQuery util.SelectConstructor
 }
 
 func (r *MilkRepository) Init() {
@@ -21,16 +21,16 @@ func (r *MilkRepository) Init() {
 		"created_at",
 	}
 
-    r.SelectQuery = *new(util.QueryConstructor).Select("milk", "id", "entry_date", "milk_quantity", "milk_entries.lactation_id")
+    r.SelectQuery = *new(util.SelectConstructor).Select("milk", "id", "entry_date", "milk_quantity", "milk_entries.lactation_id")
     r.SelectQuery.AndSelect("animal", "id", "identification_number", "animal_order", "name")
     r.SelectQuery.AndSelect("pasture", "id", "name")
     r.SelectQuery.From("milk_entries", "milk")
     r.SelectQuery.LeftJoin("animals", "animal").On("animal.id", "milk.animal_id")
     r.SelectQuery.LeftJoin("pastures", "pasture").On("pasture.id", "milk.pasture_id")
 
-    insertQuery := new(util.QueryConstructor).Insert("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
+    insertQuery := new(util.SelectConstructor).Insert("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
         "pasture_id", "lactation_id", "created_at", "user_id")
-    updateQuery := new(util.QueryConstructor).Update("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
+    updateQuery := new(util.SelectConstructor).Update("milk_entries", "id", "entry_date", "milk_quantity", "animal_id", 
         "pasture_id", "lactation_id", "created_at", "user_id")
 
 	mainRepository := &RepositoryImpl[entity.MilkEntry]{

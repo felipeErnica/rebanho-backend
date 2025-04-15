@@ -8,9 +8,7 @@ import (
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
-
 type Middleware func(http.HandlerFunc) http.HandlerFunc
-
 
 func AuthenticationMiddleware(handler http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {

@@ -11,18 +11,18 @@ import (
 
 type FarmRepository struct {
 	Impl        PageRepositoryImpl[entity.Farm]
-	SelectQuery *util.QueryConstructor
+	SelectQuery *util.SelectConstructor
 }
 
 func (r *FarmRepository) Init() {
-	selectQuery := new(util.QueryConstructor).Select("farms", "id", "name", "state", "city", "tax_number", "status")
+	selectQuery := new(util.SelectConstructor).Select("farms", "id", "name", "state", "city", "tax_number", "status")
 	    selectQuery.AndSelect("owner", "id", "name")
 	    selectQuery.From("farms", "")
 	    selectQuery.LeftJoin("users", "owner").On("owner.id", "farms.owner_id")
 	r.SelectQuery = selectQuery
 
-	insertQuery := new(util.QueryConstructor).Insert("farms", "id", "name", "state", "city", "tax_number", "created_at")
-	updateQuery := new(util.QueryConstructor).Update("farms", "name", "state", "city", "tax_number", "owner_id", "created_at")
+	insertQuery := new(util.SelectConstructor).Insert("farms", "id", "name", "state", "city", "tax_number", "created_at")
+	updateQuery := new(util.SelectConstructor).Update("farms", "name", "state", "city", "tax_number", "owner_id", "created_at")
 	base := RepositoryImpl[entity.Farm]{
 		Repository:      r,
 		TableName:       "farms",
@@ -76,7 +76,7 @@ func (r *FarmRepository) createKey(sort string, lastEntry *entity.Farm) (key str
 	return fmt.Sprintf("%s,%s", &lastEntry.Name, &lastEntry.Id)
 }
 
-func (r *FarmRepository) buildFilterQuery(filter *entity.FarmFilter) (*util.QueryConstructor, *[]any) {
+func (r *FarmRepository) buildFilterQuery(filter *entity.FarmFilter) (*util.SelectConstructor, *[]any) {
     query:=r.SelectQuery.Where("farms.deleted_at IS NULL").And("farms.status = $1")
     args:=[]any{ "ACTIVE", } 
 

@@ -13,7 +13,7 @@ type PregancyTestEntryRepository struct {
 }
 
 func (r *PregancyTestEntryRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("entry", "id", "group_id", "is_pregnant", "birth_forecast")
+    selectQuery:=new(util.SelectConstructor).Select("entry", "id", "group_id", "is_pregnant", "birth_forecast")
         selectQuery.AndSelect("animal", "id", "name", "identification_number", "animal_order")
         selectQuery.AndSelect("loss", "id", "loss_type", "loss_date")
         selectQuery.AndSelect("calf", "id", "sex", "birth_date")
@@ -21,9 +21,9 @@ func (r *PregancyTestEntryRepository) Init() {
         selectQuery.LeftJoin("animals", "animal").On("animal.id", "entry.animal_id")
         selectQuery.LeftJoin("animals", "calf").On("calf.id", "entry.calf_id")
         selectQuery.LeftJoin("pregnancy_losses", "loss").On("loss.id", "entry.loss_id")
-    insertQuery:=new(util.QueryConstructor).Insert("pregancy_test_entries", "id", "animal_id", "group_id", 
+    insertQuery:=new(util.SelectConstructor).Insert("pregancy_test_entries", "id", "animal_id", "group_id", 
         "is_pregnant", "birth_forecast", "loss_id", "calf_id", "created_at", "user_id")
-    updateQuery:=new(util.QueryConstructor).Update("pregancy_test_entries", "id", "animal_id", "group_id", 
+    updateQuery:=new(util.SelectConstructor).Update("pregancy_test_entries", "id", "animal_id", "group_id", 
         "is_pregnant", "birth_forecast", "loss_id", "calf_id", "created_at", "user_id")
     r.Impl = RepositoryImpl[entity.PregnancyTestEntry]{
         TableName: "pregancy_test_entries",

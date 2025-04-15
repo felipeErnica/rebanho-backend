@@ -13,16 +13,16 @@ type InseminationEntryRepository struct {
 }
 
 func (r *InseminationEntryRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("entry", "id", "group_id", "observation", "status")
+    selectQuery:=new(util.SelectConstructor).Select("entry", "id", "group_id", "observation", "status")
         selectQuery.AndSelect("animals", "id", "name", "identification_number", "animal_order")
         selectQuery.AndSelect("loss", "id", "loss_type", "loss_date")
         selectQuery.AndSelect("calf", "id", "sex", "birth_date")
         selectQuery.From("insemination_entries_active", "entry")
         selectQuery.LeftJoin("animals","").On("animals.id", "entry.animal_id")
         selectQuery.LeftJoin("pregnancy_losses","loss").On("loss.id", "entry.loss_id")
-    insertQuery:=new(util.QueryConstructor).Insert("insemination_entries", "id", "animal_id", 
+    insertQuery:=new(util.SelectConstructor).Insert("insemination_entries", "id", "animal_id", 
         "group_id", "observation", "status", "loss_id", "calf_id", "created_at")
-    updateQuery:=new(util.QueryConstructor).Update("insemination_entries", "animal_id", 
+    updateQuery:=new(util.SelectConstructor).Update("insemination_entries", "animal_id", 
         "group_id", "observation", "status", "loss_id", "calf_id", "created_at")
 
     r.Impl = RepositoryImpl[entity.InseminationEntry]{

@@ -13,9 +13,9 @@ type WeightGroupRepository struct {
 }
 
 func (r *WeightGroupRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("group", "id", "weighted_date").From("weight_groups", "group")
-    updateQuery:=new(util.QueryConstructor).Update("weight_groups", "weighted_date", "created_at", "user_id")
-    insertQuery:=new(util.QueryConstructor).Insert("weight_groups", "id", "weighted_date", "created_at", "user_id")
+    selectQuery:=new(util.SelectConstructor).Select("group", "id", "weighted_date").From("weight_groups", "group")
+    updateQuery:=new(util.SelectConstructor).Update("weight_groups", "weighted_date", "created_at", "user_id")
+    insertQuery:=new(util.SelectConstructor).Insert("weight_groups", "id", "weighted_date", "created_at", "user_id")
 
     r.Impl = RepositoryImpl[entity.WeightGroup]{
         Repository: r,

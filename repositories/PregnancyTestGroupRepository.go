@@ -13,10 +13,10 @@ type PregnancyTestGroupRepository struct {
 }
 
 func (r *PregnancyTestGroupRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("", "id", "test_date", "number_entries", "number_pregnants")
+    selectQuery:=new(util.SelectConstructor).Select("", "id", "test_date", "number_entries", "number_pregnants")
         selectQuery.From("pregnancy_test_groups", "")
-    insertQuery:=new(util.QueryConstructor).Insert("pregnancy_test_groups", "id", "test_date", "number_entries", "number_pregnants")
-    updateQuery:=new(util.QueryConstructor).Update("pregnancy_test_groups", "id", "test_date", "number_entries", "number_pregnants")
+    insertQuery:=new(util.SelectConstructor).Insert("pregnancy_test_groups", "id", "test_date", "number_entries", "number_pregnants")
+    updateQuery:=new(util.SelectConstructor).Update("pregnancy_test_groups", "id", "test_date", "number_entries", "number_pregnants")
     r.Impl = RepositoryImpl[entity.PregancyTestGroup]{
         TableName: "pregnancy_test_groups",
         SelectQueryBody: *selectQuery,

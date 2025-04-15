@@ -11,7 +11,7 @@ import (
 
 type LactationRepository struct {
 	Impl        *PageRepositoryImpl[entity.Lactation]
-	SelectQuery *util.QueryConstructor
+	SelectQuery *util.SelectConstructor
 }
 
 func (r *LactationRepository) Init() {
@@ -23,7 +23,7 @@ func (r *LactationRepository) Init() {
 		"deleted_at",
 	}
 
-	selectQuery := new(util.QueryConstructor).Select("lactations", "id", "start_date", "end_date", "production_period",
+	selectQuery := new(util.SelectConstructor).Select("lactations", "id", "start_date", "end_date", "production_period",
 		"production_total", "average_production", "peak_production", "isr", "observation")
 	selectQuery.AndSelect("pastures", "id", "name")
 	selectQuery.AndSelect("cow", "id", "identificantion_number", "name", "status")
@@ -33,11 +33,11 @@ func (r *LactationRepository) Init() {
 	selectQuery.LeftJoin("animals", "cow").On("cow.id", "lactations.animal_id")
 	selectQuery.LeftJoin("animals", "calf").On("calf.id", "lactations.calf_id")
 
-	insertQuery := new(util.QueryConstructor).Insert("lactations", "id", "start_date", "end_date", "production_period",
+	insertQuery := new(util.SelectConstructor).Insert("lactations", "id", "start_date", "end_date", "production_period",
 		"production_total", "average_production", "peak_production", "isr", "observation", "animal_id", "calf_id", "created_at",
 		"user_id")
 
-	updateQuery := new(util.QueryConstructor).Update("lactations", "id", "start_date", "end_date", "production_period",
+	updateQuery := new(util.SelectConstructor).Update("lactations", "id", "start_date", "end_date", "production_period",
 		"production_total", "average_production", "peak_production", "isr", "observation", "animal_id", "calf_id", "created_at",
 		"user_id")
 

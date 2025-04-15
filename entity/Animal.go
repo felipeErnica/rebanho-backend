@@ -18,7 +18,7 @@ type Animal struct {
 	Isr                  float32      `json:"isr"`
 	AverageProd          float32      `json:"averageProd"`
 	AverageBirthInterval float32      `json:"averageBirthInterval"`
-	AveragePeak          float32      `json:"averagePeak"`
+	AveragePeak          *float32      `json:"averagePeak"`
 	ChildrenQuantity     int          `json:"childrenQuantity"`
 	Observation          *string      `json:"observation"`
 	CreatedAt            time.Time    `json:"createdAt"`

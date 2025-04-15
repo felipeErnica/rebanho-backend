@@ -13,13 +13,13 @@ type SlaughterGroupRepository struct {
 }
 
 func (r *SlaughterGroupRepository) Init() {
-    selectQuery:=new(util.QueryConstructor).Select("group", "id", "weight_decrease", "slaughter_date")
+    selectQuery:=new(util.SelectConstructor).Select("group", "id", "weight_decrease", "slaughter_date")
         selectQuery.AndSelect("slaughterhouses", "id", "name")
         selectQuery.From("slaughter_groups", "group")
         selectQuery.LeftJoin("slaughterhouses","").On("slaughterhouses.id", "group.slaughterhouse_id")
-    updateQuery:=new(util.QueryConstructor).Update("slaughter_groups", "weight_decrease", "slaughter_date", 
+    updateQuery:=new(util.SelectConstructor).Update("slaughter_groups", "weight_decrease", "slaughter_date", 
         "slaughterhouse_id", "created_at", "user_id")
-    insertQuery:=new(util.QueryConstructor).Insert("slaughter_groups", "id", "weight_decrease", "slaughter_date", 
+    insertQuery:=new(util.SelectConstructor).Insert("slaughter_groups", "id", "weight_decrease", "slaughter_date", 
         "slaughterhouse_id", "created_at", "user_id")
     
     r.Impl = RepositoryImpl[entity.SlaughterGroup]{

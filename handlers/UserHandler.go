@@ -6,6 +6,7 @@ import (
 
 	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/middlewares"
 	"github.com/felipeErnica/rebanho-backend/repositories"
 	"github.com/felipeErnica/rebanho-backend/util"
 	"golang.org/x/crypto/bcrypt"
@@ -27,8 +28,8 @@ func InitUserAuthentication(app *app.App) {
 		Impl:       impl,
 	}
 
-	app.HandleFuncNoMiddleware("POST /login", handler.Authenticate)
-	app.HandleFuncNoMiddleware("POST /register", handler.Register)
+	app.HandleFuncNoMiddleware("POST /login", middlewares.CorsMiddleware(handler.Authenticate))
+	app.HandleFuncNoMiddleware("POST /register", middlewares.CorsMiddleware(handler.Register))
     LogControllersInit("Usuário")
 }
 
