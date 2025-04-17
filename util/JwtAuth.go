@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/golang-jwt/jwt/v5"
@@ -54,7 +53,6 @@ func VerifyToken(authorizationString string) (userId string, err error) {
 func GenerateToken(user *entity.User) (tokenString string, err error) {
     claims:=jwt.MapClaims{}
     claims["user_id"] = user.Id
-    claims["exp"] = time.Now().Add(time.Hour * 5).Unix()
     token:=jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
     return token.SignedString(secretKey)
 }
