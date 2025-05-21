@@ -337,50 +337,6 @@ func (r *AnimalRepository) FindPage(sort string, direction string,
 	return r.Impl.FindRandomQueryPage(&query, sort, direction, cursor, args...)
 }
 
-func (r *AnimalRepository) FindMaxValues() (maxValues *entity.AnimalMaxValues, err error) {
-	query := util.NewSelectQuery(util.MAX, 
-        *util.NewGroup( "weaning_date", "birth_date", "death_date",
-		"isr", "average_birth_interval", "average_prod", "average_peak", "children_quantity")).
-		From("animals").
-		Where("user_id = $1 and deleted_at is null")
-	row := selectQueryOne(query.Build(), GetUserId())
-	maxValues = new(entity.AnimalMaxValues)
-
-	err = row.Scan(
-		&maxValues.MaxWeaningDate,
-		&maxValues.MaxBirthDate,
-		&maxValues.MaxDeathDate,
-		&maxValues.MaxIsr,
-		&maxValues.MaxAverageBirthInterval,
-		&maxValues.MaxAverageProd,
-		&maxValues.MaxAveragePeak,
-		&maxValues.MaxChildrenQuantity,
-	)
-	if err != nil {
-		return
-	}
-
-	return maxValues, err
-}
-
-func (r *AnimalRepository) FindMinValues() (minValues *entity.AnimalMinValues, err error) {
-	query := util.NewSelectQuery(util.MIN, *util.NewGroup( "weaning_date", "birth_date", "death_date",)).
-		From("animals").Where("user_id = $1 and deleted_at is null")
-	row := selectQueryOne(query.Build(), GetUserId())
-	minValues = new(entity.AnimalMinValues)
-
-	err = row.Scan(
-		&minValues.MinWeaningDate,
-		&minValues.MinBirthDate,
-		&minValues.MinDeathDate,
-	)
-	if err != nil {
-		return
-	}
-
-	return minValues, err
-}
-
 func (r *AnimalRepository) FindById(id string) (*entity.Animal, error) {
 	return r.Impl.FindById(id)
 }

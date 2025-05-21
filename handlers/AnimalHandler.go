@@ -31,8 +31,6 @@ func InitAnimal(app *app.App) {
 
     app.HandleFunc("POST /animals/page", handler.FindPage)
     app.HandleFunc("GET /animals/{id}", handler.FindById)
-    app.HandleFunc("GET /animals/info/max-values", handler.FindMaxValues)
-    app.HandleFunc("GET /animals/info/min-values", handler.FindMinValues)
     app.HandleFunc("GET /animals/name/{name}", handler.FindByName)
     app.HandleFunc("GET /animals/number/{number}", handler.FindByNumber)
     app.HandleFunc("GET /animals/father/{fatherId}", handler.FindByFatherId)
@@ -42,38 +40,6 @@ func InitAnimal(app *app.App) {
     app.HandleFunc("POST /animals/save", handler.Save)
     app.HandleFunc("DELETE /animals/{id}", handler.Delete)
     LogControllersInit("Animais")
-}
-
-func (h *AnimalHandler) FindMaxValues(w http.ResponseWriter, r *http.Request) {
-    maxValues, err := h.Repository.FindMaxValues()
-    if err != nil {
-        err = errors.New(fmt.Sprintf("Erro na formação de valores máximos: %s", err.Error()))
-        DatabaseGetError(err, w)
-    }
-
-    response, err:= json.Marshal(maxValues)
-    if err != nil {
-        JsonServerError(err, w)
-        return
-    }
-
-    writeResponse(w, response)   
-}
-
-func (h *AnimalHandler) FindMinValues(w http.ResponseWriter, r *http.Request) {
-    minValues, err := h.Repository.FindMinValues()
-    if err != nil {
-        err = errors.New(fmt.Sprintf("Erro na formação de valores máximos: %s", err.Error()))
-        DatabaseGetError(err, w)
-    }
-
-    response, err:= json.Marshal(minValues)
-    if err != nil {
-        JsonServerError(err, w)
-        return
-    }
-
-    writeResponse(w, response)   
 }
 
 func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request)  {

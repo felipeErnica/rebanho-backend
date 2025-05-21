@@ -3,13 +3,11 @@ package entity
 import "time"
 
 type BirthEntry struct {
-	Id          string      `json:"id"`
-	Animal      AnimalShort `json:"animal"`
-	Calf        Calf        `json:"calf"`
-    WeightBirth int         `json:"weightBirth"`
-    Color       string   
-	Observation string      `json:"observation"`
-	CreatedAt   time.Time   `json:"created_at"`
-	DeletedAt   *time.Time  `json:"deleted_at"`
-    UserId      string      `json:"user_id"`
+	Id          string     `json:"id"`
+	Animal      AnimalDto  `json:"animal"`
+	Calf        Animal     `json:"calf"`
+	Observation string     `json:"observation"`
+	CreatedAt   time.Time  `json:"created_at"`
+	DeletedAt   *time.Time `json:"deleted_at"`
+	UserId      string     `json:"user_id"`
 }

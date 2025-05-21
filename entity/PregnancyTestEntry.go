@@ -5,12 +5,12 @@ import "time"
 type PregnancyTestEntry struct {
 	Id            string      `json:"id"`
 	GroupId       string      `json:"group"`
-	Animal        AnimalShort `json:"animal"`
+	Animal        AnimalDto `json:"animal"`
 	IsPregnant    bool        `json:"is_pregnant"`
 	BirthForecast time.Time   `json:"birth_forecast"`
     Observation   string      `json:"observation"`
     Loss          LossShort   `json:"loss"`
-    Calf          CalfShort   `json:"calf"`
+    Calf          AnimalDto   `json:"calf"`
 	CreatedAt     time.Time   `json:"created_at"`
     DeletedAt     *time.Time  `json:"deleted_at"`
     UserId        string      `json:"user_id"`

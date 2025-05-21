@@ -6,7 +6,7 @@ import (
 
 type MilkEntry struct {
 	Id           string       `json:"id"`
-	Animal       AnimalShort  `json:"animal"`
+	Animal       Animal       `json:"animal"`
 	Pasture      PastureShort `json:"pasturte"`
 	LactationId  string       `json:"lactation_id"`
 	EntryDate    time.Time    `json:"entry_date"`

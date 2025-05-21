@@ -4,8 +4,8 @@ import "time"
 
 type Lactation struct {
 	Id                string     `json:"id"`
-	Cow               Cow        `json:"cow"`
-	Calf              Calf       `json:"calf"`
+	Cow               Animal     `json:"cow"`
+	Calf              Animal     `json:"calf"`
 	StartDate         time.Time  `json:"start_date"`
 	EndDate           *time.Time `json:"end_date"`
 	ProductionPeriod  uint       `json:"production_period"`
@@ -16,7 +16,7 @@ type Lactation struct {
 	Observation       *string    `json:"observation"`
 	CreatedAt         time.Time  `json:"created_at"`
 	DeletedAt         *time.Time `json:"deleted_at"`
-    UserId            string     `json:"user_id"`
+	UserId            string     `json:"user_id"`
 }
 
 type LactationShort struct {

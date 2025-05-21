@@ -95,7 +95,7 @@ func (r *PregnancyLossRepository) createKey(sort string, lastEntry *entity.Pregn
 	case "name":
 		return fmt.Sprintf("%s,%s", *lastEntry.Animal.Name, lastEntry.Id)
 	case "identification_number":
-		return fmt.Sprintf("%d,%s", *lastEntry.Animal.AnimalOrder, lastEntry.Id)
+		return fmt.Sprintf("%d,%s", lastEntry.Animal.AnimalOrder, lastEntry.Id)
 	case "loss_date":
 		return fmt.Sprintf("%s,%s", lastEntry.LossDate, lastEntry.Id)
 	default:

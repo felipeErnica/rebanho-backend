@@ -68,7 +68,7 @@ func (r *MilkRepository) createKey(sort string, lastEntry *entity.MilkEntry) (ke
 	case "name":
 		return fmt.Sprintf("%s,%s", *lastEntry.Animal.Name, lastEntry.Id)
 	case "identification_number":
-		return fmt.Sprintf("%d,%s", *lastEntry.Animal.AnimalOrder, lastEntry.Id)
+		return fmt.Sprintf("%d,%s", lastEntry.Animal.AnimalOrder, lastEntry.Id)
 	case "entry_date":
 		return fmt.Sprintf("%s,%s", lastEntry.EntryDate, lastEntry.Id)
 	default:
