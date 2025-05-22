@@ -55,7 +55,7 @@ func (r *PregnancyLossRepository) setNewEntity(model *entity.PregnancyLoss, id s
 func (r *PregnancyLossRepository) buildEntity(row *sql.Row) (model *entity.PregnancyLoss, err error) {
 	var loss entity.PregnancyLoss
 	err = row.Scan(&loss.Id, &loss.LossType, &loss.LossDate, &loss.CreatedAt,
-		&loss.Animal.Id, &loss.Animal.IdentificationNumber, &loss.Animal.AnimalOrder)
+		&loss.AnimalId, &loss.AnimalNumber, &loss.AnimalOrder)
 	return &loss, err
 }
 
@@ -64,7 +64,7 @@ func (r *PregnancyLossRepository) buildListEntity(rows *sql.Rows) (arr *[]entity
 	for rows.Next() {
 		var loss entity.PregnancyLoss
 		err = rows.Scan(&loss.Id, &loss.LossType, &loss.LossDate, &loss.CreatedAt,
-			&loss.Animal.Id, &loss.Animal.IdentificationNumber, &loss.Animal.AnimalOrder)
+			&loss.AnimalId, &loss.AnimalNumber, &loss.AnimalOrder)
 		if err != nil {
 			return
 		}
@@ -74,7 +74,7 @@ func (r *PregnancyLossRepository) buildListEntity(rows *sql.Rows) (arr *[]entity
 }
 
 func (r *PregnancyLossRepository) saveOrUpdateScan(query string, model *entity.PregnancyLoss) error {
-	return execQuery(query, model.Id, model.Animal.Id, model.LossType, model.LossDate, model.CreatedAt, model.UserId)
+	return execQuery(query, model.Id, model.AnimalId, model.LossType, model.LossDate, model.CreatedAt, model.UserId)
 }
 
 func (r *PregnancyLossRepository) getFields(sort string) (firstField string, secondField string) {
@@ -93,9 +93,9 @@ func (r *PregnancyLossRepository) getFields(sort string) (firstField string, sec
 func (r *PregnancyLossRepository) createKey(sort string, lastEntry *entity.PregnancyLoss) (key string) {
 	switch sort {
 	case "name":
-		return fmt.Sprintf("%s,%s", *lastEntry.Animal.Name, lastEntry.Id)
+		return fmt.Sprintf("%s,%s", lastEntry.AnimalName, lastEntry.Id)
 	case "identification_number":
-		return fmt.Sprintf("%d,%s", lastEntry.Animal.AnimalOrder, lastEntry.Id)
+		return fmt.Sprintf("%d,%s", lastEntry.AnimalOrder, lastEntry.Id)
 	case "loss_date":
 		return fmt.Sprintf("%s,%s", lastEntry.LossDate, lastEntry.Id)
 	default:

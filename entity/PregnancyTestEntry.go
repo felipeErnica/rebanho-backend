@@ -3,15 +3,34 @@ package entity
 import "time"
 
 type PregnancyTestEntry struct {
-	Id            string      `json:"id"`
-	GroupId       string      `json:"group"`
-	Animal        AnimalDto `json:"animal"`
-	IsPregnant    bool        `json:"is_pregnant"`
-	BirthForecast time.Time   `json:"birth_forecast"`
-    Observation   string      `json:"observation"`
-    Loss          LossShort   `json:"loss"`
-    Calf          AnimalDto   `json:"calf"`
-	CreatedAt     time.Time   `json:"created_at"`
-    DeletedAt     *time.Time  `json:"deleted_at"`
-    UserId        string      `json:"user_id"`
+	Id            string     `json:"id"`
+	GroupId       string     `json:"groupId"`
+	GroupDate     string     `json:"groupDate"`
+	AnimalId      string     `json:"animalId"`
+	AnimalName    string     `json:"animalName"`
+	AnimalOrder   int        `json:"animalOrder"`
+	AnimalNumber  string     `json:"animalNumber"`
+	IsPregnant    bool       `json:"isPregnant"`
+	BirthForecast time.Time  `json:"birthForecast"`
+	Observation   string     `json:"observation"`
+	Status        string     `json:"status"`
+	LossId        string     `json:"lossId"`
+	CalfId        string     `json:"calfId"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	DeletedAt     *time.Time `json:"deletedAt"`
+	UserId        string     `json:"userId"`
+}
+
+type PregnancyTestEntrySave struct {
+	Id            string     `json:"id"`
+	GroupId       string     `json:"groupId"`
+	AnimalId      string     `json:"animalId"`
+	IsPregnant    bool       `json:"isPregnant"`
+	BirthForecast time.Time  `json:"birthForecast"`
+	Observation   string     `json:"observation"`
+	LossId        string     `json:"lossId"`
+	CalfId        string     `json:"calfId"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	DeletedAt     *time.Time `json:"deletedAt"`
+	UserId        string     `json:"userId"`
 }
