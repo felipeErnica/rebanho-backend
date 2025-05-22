@@ -4,14 +4,12 @@ import (
 	"time"
 )
 
-type InseminationEntry struct {
+type NaturalReproduction struct {
 	Id           string     `json:"id"`
 	AnimalId     string     `json:"animalId"`
 	AnimalNumber string     `json:"animalNumber"`
     AnimalOrder  string     `json:"animalOrder"`
 	AnimalName   string     `json:"animalName"`
-	GroupId      string     `json:"groupId"`
-	GroupDate    time.Time  `json:"groupDate"`
 	BullName     string     `json:"bullName"`
 	Observation  string     `json:"observation"`
 	Status       string     `json:"status"`
@@ -22,10 +20,9 @@ type InseminationEntry struct {
 	UserId       string     `json:"user_id"`
 }
 
-type InseminationEntrySave struct {
+type NaturalReproductionSave struct {
 	Id          string     `json:"id"`
 	AnimalId    string     `json:"animal"`
-	GroupId     string     `json:"groupId"`
 	Observation string     `json:"observation"`
 	Status      string     `json:"status"`
 	LossId      string     `json:"loss"`
