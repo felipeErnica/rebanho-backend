@@ -1,19 +1,14 @@
 package entity
 
-import  "time"
+import "time"
 
 type SlaughterGroup struct {
-    Id               string               `json:"id"`
-    Slaughterhouse   SlaughterhouseShort  `json:"slaughterhouse"`
-    WeightDecrease   float32              `json:"weight_decrease"`
-    SlaughterDate    time.Time            `json:"slaughter_date"`
-    CreatedAt        time.Time            `json:"created_at"`
-    DeletedAt        *time.Time           `json:"deleted_at"`
-    UserId           string               `json:"user_id"`
-}
-
-type SlaughterGroupShort struct {
-    Id               string               `json:"id"`
-    WeightDecrease   float32              `json:"weight_decrease"`
-    SlaughterDate    time.Time            `json:"slaughter_date"`
+	Id                 string     `json:"id"`
+	SlaughterhouseId   string     `json:"slaughterhouseId"`
+	SlaughterhouseName string     `json:"slaughterhouseName"`
+	WeightDecrease     float32    `json:"weightDecrease"`
+	SlaughterDate      time.Time  `json:"slaughterDate"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	DeletedAt          *time.Time `json:"deletedAt"`
+	UserId             string     `json:"userId"`
 }

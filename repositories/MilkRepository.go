@@ -66,9 +66,9 @@ func (r *MilkRepository) getFields(sort string) (firstField string, secondField 
 func (r *MilkRepository) createKey(sort string, lastEntry *entity.MilkEntry) (key string) {
 	switch sort {
 	case "name":
-		return fmt.Sprintf("%s,%s", *lastEntry.Animal.Name, lastEntry.Id)
+		return fmt.Sprintf("%s,%s", lastEntry.AnimalName, lastEntry.Id)
 	case "identification_number":
-		return fmt.Sprintf("%d,%s", lastEntry.Animal.AnimalOrder, lastEntry.Id)
+		return fmt.Sprintf("%d,%s", lastEntry.AnimalOrder, lastEntry.Id)
 	case "entry_date":
 		return fmt.Sprintf("%s,%s", lastEntry.EntryDate, lastEntry.Id)
 	default:
@@ -84,8 +84,8 @@ func (r *MilkRepository) setNewEntity(model *entity.MilkEntry, id string, create
 func (r *MilkRepository) buildEntity(row *sql.Row) (model *entity.MilkEntry, err error) {
 	var milk entity.MilkEntry
 	err = row.Scan(&milk.Id, &milk.EntryDate, &milk.MilkQuantity, &milk.LactationId,
-		&milk.Animal.Id, &milk.Animal.IdentificationNumber, &milk.Animal.AnimalOrder, &milk.Animal.Name,
-		&milk.Pasture.Id, &milk.Pasture.Name)
+		&milk.AnimalId, &milk.AnimalNumber, &milk.AnimalOrder, &milk.AnimalName,
+		&milk.PastureId, &milk.PastureName)
 	return &milk, err
 }
 
@@ -94,8 +94,8 @@ func (r *MilkRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.MilkEntr
 	for rows.Next() {
 		var milk entity.MilkEntry
 		err = rows.Scan(&milk.Id, &milk.EntryDate, &milk.MilkQuantity, &milk.LactationId,
-			&milk.Animal.Id, &milk.Animal.IdentificationNumber, &milk.Animal.AnimalOrder, &milk.Animal.Name,
-			&milk.Pasture.Id, &milk.Pasture.Name)
+			&milk.AnimalId, &milk.AnimalNumber, &milk.AnimalOrder, &milk.AnimalName,
+			&milk.PastureId, &milk.PastureName)
 		if err != nil {
 			return
 		}
@@ -106,7 +106,7 @@ func (r *MilkRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.MilkEntr
 
 func (r *MilkRepository) saveOrUpdateScan(query string, model *entity.MilkEntry) error {
 	return execQuery(query, model.Id, model.EntryDate, model.MilkQuantity,
-		model.Animal.Id, model.Pasture.Id, model.LactationId, model.CreatedAt)
+		model.AnimalId, model.PastureId, model.LactationId, model.CreatedAt)
 }
 
 func (r *MilkRepository) FindPage(sort string, direction string, cursor string) (*entity.Page[entity.MilkEntry], error) {

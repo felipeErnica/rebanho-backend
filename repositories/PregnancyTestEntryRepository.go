@@ -47,7 +47,7 @@ func (r *PregancyTestEntryRepository) setNewEntity(model *entity.PregnancyTestEn
 func (r *PregancyTestEntryRepository) buildEntity(row *sql.Row) (model *entity.PregnancyTestEntry, err error) {
 	var entry entity.PregnancyTestEntry
 	err = row.Scan(&entry.Id, &entry.GroupId, &entry.IsPregnant, &entry.BirthForecast,
-		&entry.Animal.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
+		&entry.AnimalId, &entry.AnimalName, &entry.AnimalNumber, &entry.AnimalOrder)
 	return &entry, err
 }
 
@@ -56,9 +56,9 @@ func (r *PregancyTestEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]en
 	for rows.Next() {
 		var entry entity.PregnancyTestEntry
 		err = rows.Scan(&entry.Id, &entry.GroupId, &entry.IsPregnant, &entry.BirthForecast,
-			&entry.Animal.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder,
-			&entry.Loss.Id, &entry.Loss.LossType, &entry.Loss.LossDate,
-			&entry.Calf.Id, &entry.Calf.Sex, &entry.Calf.BirthDate)
+			&entry.AnimalId, &entry.AnimalName, &entry.AnimalNumber, &entry.AnimalOrder,
+			&entry.LossId,
+			&entry.CalfId)
 		if err != nil {
 			return
 		}
@@ -68,8 +68,8 @@ func (r *PregancyTestEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]en
 }
 
 func (r *PregancyTestEntryRepository) saveOrUpdateScan(query string, model *entity.PregnancyTestEntry) error {
-	return execQuery(query, model.Id, model.Animal.Id, model.GroupId, model.IsPregnant,
-		model.BirthForecast, model.Calf.Id, model.Loss.Id, model.CreatedAt, model.UserId)
+	return execQuery(query, model.Id, model.AnimalId, model.GroupId, model.IsPregnant,
+		model.BirthForecast, model.CalfId, model.LossId, model.CreatedAt, model.UserId)
 }
 
 func (r *PregancyTestEntryRepository) FindByGroupId(groupId string) (*[]entity.PregnancyTestEntry, error) {

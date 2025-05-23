@@ -1,17 +1,19 @@
 package entity
 
-import (
-	"time"
-)
+import "time"
 
 type MilkEntry struct {
-	Id           string       `json:"id"`
-	Animal       Animal       `json:"animal"`
-	Pasture      PastureShort `json:"pasturte"`
-	LactationId  string       `json:"lactation_id"`
-	EntryDate    time.Time    `json:"entry_date"`
-	MilkQuantity float32      `json:"milk_quantity"`
-	CreatedAt    time.Time    `json:"created_at"`
-	DeletedAt    *time.Time   `json:"deleted_at"`
-	UserId       string       `json:"user_id"`
+	Id           string     `json:"id"`
+	AnimalId     string     `json:"animalId"`
+	AnimalOrder  int        `json:"animalOrder"`
+	AnimalNumber string     `json:"animalNumber"`
+	AnimalName   string     `json:"animalName"`
+	PastureId    string     `json:"pastureId"`
+	PastureName  string     `json:"pastureName"`
+	LactationId  string     `json:"lactationId"`
+	EntryDate    time.Time  `json:"entryDate"`
+	MilkQuantity float32    `json:"milkQuantity"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	DeletedAt    *time.Time `json:"deletedAt"`
+	UserId       string     `json:"userId"`
 }
