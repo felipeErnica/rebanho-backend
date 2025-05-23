@@ -69,9 +69,8 @@ func (r *LactationRepository) buildEntity(row *sql.Row) (model *entity.Lactation
 	var lactation entity.Lactation
 	err = row.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
 		&lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation,
-		&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.Status,
-		&lactation.Cow.Pasture.Id, &lactation.Cow.Pasture.Name,
-		&lactation.Calf.Id, &lactation.Calf.Sex, &lactation.Calf.BirthDate)
+		&lactation.CowId, &lactation.CowNumber, &lactation.CowName, &lactation.CowPasture,
+		&lactation.CalfId, &lactation.CalfSex, &lactation.CalfBirthDate, &lactation.CalfFather)
 	if err != nil {
 		return
 	}
@@ -84,9 +83,8 @@ func (r *LactationRepository) buildListEntity(rows *sql.Rows) (list *[]entity.La
 		var lactation entity.Lactation
 		err = rows.Scan(&lactation.Id, &lactation.StartDate, &lactation.EndDate, &lactation.ProductionPeriod, &lactation.ProductionTotal,
 			&lactation.AverageProduction, &lactation.PeakProduction, &lactation.Isr, &lactation.Observation,
-			&lactation.Cow.Id, &lactation.Cow.IdentificationNumber, &lactation.Cow.Name, &lactation.Cow.Status,
-			&lactation.Cow.Pasture.Id, &lactation.Cow.Pasture.Name,
-			&lactation.Calf.Id, &lactation.Calf.Sex, &lactation.Calf.BirthDate)
+			&lactation.CowId, &lactation.CowNumber, &lactation.CowName, &lactation.CowPasture,
+			&lactation.CalfId, &lactation.CalfSex, &lactation.CalfBirthDate)
 		if err != nil {
 			return
 		}
@@ -125,11 +123,11 @@ func (r *LactationRepository) getFields(sort string) (firstField string, secondF
 func (r *LactationRepository) createKey(sort string, lactation *entity.Lactation) string {
 	switch sort {
 	case "name":
-		return fmt.Sprintf("%s,%s", *lactation.Cow.Name, lactation.Id)
+		return fmt.Sprintf("%s,%s", lactation.CowName, lactation.Id)
 	case "identification_number":
-		return fmt.Sprintf("%s,%s", *lactation.Cow.IdentificationNumber, lactation.Id)
+		return fmt.Sprintf("%s,%s", lactation.CowNumber, lactation.Id)
 	case "birth_date":
-		return fmt.Sprintf("%s,%s", lactation.Calf.BirthDate, lactation.Id)
+		return fmt.Sprintf("%s,%s", lactation.CalfBirthDate, lactation.Id)
 	case "start_date":
 		return fmt.Sprintf("%s,%s", lactation.StartDate, lactation.Id)
 	case "end_date":
@@ -154,7 +152,7 @@ func (r *LactationRepository) createKey(sort string, lactation *entity.Lactation
 }
 
 func (r *LactationRepository) saveOrUpdateScan(query string, lactation *entity.Lactation) error {
-	return execQuery(query, lactation.Id, lactation.Cow.Id, lactation.Calf.Id, lactation.StartDate, lactation.EndDate,
+	return execQuery(query, lactation.Id, lactation.CowId, lactation.CalfId, lactation.StartDate, lactation.EndDate,
 		lactation.ProductionPeriod, lactation.ProductionTotal, lactation.AverageProduction, lactation.PeakProduction,
 		lactation.Isr, lactation.Observation, lactation.CreatedAt, lactation.DeletedAt)
 }

@@ -4,31 +4,24 @@ import "time"
 
 type Lactation struct {
 	Id                string     `json:"id"`
-	Cow               Animal     `json:"cow"`
-	Calf              Animal     `json:"calf"`
-	StartDate         time.Time  `json:"start_date"`
-	EndDate           *time.Time `json:"end_date"`
-	ProductionPeriod  uint       `json:"production_period"`
-	ProductionTotal   float32    `json:"production_total"`
-	AverageProduction float32    `json:"average_production"`
-	PeakProduction    float32    `json:"peak_production"`
+	CowId             string     `json:"cowId"`
+	CowName           string     `json:"cowName"`
+	CowNumber         string     `json:"cowNumber"`
+	CowPasture        string     `json:"cowPasture"`
+	CowOrder          int        `json:"cowOrder"`
+	CalfId            string     `json:"calfId"`
+	CalfBirthDate     time.Time  `json:"calfBirthDate"`
+	CalfSex           string     `json:"calfSex"`
+	CalfFather        string     `json:"calfFather"`
+	StartDate         time.Time  `json:"startDate"`
+	EndDate           *time.Time `json:"endDate"`
+	ProductionPeriod  uint       `json:"productionPeriod"`
+	ProductionTotal   float32    `json:"productionTotal"`
+	AverageProduction float32    `json:"averageProduction"`
+	PeakProduction    float32    `json:"peakProduction"`
 	Isr               float32    `json:"isr"`
 	Observation       *string    `json:"observation"`
-	CreatedAt         time.Time  `json:"created_at"`
-	DeletedAt         *time.Time `json:"deleted_at"`
-	UserId            string     `json:"user_id"`
-}
-
-type LactationShort struct {
-	Id                string    `json:"id"`
-	AnimalId          string    `json:"animal_id"`
-	CalfId            string    `json:"calf_id"`
-	StartDate         time.Time `json:"start_date"`
-	EndDate           time.Time `json:"end_date"`
-	ProductionPeriod  uint      `json:"production_period"`
-	ProductionTotal   float32   `json:"production_total"`
-	AverageProduction float32   `json:"average_production"`
-	PeakProduction    float32   `json:"peak_production"`
-	Isr               float32   `json:"isr"`
-	Observation       string    `json:"observation"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	DeletedAt         *time.Time `json:"deletedAt"`
+	UserId            string     `json:"userId"`
 }

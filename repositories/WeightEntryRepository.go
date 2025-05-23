@@ -42,7 +42,7 @@ func (r *WeightEntryRepository) setNewEntity(model *entity.WeightEntry, id strin
 func (r *WeightEntryRepository) buildEntity(row *sql.Row) (model *entity.WeightEntry, err error) {
 	var weight entity.WeightEntry
 	err = row.Scan(weight.Id, weight.GroupId, weight.Weight,
-		weight.Animal.Id, weight.Animal.Name, weight.Animal.IdentificationNumber, weight.Animal.AnimalOrder)
+		weight.AnimalId, weight.AnimalName, weight.AnimalNumber, weight.AnimalOrder)
 	return &weight, err
 }
 
@@ -51,7 +51,7 @@ func (r *WeightEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.W
 	for rows.Next() {
 		var weight entity.WeightEntry
 		err = rows.Scan(weight.Id, weight.GroupId, weight.Weight,
-			weight.Animal.Id, weight.Animal.Name, weight.Animal.IdentificationNumber, weight.Animal.AnimalOrder)
+			weight.AnimalId, weight.AnimalName, weight.AnimalNumber, weight.AnimalOrder)
 		if err != nil {
 			return
 		}
@@ -61,7 +61,7 @@ func (r *WeightEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.W
 }
 
 func (r *WeightEntryRepository) saveOrUpdateScan(query string, model *entity.WeightEntry) error {
-	return execQuery(query, model.Id, model.Animal.Id, model.GroupId, model.Weight, model.CreatedAt, model.UserId)
+	return execQuery(query, model.Id, model.AnimalId, model.GroupId, model.Weight, model.CreatedAt, model.UserId)
 }
 
 func (r *WeightEntryRepository) FindByGroupId(groupId string) (*[]entity.WeightEntry, error) {

@@ -40,7 +40,7 @@ func (r *SlaughterGroupRepository) setNewEntity(model *entity.SlaughterGroup, id
 
 func (r *SlaughterGroupRepository) buildEntity(row *sql.Row) (model *entity.SlaughterGroup, err error) {
 	var group entity.SlaughterGroup
-	err = row.Scan(&group.Id, &group.WeightDecrease, &group.SlaughterDate, &group.Slaughterhouse.Id, &group.Slaughterhouse.Name)
+	err = row.Scan(&group.Id, &group.WeightDecrease, &group.SlaughterDate, &group.SlaughterhouseId, &group.SlaughterhouseName)
 	return &group, err
 }
 
@@ -48,7 +48,7 @@ func (r *SlaughterGroupRepository) buildListEntity(rows *sql.Rows) (arr *[]entit
 	var groups []entity.SlaughterGroup
 	for rows.Next() {
 		var group entity.SlaughterGroup
-		err = rows.Scan(&group.Id, &group.WeightDecrease, &group.SlaughterDate, &group.Slaughterhouse.Id, &group.Slaughterhouse.Name)
+		err = rows.Scan(&group.Id, &group.WeightDecrease, &group.SlaughterDate, &group.SlaughterhouseId, &group.SlaughterhouseName)
 		if err != nil {
 			return
 		}
@@ -59,7 +59,7 @@ func (r *SlaughterGroupRepository) buildListEntity(rows *sql.Rows) (arr *[]entit
 
 func (r *SlaughterGroupRepository) saveOrUpdateScan(query string, model *entity.SlaughterGroup) error {
 	return execQuery(query, model.Id, model.WeightDecrease, model.SlaughterDate,
-		model.Slaughterhouse.Id, model.CreatedAt, model.UserId)
+		model.SlaughterhouseId, model.CreatedAt, model.UserId)
 }
 
 func (r *SlaughterGroupRepository) FindAll() (*[]entity.SlaughterGroup, error) {
