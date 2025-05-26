@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/app"
@@ -11,6 +10,7 @@ import (
 	"github.com/felipeErnica/rebanho-backend/repositories"
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	"github.com/felipeErnica/rebanho-backend/util"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -25,7 +25,7 @@ func main() {
 	)
 
 	dataBaseInfo := db.ConnectPostgres().ReturnDatabaseInfo()
-	db, err := sql.Open("postgres", dataBaseInfo)
+	db, err := sqlx.Open("postgres", dataBaseInfo)
 	db.SetMaxOpenConns(15)
 	db.SetMaxIdleConns(15)
 	db.SetConnMaxLifetime(5 * time.Minute)

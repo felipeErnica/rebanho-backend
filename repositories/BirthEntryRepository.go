@@ -44,7 +44,7 @@ func (r *BirthEntryRepository) setNewEntity(model *entity.BirthEntry, id string,
 func (r *BirthEntryRepository) buildEntity(row *sql.Row) (model *entity.BirthEntry, err error) {
 	var entry entity.BirthEntry
 	err = row.Scan(&entry.Id, &entry.Observation,
-		&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.IdentificationNumber, &entry.Calf.Sex, &entry.Calf.BirthDate,
+		&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.Number, &entry.Calf.Sex, &entry.Calf.BirthDate,
 		&entry.Calf.Father.Name,
 		&entry.Calf.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
 	return &entry, err
@@ -55,7 +55,7 @@ func (r *BirthEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Bi
 	for rows.Next() {
 		var entry entity.BirthEntry
 		err = rows.Scan(&entry.Id, &entry.Observation,
-			&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.IdentificationNumber, &entry.Calf.Sex, &entry.Calf.BirthDate,
+			&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.Number, &entry.Calf.Sex, &entry.Calf.BirthDate,
 			&entry.Calf.Father.Name,
 			&entry.Calf.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
 		if err != nil {

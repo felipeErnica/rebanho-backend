@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/util"
+	"github.com/jmoiron/sqlx"
 )
 
-var db *sql.DB
+var db *sqlx.DB
 const PAGE_LIMIT int = 200
 var userId *string;
 
-func InitRepository(dbConn *sql.DB) {
+func InitRepository(dbConn *sqlx.DB) {
     db = dbConn
 	util.LogInfo("O Repositório foi iniciado com sucesso!")
 }
@@ -33,6 +34,14 @@ func selectQueryList(query string, args ...any) (*sql.Rows, error) {
     util.LogInfo("Enviando query->   " + query)
     sql, err:= db.Query(query, args...)
     return sql, err
+}
+
+func selectTest(dest *interface{}, query string, args ...any) error {
+    query = strings.Join(strings.Fields(query)," ")
+    println()
+    util.LogInfo("Enviando query->   " + query)
+    err:= db.Select(dest, query, args...)
+    return err
 }
 
 func selectQueryOne(query string, args ...any) *sql.Row {

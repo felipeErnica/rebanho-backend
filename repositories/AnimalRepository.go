@@ -7,6 +7,7 @@ import (
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
+	"github.com/jmoiron/sqlx"
 )
 
 type AnimalRepository struct {
@@ -68,7 +69,7 @@ func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.An
 	var animals []entity.Animal
 	for sqlRows.Next() {
 		var animal entity.Animal
-		err = sqlRows.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate, &animal.Sex,
+		err = sqlRows.Scan(&animal.Id, &animal.Name, &animal.Number, &animal.BirthDate, &animal.Sex,
 			&animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd,
 			&animal.AverageBirthInterval, &animal.AveragePeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
 			&animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber,
@@ -84,7 +85,7 @@ func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.An
 
 func (r *AnimalRepository) buildEntity(sqlStatement *sql.Row) (model *entity.Animal, err error) {
 	var animal entity.Animal
-	err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.IdentificationNumber, &animal.BirthDate, &animal.Sex,
+	err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.Number, &animal.BirthDate, &animal.Sex,
 		&animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd,
 		&animal.AverageBirthInterval, &animal.AveragePeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
 		&animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber,
@@ -94,7 +95,7 @@ func (r *AnimalRepository) buildEntity(sqlStatement *sql.Row) (model *entity.Ani
 }
 
 func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal) error {
-	return execQuery(query, animal.Id, animal.Name, animal.IdentificationNumber, animal.Father.Id, animal.Mother.Id,
+	return execQuery(query, animal.Id, animal.Name, animal.Number, animal.Father.Id, animal.Mother.Id,
 		animal.BirthDate, animal.DeathDate, animal.Pasture.Id, animal.WeaningDate, animal.Status, animal.AverageProd,
 		animal.AverageBirthInterval, animal.AveragePeak, animal.Isr, animal.ChildrenQuantity, animal.Observation, animal.CreatedAt)
 }
@@ -136,8 +137,8 @@ func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) stri
 		}
 	case "identification_number":
 		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
-		if lastEntry.IdentificationNumber != nil {
-			key = fmt.Sprintf("%s,%s", *lastEntry.IdentificationNumber, lastEntry.Id)
+		if lastEntry.Number != nil {
+			key = fmt.Sprintf("%s,%s", *lastEntry.Number, lastEntry.Id)
 		}
 	case "birth_date":
 		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
@@ -331,8 +332,22 @@ func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.
 	return query, args
 }
 
-func (r *AnimalRepository) FindPage(sort string, direction string,
-	cursor string, filter *entity.AnimalFilter) (page *entity.Page[entity.Animal], err error) {
+// func (r *AnimalRepository) FindPage(
+//     sort string, 
+//     direction string,
+// 	cursor string, 
+//     filter *entity.AnimalFilter,
+// ) (page *entity.Page[entity.Animal], err error) {
+// 	query, args := r.filterQuery(filter)
+// 	return r.Impl.FindRandomQueryPage(&query, sort, direction, cursor, args...)
+// }
+
+func (r *AnimalRepository) FindPage(
+    sort string, 
+    direction string,
+	cursor string, 
+    filter *entity.AnimalFilter,
+) (page *entity.Page[entity.Animal], err error) {
 	query, args := r.filterQuery(filter)
 	return r.Impl.FindRandomQueryPage(&query, sort, direction, cursor, args...)
 }
