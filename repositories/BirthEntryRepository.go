@@ -45,7 +45,7 @@ func (r *BirthEntryRepository) buildEntity(row *sql.Row) (model *entity.BirthEnt
 	var entry entity.BirthEntry
 	err = row.Scan(&entry.Id, &entry.Observation,
 		&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.Number, &entry.Calf.Sex, &entry.Calf.BirthDate,
-		&entry.Calf.Father.Name,
+		&entry.Calf.FatherName,
 		&entry.Calf.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
 	return &entry, err
 }
@@ -56,7 +56,7 @@ func (r *BirthEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Bi
 		var entry entity.BirthEntry
 		err = rows.Scan(&entry.Id, &entry.Observation,
 			&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.Number, &entry.Calf.Sex, &entry.Calf.BirthDate,
-			&entry.Calf.Father.Name,
+			&entry.Calf.FatherName,
 			&entry.Calf.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
 		if err != nil {
 			return

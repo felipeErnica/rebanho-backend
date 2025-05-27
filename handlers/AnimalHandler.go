@@ -18,7 +18,7 @@ type AnimalHandler struct {
 
 func InitAnimal(app *app.App) {
     repository:=new(repositories.AnimalRepository)
-    repository.Init()
+    repository.Init(app.DBconn)
 
     impl:= HandlerImpl[entity.Animal]{
         Repository: *repository.Impl.Base,

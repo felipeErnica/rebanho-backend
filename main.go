@@ -18,18 +18,19 @@ func main() {
 
 	util.LogInfo("Iniciando server....")
 
-	app := app.NewApp()
-	app.UseGroup(
-		middlewares.CorsMiddleware,
-		middlewares.AuthenticationMiddleware,
-	)
-
 	dataBaseInfo := db.ConnectPostgres().ReturnDatabaseInfo()
 	db, err := sqlx.Open("postgres", dataBaseInfo)
 	db.SetMaxOpenConns(15)
 	db.SetMaxIdleConns(15)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	defer db.Close()
+
+	app := app.NewApp()
+    app.DBconn = db
+	app.UseGroup(
+		middlewares.CorsMiddleware,
+		middlewares.AuthenticationMiddleware,
+	)
 
 	if err != nil {
 		util.LogError("Não foi possível conectar ao banco de dados!")
@@ -54,5 +55,4 @@ func main() {
 	}
 
 	util.LogInfo("Server encerrado com sucesso!")
-
 }

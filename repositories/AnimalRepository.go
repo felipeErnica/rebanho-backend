@@ -7,14 +7,17 @@ import (
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
+	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
+	"github.com/jmoiron/sqlx"
 )
 
 type AnimalRepository struct {
 	Impl        PageRepositoryImpl[entity.Animal]
 	SelectQuery util.SelectConstructor
+	DB          *sqlx.DB
 }
 
-func (r *AnimalRepository) Init() {
+func (r *AnimalRepository) Init(db *sqlx.DB) {
 	dateFields := []string{
 		"birth_date",
 		"death_date",
@@ -53,9 +56,11 @@ func (r *AnimalRepository) Init() {
 	}
 	r.Impl = PageRepositoryImpl[entity.Animal]{
 		Base:           baseRepo,
-		PageRepository: r,
+		// PageRepository: r,
 		DateFields:     dateFields,
 	}
+
+	r.DB = db
 }
 
 func (r *AnimalRepository) setNewEntity(model *entity.Animal, id string, createdAt time.Time) {
@@ -71,9 +76,9 @@ func (r *AnimalRepository) buildListEntity(sqlRows *sql.Rows) (list *[]entity.An
 		err = sqlRows.Scan(&animal.Id, &animal.Name, &animal.Number, &animal.BirthDate, &animal.Sex,
 			&animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd,
 			&animal.AverageBirthInterval, &animal.AveragePeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
-			&animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber,
-			&animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
-			&animal.Pasture.Id, &animal.Pasture.Name)
+			&animal.MotherId, &animal.MotherName, &animal.MotherNumber,
+			&animal.FatherId, &animal.FatherName, &animal.FatherNumber,
+			&animal.PastureId, &animal.PastureName)
 		if err != nil {
 			return nil, err
 		}
@@ -87,15 +92,15 @@ func (r *AnimalRepository) buildEntity(sqlStatement *sql.Row) (model *entity.Ani
 	err = sqlStatement.Scan(&animal.Id, &animal.Name, &animal.Number, &animal.BirthDate, &animal.Sex,
 		&animal.DeathDate, &animal.WeaningDate, &animal.Status, &animal.AverageProd,
 		&animal.AverageBirthInterval, &animal.AveragePeak, &animal.Isr, &animal.ChildrenQuantity, &animal.Observation,
-		&animal.Mother.Id, &animal.Mother.Name, &animal.Mother.IdentificationNumber,
-		&animal.Father.Id, &animal.Father.Name, &animal.Father.IdentificationNumber,
-		&animal.Pasture.Id, &animal.Pasture.Name)
+		&animal.MotherId, &animal.MotherName, &animal.MotherNumber,
+		&animal.FatherId, &animal.FatherName, &animal.FatherNumber,
+		&animal.PastureId, &animal.PastureName)
 	return &animal, err
 }
 
 func (r *AnimalRepository) saveOrUpdateScan(query string, animal *entity.Animal) error {
-	return execQuery(query, animal.Id, animal.Name, animal.Number, animal.Father.Id, animal.Mother.Id,
-		animal.BirthDate, animal.DeathDate, animal.Pasture.Id, animal.WeaningDate, animal.Status, animal.AverageProd,
+	return execQuery(query, animal.Id, animal.Name, animal.Number, animal.FatherId, animal.MotherId,
+		animal.BirthDate, animal.DeathDate, animal.PastureId, animal.WeaningDate, animal.Status, animal.AverageProd,
 		animal.AverageBirthInterval, animal.AveragePeak, animal.Isr, animal.ChildrenQuantity, animal.Observation, animal.CreatedAt)
 }
 
@@ -126,49 +131,49 @@ func (r *AnimalRepository) getFields(sort string) (firstField string, secondFiel
 	}
 }
 
-func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) string {
-	var key string
-	switch sort {
-	case "name":
-		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
-		if lastEntry.Name != nil {
-			key = fmt.Sprintf("%s,%s", *lastEntry.Name, lastEntry.Id)
-		}
-	case "identification_number":
-		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
-		if lastEntry.Number != nil {
-			key = fmt.Sprintf("%s,%s", *lastEntry.Number, lastEntry.Id)
-		}
-	case "birth_date":
-		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
-		if lastEntry.BirthDate != nil {
-			key = fmt.Sprintf("%s,%s", lastEntry.BirthDate.Format(time.RFC3339Nano), lastEntry.Id)
-		}
-	case "death_date":
-		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
-		if lastEntry.DeathDate != nil {
-			key = fmt.Sprintf("%s,%s", lastEntry.DeathDate.Format(time.RFC3339Nano), lastEntry.Id)
-		}
-	case "average_prod":
-		key = fmt.Sprintf("%f,%s", lastEntry.AverageProd, lastEntry.Id)
-	case "average_birth_interval":
-		key = fmt.Sprintf("%f,%s", lastEntry.AverageBirthInterval, lastEntry.Id)
-	case "average_peak":
-		key = fmt.Sprintf("%f,%s", lastEntry.AveragePeak, lastEntry.Id)
-	case "children_quantity":
-		key = fmt.Sprintf("%d,%s", lastEntry.ChildrenQuantity, lastEntry.Id)
-	case "isr":
-		key = fmt.Sprintf("%f,%s", lastEntry.Isr, lastEntry.Id)
-	case "deleted_at":
-		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
-		if lastEntry.DeletedAt != nil {
-			key = fmt.Sprintf("%s,%s", lastEntry.DeletedAt.Format(time.RFC3339Nano), lastEntry.Id)
-		}
-	default:
-		key = fmt.Sprintf("%s,%s", lastEntry.CreatedAt.Format(time.RFC3339Nano), lastEntry.Id)
-	}
-	return key
-}
+// func (r *AnimalRepository) createKey(sort string, lastEntry *entity.Animal) string {
+// 	var key string
+// 	switch sort {
+// 	case "name":
+// 		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+// 		if lastEntry.Name.Valid {
+// 			key = fmt.Sprintf("%s,%s", lastEntry.Name, lastEntry.Id)
+// 		}
+// 	case "identification_number":
+// 		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+// 		if lastEntry.Number.Valid {
+// 			key = fmt.Sprintf("%s,%s", lastEntry.Number, lastEntry.Id)
+// 		}
+// 	case "birth_date":
+// 		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+// 		if lastEntry.BirthDate.Valid {
+// 			key = fmt.Sprintf("%s,%s", lastEntry.BirthDate.Time.Format(time.RFC3339Nano), lastEntry.Id)
+// 		}
+// 	case "death_date":
+// 		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+// 		if lastEntry.DeathDate.Valid {
+// 			key = fmt.Sprintf("%s,%s", lastEntry.DeathDate.Time.Format(time.RFC3339Nano), lastEntry.Id)
+// 		}
+// 	case "average_prod":
+// 		key = fmt.Sprintf("%f,%s", lastEntry.AverageProd, lastEntry.Id)
+// 	case "average_birth_interval":
+// 		key = fmt.Sprintf("%f,%s", lastEntry.AverageBirthInterval, lastEntry.Id)
+// 	case "average_peak":
+// 		key = fmt.Sprintf("%f,%s", lastEntry.AveragePeak, lastEntry.Id)
+// 	case "children_quantity":
+// 		key = fmt.Sprintf("%d,%s", lastEntry.ChildrenQuantity, lastEntry.Id)
+// 	case "isr":
+// 		key = fmt.Sprintf("%f,%s", lastEntry.Isr, lastEntry.Id)
+// 	case "deleted_at":
+// 		key = fmt.Sprintf("%s,%s", "null", lastEntry.Id)
+// 		if lastEntry.DeletedAt.Valid {
+// 			key = fmt.Sprintf("%s,%s", lastEntry.DeletedAt.Time.Format(time.RFC3339Nano), lastEntry.Id)
+// 		}
+// 	default:
+// 		key = fmt.Sprintf("%s,%s", lastEntry.CreatedAt.Format(time.RFC3339Nano), lastEntry.Id)
+// 	}
+// 	return key
+// }
 
 func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.SelectConstructor, args []any) {
 	query = r.SelectQuery
@@ -347,8 +352,61 @@ func (r *AnimalRepository) FindPage(
 	cursor string,
 	filter *entity.AnimalFilter,
 ) (page *entity.Page[entity.Animal], err error) {
-	query, args := r.filterQuery(filter)
-	return r.Impl.FindRandomQueryPage(&query, sort, direction, cursor, args...)
+	query := `
+        SELECT animals.*, 
+            father.name as father_name, father.number as father_number,
+            mother.number as mother_number, mother.name as mother_name,
+            pastures.name as pasture_name
+        FROM animals
+            LEFT JOIN animals as father ON father.id = animals.father_id
+            LEFT JOIN animals as mother ON mother.id = animals.mother_id
+            LEFT JOIN pastures ON pastures.id = animals.pasture_id
+    `
+
+	firstParam, secondParam, err := repositoriesUtil.DecodeCursor(cursor)
+	if err != nil {
+		return
+	}
+
+	pageProps := repositoriesUtil.PageQueryProps{
+		QueryBody: query,
+		Sort:      sort,
+		Order:     direction,
+		Limit:     PAGE_LIMIT,
+		IsNull:    firstParam == nil,
+		Cursor:    cursor,
+        TableName: "animals",
+	}
+
+	query = repositoriesUtil.BuildPageQuery(pageProps)
+	animals := []entity.Animal{}
+
+	selectionProps := SelectionProps[entity.Animal]{
+		Dest:        &animals,
+		Query:       query,
+		IsFirstPage: cursor == "",
+		IsFiltered:  filter.IsFiltered,
+		FirstParam:  firstParam,
+		SecondParam: secondParam,
+	}
+
+	err = SelectPage(selectionProps)
+    if err != nil {
+        return
+    }
+
+	nextCursor, err := repositoriesUtil.CreateCursorKey(sort, animals)
+	if err != nil {
+		return
+	}
+
+	page = &entity.Page[entity.Animal]{
+		List:        &animals,
+		HasNextPage: HasNextPage(animals),
+		NextCursor:  nextCursor,
+	}
+
+	return page, err
 }
 
 func (r *AnimalRepository) FindById(id string) (*entity.Animal, error) {

@@ -46,8 +46,8 @@ func (r *InseminationGroupRepository) setNewEntity(model *entity.InseminationGro
 func (r *InseminationGroupRepository) buildEntity(row *sql.Row) (model *entity.InseminationGroup, err error) {
 	var group entity.InseminationGroup
 	err = row.Scan(&group.Id, &group.InseminationDate, &group.Bull.Id, &group.Bull.Name,
-		&group.Bull.Mother.Id, &group.Bull.Mother.Name,
-		&group.Bull.Father.Id, &group.Bull.Father.Name)
+		&group.Bull.MotherId, &group.Bull.MotherName,
+		&group.Bull.FatherId, &group.Bull.FatherName)
 	return &group, err
 }
 
@@ -56,8 +56,8 @@ func (r *InseminationGroupRepository) buildListEntity(rows *sql.Rows) (arr *[]en
 	for rows.Next() {
 		var group entity.InseminationGroup
 		err = rows.Scan(&group.Id, &group.InseminationDate, &group.Bull.Id, &group.Bull.Name,
-			&group.Bull.Mother.Id, &group.Bull.Mother.Name,
-			&group.Bull.Father.Id, &group.Bull.Father.Name)
+			&group.Bull.MotherId, &group.Bull.MotherName,
+			&group.Bull.FatherId, &group.Bull.FatherName)
 		if err != nil {
 			return
 		}
