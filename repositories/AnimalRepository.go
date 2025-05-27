@@ -7,7 +7,6 @@ import (
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
-	"github.com/jmoiron/sqlx"
 )
 
 type AnimalRepository struct {
@@ -23,17 +22,17 @@ func (r *AnimalRepository) Init() {
 		"deleted_at",
 	}
 
-	r.SelectQuery = *util.NewSelectQuery(util.SELECT, 
+	r.SelectQuery = *util.NewSelectQuery(util.SELECT,
 		*util.NewNamedGroup("animals", "id", "name", "identification_number", "birth_date", "sex", "death_date",
-		"weaning_date", "status", "average_prod", "average_birth_interval", 
-		"average_peak", "isr", "children_quantity", "observation"),
-		*util.NewNamedGroup("mother", "id", "name", "identification_number"), 
+			"weaning_date", "status", "average_prod", "average_birth_interval",
+			"average_peak", "isr", "children_quantity", "observation"),
+		*util.NewNamedGroup("mother", "id", "name", "identification_number"),
 		*util.NewNamedGroup("father", "id", "name", "identification_number"),
 		*util.NewNamedGroup("pastures", "id", "name")).
 		From("animals").
 		Joins(
-			"left join animals as father on father.id = animals.father_id", 
-			"left join animals as mother on mother.id = animals.mother_id", 
+			"left join animals as father on father.id = animals.father_id",
+			"left join animals as mother on mother.id = animals.mother_id",
 			"left join pastures on pastures.id = animals.pasture_id")
 
 	insertQuery := util.NewInsertQuery("animals", "id", "name", "identification_number", "father_id", "mother_id",
@@ -333,9 +332,9 @@ func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.
 }
 
 // func (r *AnimalRepository) FindPage(
-//     sort string, 
+//     sort string,
 //     direction string,
-// 	cursor string, 
+// 	cursor string,
 //     filter *entity.AnimalFilter,
 // ) (page *entity.Page[entity.Animal], err error) {
 // 	query, args := r.filterQuery(filter)
@@ -343,10 +342,10 @@ func (r *AnimalRepository) filterQuery(filter *entity.AnimalFilter) (query util.
 // }
 
 func (r *AnimalRepository) FindPage(
-    sort string, 
-    direction string,
-	cursor string, 
-    filter *entity.AnimalFilter,
+	sort string,
+	direction string,
+	cursor string,
+	filter *entity.AnimalFilter,
 ) (page *entity.Page[entity.Animal], err error) {
 	query, args := r.filterQuery(filter)
 	return r.Impl.FindRandomQueryPage(&query, sort, direction, cursor, args...)
@@ -375,7 +374,7 @@ func (r *AnimalRepository) FindByPastureId(sort string, direction string,
 }
 
 func (r *AnimalRepository) FindByName(name string) (*[]entity.Animal, error) {
-	query := r.SelectQuery. Where("animals.name = $1 and animals.user_id = $2 and animals.deleted_at is null")
+	query := r.SelectQuery.Where("animals.name = $1 and animals.user_id = $2 and animals.deleted_at is null")
 	return r.Impl.FindListByQuery(query, name, GetUserId())
 }
 
