@@ -4,7 +4,8 @@ import "time"
 
 type Pasture struct {
 	Id        string     `json:"id"`
-	Bull      AnimalDto  `json:"bull"`
+	BullId    string     `json:"bullId"`
+	BullName  string     `json:"bullName"`
 	Name      string     `json:"name"`
 	Farm      FarmShort  `json:"farm"`
 	CreatedAt time.Time  `json:"created_at"`

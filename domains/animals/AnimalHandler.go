@@ -1,4 +1,4 @@
-package handlers
+package animals
 
 import (
 	"encoding/json"
@@ -6,31 +6,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/felipeErnica/rebanho-backend/app"
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/felipeErnica/rebanho-backend/repositories"
+	"github.com/felipeErnica/rebanho-backend/serverErrors"
 )
 
 type AnimalHandler struct {
-	Repository *repositories.AnimalRepository
-}
-
-func InitAnimal(app *app.App) {
-	repository := repositories.NewAnimalRepository(app.DBconn)
-
-	handler := AnimalHandler{repository}
-
-	app.HandleFunc("POST /animals/page", handler.FindPage)
-	app.HandleFunc("GET /animals/{id}", handler.FindById)
-	app.HandleFunc("GET /animals/name/{name}", handler.FindByName)
-	app.HandleFunc("GET /animals/number/{number}", handler.FindByNumber)
-	app.HandleFunc("GET /animals/father/{fatherId}", handler.FindByFatherId)
-	app.HandleFunc("GET /animals/mother/{motherId}", handler.FindByMotherId)
-	app.HandleFunc("GET /animals/pasture/{pastureId}/page", handler.FindByPastureId)
-	app.HandleFunc("POST /animals", handler.Add)
-	app.HandleFunc("POST /animals/save", handler.Save)
-	app.HandleFunc("DELETE /animals/{id}", handler.Delete)
-	LogControllersInit("Animais")
+	Repository *AnimalRepository
 }
 
 func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +20,7 @@ func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&filter)
 	if err != nil {
 		err = errors.New(fmt.Sprintf("Falha na decodificação do filtro: %s", err.Error()))
-		JsonServerError(err, w)
+		serverErrors.JsonServerError(err, w)
 		return
 	}
 

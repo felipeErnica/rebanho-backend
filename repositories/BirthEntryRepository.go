@@ -14,26 +14,26 @@ type BirthEntryRepository struct {
 }
 
 func (r *BirthEntryRepository) Init() {
-	selectQuery := util.NewSelectQuery(util.SELECT, 
-        *util.NewNamedGroup("birth", "id", "observation"),
-        *util.NewNamedGroup("calf", "id", "name", "identification_number", "sex", "birth_date"),
-        *util.NewNamedGroup("mother", "id", "name", "identification_number", "animal_order"),
-        *util.NewNamedGroup("father", "id", "name")).
-        From("birth_entries")
+	selectQuery := util.NewSelectQuery(util.SELECT,
+		*util.NewNamedGroup("birth", "id", "observation"),
+		*util.NewNamedGroup("calf", "id", "name", "identification_number", "sex", "birth_date"),
+		*util.NewNamedGroup("mother", "id", "name", "identification_number", "animal_order"),
+		*util.NewNamedGroup("father", "id", "name")).
+		From("birth_entries")
 
 	insertQuery := util.NewInsertQuery("birth_entries", "id", "animal_id", "calf_id", "observation")
 	updateQuery := util.NewUpdateQuery("birth_entries", "id", "animal_id", "calf_id", "observation")
 
-    base:= RepositoryImpl[entity.BirthEntry]{
+	base := RepositoryImpl[entity.BirthEntry]{
 		TableName:       "birth_entries",
 		SelectQueryBody: *selectQuery,
 		InsertQuery:     *insertQuery,
 		UpdateQuery:     *updateQuery,
 		Repository:      r,
 	}
-    r.Impl = PageRepositoryImpl[entity.BirthEntry]{
-        Base: &base,
-    }
+	r.Impl = PageRepositoryImpl[entity.BirthEntry]{
+		Base: &base,
+	}
 }
 
 func (r *BirthEntryRepository) setNewEntity(model *entity.BirthEntry, id string, createdAt time.Time) {
@@ -44,9 +44,9 @@ func (r *BirthEntryRepository) setNewEntity(model *entity.BirthEntry, id string,
 func (r *BirthEntryRepository) buildEntity(row *sql.Row) (model *entity.BirthEntry, err error) {
 	var entry entity.BirthEntry
 	err = row.Scan(&entry.Id, &entry.Observation,
-		&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.Number, &entry.Calf.Sex, &entry.Calf.BirthDate,
-		&entry.Calf.FatherName,
-		&entry.Calf.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
+		&entry.CalfId, &entry.CalfSex, &entry.CalfBirthDate,
+		&entry.CalfFatherName,
+		&entry.CalfId, &entry.AnimalName, &entry.AnimalNumber)
 	return &entry, err
 }
 
@@ -55,9 +55,9 @@ func (r *BirthEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Bi
 	for rows.Next() {
 		var entry entity.BirthEntry
 		err = rows.Scan(&entry.Id, &entry.Observation,
-			&entry.Calf.Id, &entry.Calf.Name, &entry.Calf.Number, &entry.Calf.Sex, &entry.Calf.BirthDate,
-			&entry.Calf.FatherName,
-			&entry.Calf.Id, &entry.Animal.Name, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder)
+			&entry.CalfId, &entry.CalfSex, &entry.CalfBirthDate,
+			&entry.CalfFatherName,
+			&entry.CalfId, &entry.AnimalName, &entry.AnimalNumber)
 		if err != nil {
 			return
 		}
@@ -67,11 +67,11 @@ func (r *BirthEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Bi
 }
 
 func (r *BirthEntryRepository) saveOrUpdateScan(query string, model *entity.BirthEntry) error {
-	return execQuery(query, model.Id, model.Animal.Id, model.Calf.Id, model.Observation)
+	return execQuery(query, model.Id, model.AnimalId, model.CalfId, model.Observation)
 }
 
 func (r *BirthEntryRepository) FindByMotherId(motherId string) (*[]entity.BirthEntry, error) {
-    query:=r.SelectQueryBody.Where("mother.id = $1")
+	query := r.SelectQueryBody.Where("mother.id = $1")
 	return r.Impl.FindListByQuery(query, motherId)
 }
 

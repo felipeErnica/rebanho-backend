@@ -8,6 +8,10 @@ import (
 var handler = slog.NewTextHandler(os.Stdout, nil)
 var logger = slog.New(handler)
 
+func LogDomainsInit(name string) {
+    LogInfo("Domínio de " + name + " iniciado com sucesso!")
+}
+
 func LogInfo(msg string) {
     logger.Info(msg)
 }

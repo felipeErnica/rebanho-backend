@@ -1,7 +1,8 @@
-package repositories
+package animals
 
 import (
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/repositories"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -37,7 +38,6 @@ func NewAnimalRepository(db *sqlx.DB) *AnimalRepository {
 		"death_date",
 		"observation",
 	}
-
 	return &AnimalRepository{selectQuery, nullFields, "animals", db}
 }
 
@@ -54,10 +54,10 @@ func (r *AnimalRepository) FindPage(
 		Cursor:     cursor,
 		Filter:     filter,
 		NullFields: r.NullFields,
-		Limit:      PAGE_LIMIT,
+		Limit:      repositories.PAGE_LIMIT,
 		TableName:  r.TableName,
 		DbConn:     r.DB,
-		UserId:     GetUserId(),
+		UserId:     repositories.GetUserId(),
 	}
 	return repositoriesUtil.BuildPage[entity.Animal](props)
 }
@@ -95,22 +95,22 @@ func (r *AnimalRepository) FindByPastureId(
 		Cursor:     cursor,
 		Filter:     filter,
 		NullFields: r.NullFields,
-		Limit:      PAGE_LIMIT,
+		Limit:      repositories.PAGE_LIMIT,
 		TableName:  r.TableName,
 		DbConn:     r.DB,
-		UserId:     GetUserId(),
+		UserId:     repositories.GetUserId(),
 	}
 	return repositoriesUtil.BuildPage[entity.Animal](props)
 }
 
 func (r *AnimalRepository) FindByName(name string) (*[]entity.Animal, error) {
 	query := r.SelectQuery + "WHERE animals.name = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[entity.Animal](r.DB, query, name, GetUserId())
+	return repositoriesUtil.GetList[entity.Animal](r.DB, query, name, repositories.GetUserId())
 }
 
 func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]entity.Animal, error) {
 	query := r.SelectQuery + "WHERE animals.number = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[entity.Animal](r.DB, query, number, GetUserId())
+	return repositoriesUtil.GetList[entity.Animal](r.DB, query, number, repositories.GetUserId())
 }
 
 func (r *AnimalRepository) Add(create *entity.AnimalSave) (*entity.AnimalSave, error) {

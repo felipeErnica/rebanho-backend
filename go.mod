@@ -9,4 +9,4 @@ require (
 	golang.org/x/crypto v0.36.0
 )
 
-require github.com/jmoiron/sqlx v1.4.0 // indirect
+require github.com/jmoiron/sqlx v1.4.0 

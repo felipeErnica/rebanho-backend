@@ -10,7 +10,11 @@ import (
 	"time"
 )
 
-func CreateCursorKey[E any](sort string, list []E) (cursor string, err error) {
+/*
+Cria um novo cursor com a informação do último objeto da lista. 
+Os parâmetros são selecionados com base na coluna de ordenamento e na data de criação
+*/
+func createCursorKey[E any](sort string, list []E) (cursor string, err error) {
 	listSize := len(list)
 	if listSize == 0 {
 		err = errors.New("A lista está vazia")
@@ -42,29 +46,32 @@ func CreateCursorKey[E any](sort string, list []E) (cursor string, err error) {
 		return
 	}
 
-    data := fmt.Sprintf("%s,%s", firstParam, secondParam.Format(time.RFC3339Nano))
-    cursor = base64.StdEncoding.EncodeToString([]byte(data))
+	data := fmt.Sprintf("%s,%s", firstParam, secondParam.Format(time.RFC3339Nano))
+	cursor = base64.StdEncoding.EncodeToString([]byte(data))
 	return cursor, err
 }
 
+/*Converte o valor do parâmetros para texto, se o valor for nulo,
+retorna "null", se for data, insere o prefixo {date} para tratamento
+apropiado posteriormente*/
 func getFirstParam(value any) string {
 	switch t := value.(type) {
-    case *string:
+	case *string:
 		param := "null"
 		if t != nil {
 			param = *t
 		}
 		return param
-    case string:
+	case string:
 		return t
 	case *time.Time:
 		param := "null"
 		if t != nil {
-			param = fmt.Sprintf("date%s", t.Format(time.RFC3339Nano)) 
+			param = fmt.Sprintf("date%s", t.Format(time.RFC3339Nano))
 		}
 		return param
 	case time.Time:
-		return fmt.Sprintf("date%s", t.Format(time.RFC3339Nano))
+		return fmt.Sprintf("{date}%s", t.Format(time.RFC3339Nano))
 	case float64:
 		return fmt.Sprintf("%f", t)
 	case int:
@@ -76,10 +83,11 @@ func getFirstParam(value any) string {
 	}
 }
 
-func DecodeCursor(cursor string) (firstParam any, secondParam time.Time, err error) {
-    if cursor == "" {
-        return
-    }
+/*Decodificação do Cursor, para obter as informações necessárias para a próxima página*/
+func decodeCursor(cursor string) (firstParam any, secondParam *time.Time, err error) {
+	if cursor == "" {
+		return
+	}
 
 	byt, err := base64.StdEncoding.DecodeString(cursor)
 	if err != nil {
@@ -94,22 +102,23 @@ func DecodeCursor(cursor string) (firstParam any, secondParam time.Time, err err
 
 	parsedSecond, err := time.Parse(time.RFC3339Nano, arrKey[1])
 	if err != nil {
-		return arrKey[0], parsedSecond, err
+		return arrKey[0], &parsedSecond, err
 	}
 
 	if arrKey[0] == "null" {
-		return nil, parsedSecond, err
+		return nil, &parsedSecond, err
 	}
 
-	if strings.HasPrefix(arrKey[0], "date") {
-        date := strings.ReplaceAll(arrKey[0], "date", "")
+    //Tratamento de valores de data, verificando e apagando o prefixo
+	if strings.HasPrefix(arrKey[0], "{date}") {
+		date := strings.ReplaceAll(arrKey[0], "{date}", "")
 		firstParam, err = time.Parse(time.RFC3339Nano, date)
 		if err != nil {
 			return
 		}
-		return firstParam, parsedSecond, err
+		return firstParam, &parsedSecond, err
 	}
 
 	firstParam = arrKey[0]
-	return firstParam, parsedSecond, err
+	return firstParam, &parsedSecond, err
 }

@@ -43,7 +43,7 @@ func (r *PastureRepository) setNewEntity(model *entity.Pasture, id string, creat
 func (r *PastureRepository) buildEntity(row *sql.Row) (model *entity.Pasture, err error) {
 	var pasture entity.Pasture
 	err = row.Scan(&pasture.Id, &pasture.Name,
-		&pasture.Bull.Id, &pasture.Bull.Name,
+		&pasture.BullId, &pasture.BullName,
 		&pasture.Farm.Id, &pasture.Farm.Name)
 	return &pasture, err
 }
@@ -53,7 +53,7 @@ func (r *PastureRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Pastu
 	for rows.Next() {
         var pasture entity.Pasture
         err = rows.Scan(&pasture.Id, &pasture.Name,
-            &pasture.Bull.Id, &pasture.Bull.Name,
+            &pasture.BullId, &pasture.BullName,
             &pasture.Farm.Id, &pasture.Farm.Name)
         if err != nil {
             return
@@ -64,7 +64,7 @@ func (r *PastureRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.Pastu
 }
 
 func (r *PastureRepository) saveOrUpdateScan(query string, model *entity.Pasture) error {
-	err := execQuery(query, model.Id, model.Name, model.Bull.Id, model.Farm.Id, model.CreatedAt, model.UserId)
+	err := execQuery(query, model.Id, model.Name, model.BullId, model.Farm.Id, model.CreatedAt, model.UserId)
 	return err
 }
 

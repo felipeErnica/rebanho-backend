@@ -31,3 +31,21 @@ func InitServerError(err error) {
     util.LogError("Erro na inicialização de server!")
     panic(err)
 }
+
+func JsonServerError(err error, w http.ResponseWriter) {
+    util.LogError("Falha ao decodificar JSON!")
+    util.LogError(err.Error())
+    w.WriteHeader(http.StatusInternalServerError)
+}
+
+func DatabaseSendError(err error, w http.ResponseWriter) {
+    util.LogError("Falha ao enviar dados ao banco de dados!")
+    util.LogError(err.Error())
+    w.WriteHeader(http.StatusInternalServerError)
+}
+
+func DatabaseGetError(err error, w http.ResponseWriter) {
+    util.LogError("Falha ao recuperar dados do banco de dados!")
+    util.LogError(err.Error())
+    w.WriteHeader(http.StatusInternalServerError)
+}

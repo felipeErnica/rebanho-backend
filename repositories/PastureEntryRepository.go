@@ -69,9 +69,7 @@ func (r *PastureEntryRepository) getFields(sort string) (firstField string, seco
 func (r *PastureEntryRepository) createKey(sort string, lastEntry *entity.PastureEntry) (key string) {
 	switch sort {
 	case "name":
-		return fmt.Sprintf("%s,%s", *lastEntry.Animal.Name, lastEntry.Id)
-	case "identification_number":
-		return fmt.Sprintf("%d,%s", lastEntry.Animal.AnimalOrder, lastEntry.Id)
+		return fmt.Sprintf("%s,%s", lastEntry.AnimalName, lastEntry.Id)
 	case "entry_date":
 		return fmt.Sprintf("%s,%s", lastEntry.EntryDate, lastEntry.Id)
 	case "exit_date":
@@ -90,8 +88,8 @@ func (r *PastureEntryRepository) setNewEntity(model *entity.PastureEntry, id str
 func (r *PastureEntryRepository) buildEntity(row *sql.Row) (*entity.PastureEntry, error) {
 	var entry entity.PastureEntry
 	err := row.Scan(&entry.Id, &entry.EntryDate, &entry.ExitDate,
-		&entry.Animal.Id, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder, &entry.Animal.Name,
-		&entry.Pasture.Id, &entry.Pasture.Name)
+		&entry.AnimalId, &entry.AnimalNumber, &entry.AnimalName,
+		&entry.PastureId, &entry.PastureName)
 	return &entry, err
 }
 
@@ -100,8 +98,8 @@ func (r *PastureEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.
 	for rows.Next() {
 		var entry entity.PastureEntry
 		err = rows.Scan(&entry.Id, &entry.EntryDate, &entry.ExitDate,
-			&entry.Animal.Id, &entry.Animal.IdentificationNumber, &entry.Animal.AnimalOrder, &entry.Animal.Name,
-			&entry.Pasture.Id, &entry.Pasture.Name)
+			&entry.AnimalId, &entry.AnimalNumber, &entry.AnimalName,
+			&entry.PastureId, &entry.PastureName)
 		if err != nil {
 			return
 		}
@@ -111,8 +109,8 @@ func (r *PastureEntryRepository) buildListEntity(rows *sql.Rows) (arr *[]entity.
 }
 
 func (r *PastureEntryRepository) saveOrUpdateScan(query string, model *entity.PastureEntry) error {
-	return execQuery(query, model.Id, model.EntryDate, model.ExitDate, model.Animal.Id,
-		model.Pasture.Id, model.CreatedAt, model.UserId)
+	return execQuery(query, model.Id, model.EntryDate, model.ExitDate, model.AnimalId,
+		model.PastureId, model.CreatedAt, model.UserId)
 }
 
 func (r *PastureEntryRepository) FindByPastureId(sort string, direction string,

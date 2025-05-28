@@ -1,8 +1,6 @@
-package entity
+package animals
 
-import (
-	"time"
-)
+import "time"
 
 type Animal struct {
 	Id                   string     `json:"id" db:"id"`
