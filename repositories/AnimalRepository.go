@@ -55,9 +55,9 @@ func (r *AnimalRepository) Init(db *sqlx.DB) {
 		UpdateQuery:     *updateQuery,
 	}
 	r.Impl = PageRepositoryImpl[entity.Animal]{
-		Base:           baseRepo,
+		Base: baseRepo,
 		// PageRepository: r,
-		DateFields:     dateFields,
+		DateFields: dateFields,
 	}
 
 	r.DB = db
@@ -363,50 +363,34 @@ func (r *AnimalRepository) FindPage(
             LEFT JOIN pastures ON pastures.id = animals.pasture_id
     `
 
-	firstParam, secondParam, err := repositoriesUtil.DecodeCursor(cursor)
-	if err != nil {
-		return
+	nullFields := []string{
+		"chip_id",
+		"name",
+		"number",
+		"color",
+		"pasture_id",
+		"father_id",
+		"mother_id",
+		"weaning_date",
+		"birth_date",
+		"death_date",
+		"observation",
 	}
 
-	pageProps := repositoriesUtil.PageQueryProps{
+	props := repositoriesUtil.PageProps{
 		QueryBody: query,
-		Sort:      sort,
-		Order:     direction,
-		Limit:     PAGE_LIMIT,
-		IsNull:    firstParam == nil,
-		Cursor:    cursor,
-        TableName: "animals",
+		Sort: sort,
+		Order: direction,
+		Cursor: cursor,
+		Filter: filter,
+		NullFields: nullFields,
+		Limit: PAGE_LIMIT,
+		TableName: "animals",
+		DbConn: r.DB,
+		UserId: GetUserId(),
 	}
 
-	query = repositoriesUtil.BuildPageQuery(pageProps)
-	animals := []entity.Animal{}
-
-	selectionProps := SelectionProps[entity.Animal]{
-		Dest:        &animals,
-		Query:       query,
-		IsFirstPage: cursor == "",
-		IsFiltered:  filter.IsFiltered,
-		FirstParam:  firstParam,
-		SecondParam: secondParam,
-	}
-
-	err = SelectPage(selectionProps)
-    if err != nil {
-        return
-    }
-
-	nextCursor, err := repositoriesUtil.CreateCursorKey(sort, animals)
-	if err != nil {
-		return
-	}
-
-	page = &entity.Page[entity.Animal]{
-		List:        &animals,
-		HasNextPage: HasNextPage(animals),
-		NextCursor:  nextCursor,
-	}
-
-	return page, err
+	return repositoriesUtil.BuildPage[entity.Animal](props)
 }
 
 func (r *AnimalRepository) FindById(id string) (*entity.Animal, error) {

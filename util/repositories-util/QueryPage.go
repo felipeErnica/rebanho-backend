@@ -3,6 +3,7 @@ package repositoriesUtil
 import (
 	"fmt"
 	"strings"
+	"slices"
 )
 
 type PageQueryProps struct {
@@ -12,6 +13,7 @@ type PageQueryProps struct {
 	Args             []any
 	Limit            int
 	IsNull           bool
+	NullFields       []string
 	Cursor           string
 	FilterStatements string
 	TableName        string
@@ -21,7 +23,7 @@ func buildSortStatement(props PageQueryProps) string {
 	orderField := fmt.Sprintf("%s.%s", props.TableName, props.Sort) + " " + strings.ToUpper(props.Order)
 	sortStatement := fmt.Sprintf("ORDER BY %s, %s.created_at DESC", orderField, props.TableName)
 
-	if props.IsNull {
+	if isNullable(props.Sort, props.NullFields) {
 		nullStatement := "NULLS FIRST"
 		if props.Order == "asc" {
 			nullStatement = "NULLS LAST"
@@ -32,10 +34,14 @@ func buildSortStatement(props PageQueryProps) string {
 	return sortStatement
 }
 
+func  isNullable(sort string, nullFields []string) bool {
+	return slices.Contains(nullFields, sort)
+}
+
 func buildWhereStatement(props PageQueryProps) string {
-	signal := ">"
+	signal := "<"
 	if props.Order == "asc" {
-		signal = "<"
+		signal = ">"
 	}
 	commonCriteria := fmt.Sprintf("WHERE %[1]s.deleted_at is null AND %[1]s.user_id = $1", props.TableName)
 

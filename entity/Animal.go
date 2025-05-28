@@ -14,16 +14,16 @@ type Animal struct {
 	AnimalOrder          int        `json:"animalOrder" db:"animal_order"`
 	Sex                  string     `json:"sex" db:"sex"`
 	WeaningDate          *time.Time `json:"weaningDate" db:"weaning_date"`
-	FatherId             string     `json:"fatherId" db:"father_id"`
-	FatherName           string     `json:"fatherName" db:"father_name"`
-	FatherNumber         string     `json:"fatherNumber" db:"father_number"`
-	MotherId             string     `json:"motherId" db:"mother_id"`
-	MotherName           string     `json:"motherName" db:"mother_name"`
-	MotherNumber         string     `json:"motherNumber" db:"mother_number"`
+	FatherId             *string     `json:"fatherId" db:"father_id"`
+	FatherName           *string     `json:"fatherName" db:"father_name"`
+	FatherNumber         *string     `json:"fatherNumber" db:"father_number"`
+	MotherId             *string     `json:"motherId" db:"mother_id"`
+	MotherName           *string     `json:"motherName" db:"mother_name"`
+	MotherNumber         *string     `json:"motherNumber" db:"mother_number"`
 	BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
 	DeathDate            *time.Time `json:"deathDate" db:"death_date"`
-	PastureId            string     `json:"pastureId" db:"pasture_id"`
-	PastureName          string     `json:"pastureName" db:"pasture_name"`
+	PastureId            *string     `json:"pastureId" db:"pasture_id"`
+	PastureName          *string     `json:"pastureName" db:"pasture_name"`
 	Status               string     `json:"status" db:"status"`
 	Isr                  float64    `json:"isr" db:"isr"`
 	AverageProd          float64    `json:"averageProd" db:"average_prod"`

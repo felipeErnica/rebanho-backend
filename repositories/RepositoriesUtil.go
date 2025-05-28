@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -95,41 +94,4 @@ func decodeCursorTime(cursor string) (parsedTime *time.Time, second string, err 
 	}
 
 	return &parsed, arrKey[1], err
-}
-
-type SelectionProps[E any] struct {
-	Dest        *[]E
-	Query       string
-	IsFiltered  bool
-	IsFirstPage bool
-	FirstParam  any
-	SecondParam time.Time
-	FilterArgs  []any
-}
-
-func SelectPage[E any](props SelectionProps[E]) error {
-	query := strings.Join(strings.Fields(props.Query), " ")
-
-    fmt.Println(query)
-	if props.IsFiltered && props.IsFirstPage {
-		err := db.Select(props.Dest, query, GetUserId(), props.FilterArgs)
-		return err
-	}
-
-	if !props.IsFiltered && props.IsFirstPage {
-		err := db.Select(props.Dest, query, GetUserId())
-		return err
-	}
-
-	if !props.IsFiltered && !props.IsFirstPage {
-		err := db.Select(props.Dest, query, GetUserId(), props.FirstParam, props.SecondParam)
-		return err
-	}
-
-	if props.IsFiltered && !props.IsFirstPage {
-		err := db.Select(props.Dest, query, GetUserId(), props.FirstParam, props.SecondParam, props.FilterArgs)
-		return err
-	}
-
-	return errors.New("Formato Inválido")
 }

@@ -43,7 +43,6 @@ func CreateCursorKey[E any](sort string, list []E) (cursor string, err error) {
 	}
 
     data := fmt.Sprintf("%s,%s", firstParam, secondParam.Format(time.RFC3339Nano))
-    fmt.Println(data)
     cursor = base64.StdEncoding.EncodeToString([]byte(data))
 	return cursor, err
 }
