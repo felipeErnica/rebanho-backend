@@ -45,8 +45,8 @@ func (r *AnimalRepository) FindPage(
 	sort string,
 	direction string,
 	cursor string,
-	filter *entity.AnimalFilter,
-) (page *entity.Page[entity.Animal], err error) {
+	filter AnimalFilter,
+) (page *entity.Page[Animal], err error) {
 	props := repositoriesUtil.PageProps{
 		QueryBody:  r.SelectQuery,
 		Sort:       sort,
@@ -59,66 +59,39 @@ func (r *AnimalRepository) FindPage(
 		DbConn:     r.DB,
 		UserId:     repositories.GetUserId(),
 	}
-	return repositoriesUtil.BuildPage[entity.Animal](props)
+	return repositoriesUtil.BuildPage[Animal](props)
 }
 
-func (r *AnimalRepository) FindById(id string) (*entity.Animal, error) {
+func (r *AnimalRepository) FindById(id string) (*Animal, error) {
 	query := r.SelectQuery + "WHERE animals.id = $1"
-	return repositoriesUtil.GetOne[entity.Animal](r.DB, query, id)
+	return repositoriesUtil.GetOne[Animal](r.DB, query, id)
 }
 
-func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]entity.Animal, error) {
+func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]Animal, error) {
 	query := r.SelectQuery + "WHERE animals.father_id = $1"
-	return repositoriesUtil.GetList[entity.Animal](r.DB, query, fatherId)
+	return repositoriesUtil.GetList[Animal](r.DB, query, fatherId)
 }
 
-func (r *AnimalRepository) FindByMotherId(motherId string) (*[]entity.Animal, error) {
+func (r *AnimalRepository) FindByMotherId(motherId string) (*[]Animal, error) {
 	query := r.SelectQuery + "WHERE animals.mother_id = $1"
-	return repositoriesUtil.GetList[entity.Animal](r.DB, query, motherId)
+	return repositoriesUtil.GetList[Animal](r.DB, query, motherId)
 }
 
-func (r *AnimalRepository) FindByPastureId(
-	sort string,
-	direction string,
-	cursor string,
-	filter entity.AnimalFilter,
-	pastureId string,
-) (page *entity.Page[entity.Animal], err error) {
-	//Modifica o filtro para obter uma página dos animais neste pasto
-	filter.IsFiltered = true
-	filter.Pastures = &[]string{pastureId}
-
-	props := repositoriesUtil.PageProps{
-		QueryBody:  r.SelectQuery,
-		Sort:       sort,
-		Order:      direction,
-		Cursor:     cursor,
-		Filter:     filter,
-		NullFields: r.NullFields,
-		Limit:      repositories.PAGE_LIMIT,
-		TableName:  r.TableName,
-		DbConn:     r.DB,
-		UserId:     repositories.GetUserId(),
-	}
-	return repositoriesUtil.BuildPage[entity.Animal](props)
-}
-
-func (r *AnimalRepository) FindByName(name string) (*[]entity.Animal, error) {
+func (r *AnimalRepository) FindByName(name string) (*[]Animal, error) {
 	query := r.SelectQuery + "WHERE animals.name = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[entity.Animal](r.DB, query, name, repositories.GetUserId())
+	return repositoriesUtil.GetList[Animal](r.DB, query, name, repositories.GetUserId())
 }
 
-func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]entity.Animal, error) {
+func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]Animal, error) {
 	query := r.SelectQuery + "WHERE animals.number = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[entity.Animal](r.DB, query, number, repositories.GetUserId())
+	return repositoriesUtil.GetList[Animal](r.DB, query, number, repositories.GetUserId())
 }
 
-func (r *AnimalRepository) Add(create *entity.AnimalSave) (*entity.AnimalSave, error) {
-	err := repositoriesUtil.Add(r.DB, r.TableName, create)
-	return create, err
+func (r *AnimalRepository) Add(create *AnimalSave) (*AnimalSave, error) {
+	return repositoriesUtil.Add(r.DB, r.TableName, create)
 }
 
-func (r *AnimalRepository) Save(animal *entity.AnimalSave) error {
+func (r *AnimalRepository) Update(animal *AnimalSave) error {
 	return repositoriesUtil.Update(r.DB, r.TableName, animal)
 }
 

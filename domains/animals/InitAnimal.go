@@ -17,7 +17,7 @@ func InitAnimal(app *app.App) {
 	app.HandleFunc("GET /animals/mother/{motherId}", handler.FindByMotherId)
 	app.HandleFunc("GET /animals/pasture/{pastureId}/page", handler.FindByPastureId)
 	app.HandleFunc("POST /animals", handler.Add)
-	app.HandleFunc("POST /animals/save", handler.Save)
+	app.HandleFunc("POST /animals/save", handler.Update)
 	app.HandleFunc("DELETE /animals/{id}", handler.Delete)
 	util.LogDomainsInit("Animais")
 }

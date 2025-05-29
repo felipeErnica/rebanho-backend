@@ -71,10 +71,10 @@ func Update[E any](db *sqlx.DB, tableName string, object *E) error {
 }
 
 /*Adiciona um objeto a Tabela SQL*/
-func Add[E any](db *sqlx.DB, tableName string, object *E) error {
+func Add[E any](db *sqlx.DB, tableName string, object *E) (*E, error) {
 	query := generateInsertQuery(object, tableName)
 	_, err := db.NamedExec(query, object)
-	return err
+	return object, err
 }
 
 /*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/
