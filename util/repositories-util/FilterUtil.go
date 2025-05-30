@@ -60,7 +60,7 @@ func buildFilterStatement(value any, sqlField string, structField string, numPar
 	return statement, newNumParam, err
 }
 
-func BuildFilterStatements(filter any, tableName string, numParam int) (filterStatement string, newNumParam int, err error) {
+func buildFilterStatements(filter any, tableName string, numParam int) (filterStatement string, newNumParam int, err error) {
 	var buffer bytes.Buffer
 
 	filterTypes := reflect.TypeOf(filter)

@@ -6,7 +6,7 @@ import (
 )
 
 func InitGroup(app *app.App) {
-	repository := NewRepository(app.DBconn)
+	repository := NewRepository(app.DBconn, app.GetUserId())
     handler := GroupHandler{repository}
 
 	app.HandleFunc("GET insemination/groups", handler.FindAll)

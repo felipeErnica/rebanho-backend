@@ -2,7 +2,6 @@ package loss
 
 import (
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/felipeErnica/rebanho-backend/repositories"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -11,16 +10,17 @@ type LossRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
+	UserId      string
 }
 
-func NewRepository(db *sqlx.DB) *LossRepository {
+func NewRepository(db *sqlx.DB, userId string) *LossRepository {
 	selectQuery := `
         SELECT loss.*, 
             animals.name as animal_name, animals.number as animal_number, animals.order as animal_order
         FROM Pregnancy_losses as loss
             LEFT JOIN animals ON animals.id = loss.animal_id
     `
-	return &LossRepository{selectQuery, "losses", db}
+	return &LossRepository{selectQuery, "losses", db, userId}
 }
 
 func (r *LossRepository) FindPage(
@@ -37,7 +37,7 @@ func (r *LossRepository) FindPage(
 		Sort:       sort,
 		Order:      order,
 		Cursor:     cursor,
-		UserId:     repositories.GetUserId(),
+		UserId:     r.UserId,
 		NullFields: nullFields,
 		TableName:  r.TableName,
 		DbConn:     r.Db,

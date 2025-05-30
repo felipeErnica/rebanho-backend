@@ -2,7 +2,6 @@ package animals
 
 import (
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/felipeErnica/rebanho-backend/repositories"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -12,9 +11,10 @@ type AnimalRepository struct {
 	NullFields  []string
 	TableName   string
 	DB          *sqlx.DB
+	UserId      string
 }
 
-func NewAnimalRepository(db *sqlx.DB) *AnimalRepository {
+func NewAnimalRepository(db *sqlx.DB, userId string) *AnimalRepository {
 	selectQuery := `
         SELECT animals.*, 
             father.name as father_name, father.number as father_number,
@@ -38,7 +38,7 @@ func NewAnimalRepository(db *sqlx.DB) *AnimalRepository {
 		"death_date",
 		"observation",
 	}
-	return &AnimalRepository{selectQuery, nullFields, "animals", db}
+	return &AnimalRepository{selectQuery, nullFields, "animals", db, userId}
 }
 
 func (r *AnimalRepository) FindPage(
@@ -54,10 +54,9 @@ func (r *AnimalRepository) FindPage(
 		Cursor:     cursor,
 		Filter:     filter,
 		NullFields: r.NullFields,
-		Limit:      repositories.PAGE_LIMIT,
 		TableName:  r.TableName,
 		DbConn:     r.DB,
-		UserId:     repositories.GetUserId(),
+		UserId:     r.UserId,
 	}
 	return repositoriesUtil.BuildPage[Animal](props)
 }
@@ -79,12 +78,12 @@ func (r *AnimalRepository) FindByMotherId(motherId string) (*[]Animal, error) {
 
 func (r *AnimalRepository) FindByName(name string) (*[]Animal, error) {
 	query := r.SelectQuery + "WHERE animals.name = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[Animal](r.DB, query, name, repositories.GetUserId())
+	return repositoriesUtil.GetList[Animal](r.DB, query, name, r.UserId)
 }
 
 func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]Animal, error) {
 	query := r.SelectQuery + "WHERE animals.number = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[Animal](r.DB, query, number, repositories.GetUserId())
+	return repositoriesUtil.GetList[Animal](r.DB, query, number, r.UserId)
 }
 
 func (r *AnimalRepository) Add(create *AnimalSave) (*AnimalSave, error) {

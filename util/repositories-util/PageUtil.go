@@ -14,7 +14,7 @@ type PageProps struct {
 	QueryBody  string
 	Sort       string
 	Order      string
-	Limit      int
+	Limit      *int
 	NullFields []string
 	Cursor     string
 	Filter     any
@@ -104,12 +104,19 @@ func BuildPage[E any](props PageProps) (page *entity.Page[E], err error) {
 		return
 	}
 
+	const PAGE_LIMIT = 200
+
+    limit := PAGE_LIMIT
+    if props.Limit != nil {
+        limit = *props.Limit
+    }
+
 	pageProps := PageQueryProps{
 		Filter:     props.Filter,
 		QueryBody:  props.QueryBody,
 		Sort:       props.Sort,
 		Order:      props.Order,
-		Limit:      props.Limit,
+		Limit:      limit,
 		IsNull:     firstParam == nil,
 		Cursor:     props.Cursor,
 		NullFields: props.NullFields,
@@ -147,7 +154,7 @@ func BuildPage[E any](props PageProps) (page *entity.Page[E], err error) {
 	//Criação da página
 	page = &entity.Page[E]{
 		List:        &list,
-		HasNextPage: len(list) >= props.Limit,
+		HasNextPage: len(list) >= limit,
 		NextCursor:  nextCursor,
 	}
 

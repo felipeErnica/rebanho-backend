@@ -47,7 +47,7 @@ func buildWhereStatement(props PageQueryProps) (whereStatement string, err error
 	whereStatement = fmt.Sprintf("WHERE %[1]s.deleted_at is null AND %[1]s.user_id = $%[2]d", props.TableName, numParam)
 	numParam++
 	if isFiltered(props.Filter) {
-		filterStatements, filterParam, err := BuildFilterStatements(props.Filter, props.TableName, numParam)
+		filterStatements, filterParam, err := buildFilterStatements(props.Filter, props.TableName, numParam)
 		if err != nil {
 			return whereStatement, err
 		}

@@ -6,7 +6,7 @@ import (
 )
 
 func InitAnimal(app *app.App) {
-	repository := NewAnimalRepository(app.DBconn)
+	repository := NewAnimalRepository(app.DBconn, app.GetUserId())
 	handler := AnimalHandler{repository}
 
 	app.HandleFunc("POST /animals/page", handler.FindPage)

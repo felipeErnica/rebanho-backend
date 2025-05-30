@@ -31,7 +31,7 @@ func getPageParameters(r *http.Request) (sort string, order string, cursor strin
 Decodifica a entidae contida no corpo da solicitação HTTP
 e retorna um erro caso o formato esteja incorreto.
 */
-func decodeEntity[E any](w http.ResponseWriter, r *http.Request, entity *E) {
+func DecodeEntity[E any](w http.ResponseWriter, r *http.Request, entity *E) {
 	err := json.NewDecoder(r.Body).Decode(&entity)
 	if err != nil {
 		err = errors.New(fmt.Sprintf("Falha na decodificação da entidade: %s", err.Error()))
@@ -121,7 +121,7 @@ Salva uma nova entidade no banco, e retorna o resultado na Resposta HTTP
 */
 func Add[E any](w http.ResponseWriter, r *http.Request, repository RepositoryAdd[E]) {
 	var obj E
-	decodeEntity(w, r, &obj)
+	DecodeEntity(w, r, &obj)
 
 	model, err := repository.Add(&obj)
 	if err != nil {
@@ -142,7 +142,7 @@ Atualiza uma entidade no banco, e retorna o resultado na Resposta HTTP
 */
 func Update[E any](w http.ResponseWriter, r *http.Request, repository RepositoryAdd[E]) {
 	var obj E
-	decodeEntity(w, r, &obj)
+	DecodeEntity(w, r, &obj)
 	err := repository.Update(&obj)
 	if err != nil {
 		serverErrors.DatabaseSendError(err, w)

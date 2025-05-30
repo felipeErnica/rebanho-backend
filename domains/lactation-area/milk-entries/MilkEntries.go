@@ -29,3 +29,12 @@ type MilkEntrySave struct {
 	DeletedAt    *time.Time `json:"deletedAt" db:"deleted_at"`
 	UserId       string     `json:"userId" db:"user_id"`
 }
+
+type MilkEntryFilter struct {
+	AnimalId        *[]string  `json:"animalId" db:"animal_id"`
+	PastureId       *[]string  `json:"pastureId" db:"pasture_id"`
+	MinEntryDate    *time.Time `json:"minEntryDate" db:"entry_date"`
+	MaxEntryDate    *time.Time `json:"maxEntryDate" db:"entry_date"`
+	MinMilkQuantity *float32   `json:"minMilkQuantity" db:"milk_quantity"`
+	MaxMilkQuantity *float32   `json:"maxMilkQuantity" db:"milk_quantity"`
+}

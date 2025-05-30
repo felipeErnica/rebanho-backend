@@ -1,7 +1,6 @@
 package testGroup
 
 import (
-	"github.com/felipeErnica/rebanho-backend/repositories"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -10,16 +9,17 @@ type TestGroupRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
+	UserId      string
 }
 
-func NewRepository(db *sqlx.DB) *TestGroupRepository {
+func NewRepository(db *sqlx.DB, userId string) *TestGroupRepository {
 	selectQuery := ` SELECT pregnancy_test_groups.* FROM pregnancy_test_groups`
-	return &TestGroupRepository{selectQuery, "pregnancy_test_groups", db}
+	return &TestGroupRepository{selectQuery, "pregnancy_test_groups", db, userId}
 }
 
 func (r *TestGroupRepository) FindAll() (*[]TestGroup, error) {
 	query := r.SelectQuery + " WHERE pregnancy_test_groups.user_id = $1 AND pregnancy_test_groups.deleted_at is null"
-	return repositoriesUtil.GetList[TestGroup](r.Db, query, repositories.GetUserId())
+	return repositoriesUtil.GetList[TestGroup](r.Db, query, r.UserId)
 }
 
 func (r *TestGroupRepository) FindById(id string) (*TestGroup, error) {

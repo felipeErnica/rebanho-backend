@@ -2,7 +2,6 @@ package lactation
 
 import (
 	"github.com/felipeErnica/rebanho-backend/entity"
-	"github.com/felipeErnica/rebanho-backend/repositories"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -11,9 +10,10 @@ type LactationRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
+	UserId      string
 }
 
-func NewRepository(db *sqlx.DB) *LactationRepository {
+func NewRepository(db *sqlx.DB, userId string) *LactationRepository {
 	selectQuery := `
 	SELECT lactations.*, 
 		cow.name as cow_name, cow.number as cow_number, cow.pasture as cow_pasture, cow.order as cow_order,
@@ -22,7 +22,7 @@ func NewRepository(db *sqlx.DB) *LactationRepository {
 		LEFT JOIN cow as animals ON cow.id = lactations.cow_id
 		LEFT JOIN calf as animals ON calf.id = lactations.calf_id 
 	`
-	return &LactationRepository{selectQuery, "lactations", db}
+	return &LactationRepository{selectQuery, "lactations", db, userId}
 }
 
 func (r *LactationRepository) FindPage(sort string, direction string, cursor string, filter *LactationFilter) (page *entity.Page[Lactation], err error) {
@@ -31,15 +31,14 @@ func (r *LactationRepository) FindPage(sort string, direction string, cursor str
 		"observation",
 	}
 	props := repositoriesUtil.PageProps{
-		UserId: repositories.GetUserId(),
-		Filter: filter,
-		TableName: r.TableName,
-		QueryBody: r.SelectQuery,
-		Sort: sort,
-		Order: direction,
-		Cursor: cursor,
-		DbConn: r.Db,
-		Limit: repositories.PAGE_LIMIT,
+		UserId:     r.UserId,
+		Filter:     filter,
+		TableName:  r.TableName,
+		QueryBody:  r.SelectQuery,
+		Sort:       sort,
+		Order:      direction,
+		Cursor:     cursor,
+		DbConn:     r.Db,
 		NullFields: nullFields,
 	}
 	return repositoriesUtil.BuildPage[Lactation](props)

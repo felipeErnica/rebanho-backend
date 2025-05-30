@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+
 /*Obtém os nomes do campo da tabela SQL relacionada ao tipo*/
 func getFieldsNames(object any) []string {
 	objectTypes := reflect.TypeOf(object)
