@@ -7,6 +7,7 @@ import (
 	"github.com/felipeErnica/rebanho-backend/domains/reproduction/insemination"
 	"github.com/felipeErnica/rebanho-backend/domains/reproduction/loss"
 	naturalMating "github.com/felipeErnica/rebanho-backend/domains/reproduction/natural-mating"
+	pregnancyTest "github.com/felipeErnica/rebanho-backend/domains/reproduction/pregnancy-test"
 )
 
 func InitReproduction(app *app.App) {
@@ -15,4 +16,5 @@ func InitReproduction(app *app.App) {
     birth.InitBirth(app)
     naturalMating.InitMating(app)
     loss.InitLoss(app)
+	pregnancyTest.InitPregnacyTest(app)
 }
