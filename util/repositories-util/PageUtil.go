@@ -85,7 +85,6 @@ func getFilterArgs(filter any) []any {
 			value := field.Elem().Interface()
 			if field.Elem().Type().String() == "string" {
 				value = "%" + value.(string) + "%"
-				fmt.Println(value)
 			}
 
 			args = append(args, value)

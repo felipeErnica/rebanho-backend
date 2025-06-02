@@ -33,7 +33,7 @@ func VerifyToken(authorizationString string) (userId string, err error) {
         return
     }
 
-    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
         return secretKey, nil
     })
 

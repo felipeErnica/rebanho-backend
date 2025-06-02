@@ -29,20 +29,21 @@ func getPageParameters(r *http.Request) (sort string, order string, cursor strin
 	if order == "" {
 		order = "asc"
 	}
-	return cursor, sort, order
+	return sort, order, cursor
 }
 
 /*
 Decodifica a entidae contida no corpo da solicitação HTTP
 e retorna um erro caso o formato esteja incorreto.
 */
-func DecodeEntity[E any](w http.ResponseWriter, r *http.Request, entity *E) {
+func DecodeEntity[E any](w http.ResponseWriter, r *http.Request, entity *E) bool {
 	err := json.NewDecoder(r.Body).Decode(&entity)
 	if err != nil {
 		err = errors.New(fmt.Sprintf("Falha na decodificação da entidade: %s", err.Error()))
 		serverErrors.JsonServerError(err, w)
-		return
+		return false
 	}
+	return true
 }
 
 /*
@@ -86,14 +87,14 @@ func SendList[E any](w http.ResponseWriter, model *[]E) {
 Decodifica o filtro contido no corpo da solicitação HTTP
 e retorna um erro caso o formato esteja incorreto.
 */
-func DecodeFilter[F any](w http.ResponseWriter, r *http.Request, filter *F) (bool) {
+func DecodeFilter[F any](w http.ResponseWriter, r *http.Request, filter *F) bool {
 	err := json.NewDecoder(r.Body).Decode(&filter)
 	if err != nil {
 		err = errors.New(fmt.Sprintf("Falha na decodificação do filtro: %s", err.Error()))
 		serverErrors.JsonServerError(err, w)
 		return false
 	}
-    return true
+	return true
 }
 
 /*
@@ -138,10 +139,10 @@ func FindById[E any](w http.ResponseWriter, r *http.Request, repository Reposito
 Retorna uma lista com todas as entidades no banco como resposta HTTP, o repositório deve conter uma função FindAll.
 */
 func FindAll[E any](w http.ResponseWriter, r *http.Request, repository RepositoryFindAll[E]) {
-    userId, ok := GetUserId(w, r)
-    if !ok {
-        return
-    }
+	userId, ok := GetUserId(w, r)
+	if !ok {
+		return
+	}
 	list, err := repository.FindAll(userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
@@ -152,31 +153,32 @@ func FindAll[E any](w http.ResponseWriter, r *http.Request, repository Repositor
 
 /*
 Preenche os campos da entidade criada com os valores respectivos:
-Id - Gera uma nova chave aleatória UUID 
+Id - Gera uma nova chave aleatória UUID
 CreatedAt - Preenche o momento da criação
 UserId - Recupera o ID do usuário salvo no Contexto da requisição HTTP
 */
 func fillCreationFields[E any](w http.ResponseWriter, r *http.Request, obj *E) bool {
-    fieldId := reflect.ValueOf(obj).FieldByName("Id")
-    fieldUserId := reflect.ValueOf(obj).FieldByName("UserId")
-    fieldCreatedAt := reflect.ValueOf(obj).FieldByName("CreatedAt")
+	fieldId := reflect.ValueOf(obj).FieldByName("Id")
+	fieldUserId := reflect.ValueOf(obj).FieldByName("UserId")
+	fieldCreatedAt := reflect.ValueOf(obj).FieldByName("CreatedAt")
 
-    if !fieldId.CanSet() || !fieldUserId.CanSet() || !fieldCreatedAt.CanSet() {
-        err := errors.New("Formato de estrura não suporta adições!")
-        serverErrors.DatabaseSendError(err, w)
-        return false
-    }
+	if !fieldId.CanSet() || !fieldUserId.CanSet() || !fieldCreatedAt.CanSet() {
+		err := errors.New("Formato de estrura não suporta adições!")
+		serverErrors.DatabaseSendError(err, w)
+		return false
+	}
 
-    id := uuid.NewString()
-    userId, ok := GetUserId(w, r); if !ok {
-        return ok
-    }
-    createdAt := reflect.ValueOf(time.Now())
+	id := uuid.NewString()
+	userId, ok := GetUserId(w, r)
+	if !ok {
+		return ok
+	}
+	createdAt := reflect.ValueOf(time.Now())
 
-    fieldId.SetString(id)
-    fieldCreatedAt.Set(createdAt)
-    fieldUserId.SetString(userId)
-    return true
+	fieldId.SetString(id)
+	fieldCreatedAt.Set(createdAt)
+	fieldUserId.SetString(userId)
+	return true
 }
 
 /*
@@ -185,9 +187,10 @@ Salva uma nova entidade no banco, e retorna o resultado na Resposta HTTP
 func Add[E any](w http.ResponseWriter, r *http.Request, repository RepositoryAdd[E]) {
 	var obj E
 	DecodeEntity(w, r, &obj)
-    ok := fillCreationFields(w, r, &obj); if !ok {
-        return
-    }
+	ok := fillCreationFields(w, r, &obj)
+	if !ok {
+		return
+	}
 
 	model, err := repository.Add(&obj)
 	if err != nil {

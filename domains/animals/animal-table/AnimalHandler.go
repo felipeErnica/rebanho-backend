@@ -1,4 +1,4 @@
-package animals
+package animalTable
 
 import (
 	"net/http"
@@ -74,10 +74,12 @@ func (h *AnimalHandler) FindByMotherId(w http.ResponseWriter, r *http.Request) {
 
 func (h *AnimalHandler) FindByPastureId(w http.ResponseWriter, r *http.Request) {
 	pastureId := r.PathValue("pastureId")
-    filter := AnimalFilter{
-        IsFiltered: true,
-        Pastures: &[]string{pastureId},
+    filter := AnimalFilter{}
+    if !handlersUtil.DecodeFilter(w, r, &filter) {
+        return
     }
+    filter.IsFiltered = true
+    filter.Pastures = &[]string{pastureId} 
     handlersUtil.ReturnPage(w, r, h.Repository, filter)
 }
 

@@ -17,7 +17,9 @@ type UserHandler struct {
 
 func (h *UserHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
     userRequest := User{}
-    handlersUtil.DecodeEntity(w, r, &userRequest)
+    if !handlersUtil.DecodeEntity(w, r, &userRequest) {
+        return
+    }
 
 	user, err := h.Repository.FindByName(userRequest.Name)
 	if err != nil {
@@ -55,7 +57,9 @@ func (h *UserHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
     newUser := User{}
-    handlersUtil.DecodeEntity(w, r, &newUser)
+    if !handlersUtil.DecodeEntity(w, r, &newUser) {
+        return
+    }
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
 	if err != nil {

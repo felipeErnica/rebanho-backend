@@ -6,18 +6,22 @@ import (
 	"net/http"
 )
 
-func RegisterUserId(r *http.Request, userId string) {
+type contextKey string
+
+const userIDKey = contextKey("userId")
+
+func RegisterUserId(r *http.Request, userId string) *http.Request {
 	ctx := r.Context()
-	ctx = context.WithValue(ctx, "userId", userId)
-	r = r.WithContext(ctx)
+	ctx = context.WithValue(ctx, userIDKey, userId)
+    return r.WithContext(ctx)
 }
 
-func GetUserId(r *http.Request) (userId string, err error) {
+func GetUserId(r *http.Request) (string, error) {
 	ctx := r.Context()
-	userId, ok := ctx.Value("userId").(string)
+	userId, ok := ctx.Value(userIDKey).(string)
     if !ok {
         err := errors.New("Falha na leitura do ID de usuário")
         return userId, err
     }
-	return userId, err
+	return userId, nil
 }

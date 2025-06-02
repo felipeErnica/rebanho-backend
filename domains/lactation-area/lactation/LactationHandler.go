@@ -13,7 +13,9 @@ type LactationHandler struct {
 
 func (h *LactationHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 	filter := LactationFilter{}
-	handlersUtil.DecodeFilter(w, r, &filter)
+	if !handlersUtil.DecodeFilter(w, r, &filter) {
+        return
+    }
 	handlersUtil.ReturnPage(w, r, h.Repository, &filter)
 }
 

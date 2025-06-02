@@ -1,4 +1,4 @@
-package animals
+package animalTable
 
 import "time"
 

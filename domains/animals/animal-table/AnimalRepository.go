@@ -1,4 +1,4 @@
-package animals
+package animalTable
 
 import (
 	"github.com/felipeErnica/rebanho-backend/entity"

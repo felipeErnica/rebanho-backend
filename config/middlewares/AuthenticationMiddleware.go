@@ -15,7 +15,7 @@ func AuthenticationMiddleware(handler http.HandlerFunc) http.HandlerFunc {
             serverErrors.AuthenticationError(w, err)
             return
         }
-        authConfig.RegisterUserId(r, userId)
+        r = authConfig.RegisterUserId(r, userId)
         handler.ServeHTTP(w,r)
     }
 }
