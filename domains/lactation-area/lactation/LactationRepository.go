@@ -10,10 +10,9 @@ type LactationRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
-	UserId      string
 }
 
-func NewRepository(db *sqlx.DB, userId string) *LactationRepository {
+func NewRepository(db *sqlx.DB) *LactationRepository {
 	selectQuery := `
 	SELECT lactations.*, 
 		cow.name as cow_name, cow.number as cow_number, cow.pasture as cow_pasture, cow.order as cow_order,
@@ -22,24 +21,20 @@ func NewRepository(db *sqlx.DB, userId string) *LactationRepository {
 		LEFT JOIN cow as animals ON cow.id = lactations.cow_id
 		LEFT JOIN calf as animals ON calf.id = lactations.calf_id 
 	`
-	return &LactationRepository{selectQuery, "lactations", db, userId}
+	return &LactationRepository{selectQuery, "lactations", db}
 }
 
-func (r *LactationRepository) FindPage(sort string, direction string, cursor string, filter *LactationFilter) (page *entity.Page[Lactation], err error) {
+func (r *LactationRepository) FindPage(pageProps repositoriesUtil.PageProps) (page *entity.Page[Lactation], err error) {
 	nullFields := []string{
 		"end_date",
 		"observation",
 	}
-	props := repositoriesUtil.PageProps{
-		UserId:     r.UserId,
-		Filter:     filter,
+	props := repositoriesUtil.PageBuilderProps{
 		TableName:  r.TableName,
 		QueryBody:  r.SelectQuery,
-		Sort:       sort,
-		Order:      direction,
-		Cursor:     cursor,
 		DbConn:     r.Db,
 		NullFields: nullFields,
+        PageProps: pageProps,
 	}
 	return repositoriesUtil.BuildPage[Lactation](props)
 }

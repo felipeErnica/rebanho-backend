@@ -1,4 +1,4 @@
-package middlewares
+package authConfig
 
 import (
 	"errors"

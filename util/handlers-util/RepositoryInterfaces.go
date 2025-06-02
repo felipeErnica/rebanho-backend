@@ -1,9 +1,12 @@
 package handlersUtil
 
-import "github.com/felipeErnica/rebanho-backend/entity"
+import (
+	"github.com/felipeErnica/rebanho-backend/entity"
+	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
+)
 
 type PageRepository[E any, F any] interface {
-	FindPage(sort string, order string, cursor string, filter F) (*entity.Page[E], error)
+	FindPage(repositoriesUtil.PageProps) (*entity.Page[E], error)
 }
 
 type RepositoryFindById[E any] interface {
@@ -11,7 +14,7 @@ type RepositoryFindById[E any] interface {
 }
 
 type RepositoryFindAll[E any] interface {
-	FindAll() (*[]E, error)
+	FindAll(userId string) (*[]E, error)
 }
 
 type RepositoryAdd[E any] interface {

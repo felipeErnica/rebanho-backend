@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/app"
+	"github.com/felipeErnica/rebanho-backend/config/middlewares"
 	"github.com/felipeErnica/rebanho-backend/db"
 	"github.com/felipeErnica/rebanho-backend/domains"
-	"github.com/felipeErnica/rebanho-backend/middlewares"
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	"github.com/felipeErnica/rebanho-backend/util"
 	"github.com/jmoiron/sqlx"

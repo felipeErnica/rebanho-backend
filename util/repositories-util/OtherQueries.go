@@ -8,7 +8,6 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-
 /*Obtém os nomes do campo da tabela SQL relacionada ao tipo*/
 func getFieldsNames(object any) []string {
 	objectTypes := reflect.TypeOf(object)
@@ -59,9 +58,9 @@ func generateUpdateQuery(object any, tableName string) string {
 
 /*Exclui um objeto da Tabela SQL usando o id como parâmetro*/
 func Delete(db *sqlx.DB, tableName string, id string) error {
-    query := fmt.Sprintf("DELETE FROM %s id = $1", tableName)
-    _, err := db.Exec(query)
-    return err
+	query := fmt.Sprintf("DELETE FROM %s id = $1", tableName)
+	_, err := db.Exec(query)
+	return err
 }
 
 /*Salva e atualiza um objeto da Tabela SQL*/

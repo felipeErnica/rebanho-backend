@@ -10,10 +10,9 @@ type MilkRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
-	UserId      string
 }
 
-func NewRepository(db *sqlx.DB, userId string) *MilkRepository {
+func NewRepository(db *sqlx.DB) *MilkRepository {
 	selectQuery := `
     SELECT milk_entries.*, 
         animals.name as animal_name, animals.order as animal_order, animals.number as animal_number
@@ -22,26 +21,17 @@ func NewRepository(db *sqlx.DB, userId string) *MilkRepository {
         LEFT JOIN animals ON animals.id = milk_entries.animal_id 
         LEFT JOIN pastures ON pastures.id = milk_entries.pasture_id
     `
-	return &MilkRepository{selectQuery, "milk_entries", db, userId}
+	return &MilkRepository{selectQuery, "milk_entries", db}
 }
 
-func (r *MilkRepository) FindPage(
-    sort string, 
-    direction string, 
-    cursor string, 
-    filter MilkEntryFilter,
-) (*entity.Page[MilkEntry], error) {
+func (r *MilkRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[MilkEntry], error) {
 	nullFields := []string{}
-	props := repositoriesUtil.PageProps{
+	props := repositoriesUtil.PageBuilderProps{
 		NullFields: nullFields,
 		QueryBody:  r.SelectQuery,
 		TableName:  r.TableName,
-		Sort:       sort,
-		Order:      direction,
-		Cursor:     cursor,
-		UserId:     r.UserId,
 		DbConn:     r.Db,
-		Filter:     filter,
+        PageProps: pageProps,
 	}
 	return repositoriesUtil.BuildPage[MilkEntry](props)
 }

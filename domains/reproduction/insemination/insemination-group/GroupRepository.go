@@ -9,21 +9,20 @@ type GroupRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
-	UserId      string
 }
 
-func NewRepository(db *sqlx.DB, userId string) *GroupRepository {
+func NewRepository(db *sqlx.DB) *GroupRepository {
 	selectQuery := `
         SELECT group.*, bull.name as bull_name
         FROM insemination_groups as group
             LEFT JOIN animals as bull ON bull.id = group.bull_id
     `
-	return &GroupRepository{selectQuery, "group", db, userId}
+	return &GroupRepository{selectQuery, "group", db}
 }
 
-func (r *GroupRepository) FindAll() (*[]Group, error) {
+func (r *GroupRepository) FindAll(userId string) (*[]Group, error) {
 	query := r.SelectQuery + " WHERE group.user_id = $1 AND group.deleted_at is null ORDER BY group.insemination_date"
-	return repositoriesUtil.GetList[Group](r.Db, query, r.UserId)
+	return repositoriesUtil.GetList[Group](r.Db, query, userId)
 }
 
 func (r *GroupRepository) FindById(id string) (*Group, error) {

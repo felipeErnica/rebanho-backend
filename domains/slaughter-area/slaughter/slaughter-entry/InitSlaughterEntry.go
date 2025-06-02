@@ -6,7 +6,7 @@ import (
 )
 
 func InitSlaughterEntry(app *app.App) {
-	repository := NewRepository(app.DBconn, app.GetUserId())
+	repository := NewRepository(app.DBconn)
 	handler := SlaughterEntryHandler{repository}
 
 	app.HandleFunc("POST slaughter-area/slaughter/entries/page", handler.FindPage)

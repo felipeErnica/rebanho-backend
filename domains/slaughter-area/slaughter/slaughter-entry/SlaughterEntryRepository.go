@@ -10,10 +10,9 @@ type SlaughterEntryRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
-	UserId      string
 }
 
-func NewRepository(db *sqlx.DB, userId string) *SlaughterEntryRepository {
+func NewRepository(db *sqlx.DB) *SlaughterEntryRepository {
 	selectQuery := `
         SELECT slaughter_entries.*, 
             animals.name as animal_name, animals.number as animal_number, 
@@ -25,15 +24,10 @@ func NewRepository(db *sqlx.DB, userId string) *SlaughterEntryRepository {
             LEFT JOIN slaighter_groups as group ON group.id = slaughter_entries.group_id
             LEFT JOIN slaughterhouses ON slaughterhouses.id = group.slaughterhouse_id
     `
-	return &SlaughterEntryRepository{selectQuery, "slaughter_entries", db, userId}
+	return &SlaughterEntryRepository{selectQuery, "slaughter_entries", db}
 }
 
-func (r *SlaughterEntryRepository) FindPage(
-	sort string,
-	order string,
-	cursor string,
-	filter SlaughterEntryFilter,
-) (*entity.Page[SlaughterEntry], error) {
+func (r *SlaughterEntryRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[SlaughterEntry], error) {
 
 	nullFields := []string{
 		"animal_name",
@@ -42,16 +36,12 @@ func (r *SlaughterEntryRepository) FindPage(
 		"animal_birth",
 	}
 
-	props := repositoriesUtil.PageProps{
+	props := repositoriesUtil.PageBuilderProps{
 		QueryBody:  r.SelectQuery,
-		Sort:       sort,
-		Order:      order,
-		Cursor:     cursor,
 		NullFields: nullFields,
 		TableName:  r.TableName,
 		DbConn:     r.Db,
-		Filter:     filter,
-		UserId:     r.UserId,
+		PageProps:  pageProps,
 	}
 
 	return repositoriesUtil.BuildPage[SlaughterEntry](props)

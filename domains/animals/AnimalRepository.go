@@ -11,10 +11,9 @@ type AnimalRepository struct {
 	NullFields  []string
 	TableName   string
 	DB          *sqlx.DB
-	UserId      string
 }
 
-func NewAnimalRepository(db *sqlx.DB, userId string) *AnimalRepository {
+func NewRepository(db *sqlx.DB) *AnimalRepository {
 	selectQuery := `
         SELECT animals.*, 
             father.name as father_name, father.number as father_number,
@@ -38,27 +37,18 @@ func NewAnimalRepository(db *sqlx.DB, userId string) *AnimalRepository {
 		"death_date",
 		"observation",
 	}
-	return &AnimalRepository{selectQuery, nullFields, "animals", db, userId}
+	return &AnimalRepository{selectQuery, nullFields, "animals", db}
 }
 
-func (r *AnimalRepository) FindPage(
-	sort string,
-	direction string,
-	cursor string,
-	filter AnimalFilter,
-) (page *entity.Page[Animal], err error) {
-	props := repositoriesUtil.PageProps{
+func (r *AnimalRepository) FindPage(props repositoriesUtil.PageProps) (page *entity.Page[Animal], err error) {
+	buildProps := repositoriesUtil.PageBuilderProps{
 		QueryBody:  r.SelectQuery,
-		Sort:       sort,
-		Order:      direction,
-		Cursor:     cursor,
-		Filter:     filter,
 		NullFields: r.NullFields,
 		TableName:  r.TableName,
 		DbConn:     r.DB,
-		UserId:     r.UserId,
+		PageProps:  props,
 	}
-	return repositoriesUtil.BuildPage[Animal](props)
+	return repositoriesUtil.BuildPage[Animal](buildProps)
 }
 
 func (r *AnimalRepository) FindById(id string) (*Animal, error) {
@@ -76,14 +66,14 @@ func (r *AnimalRepository) FindByMotherId(motherId string) (*[]Animal, error) {
 	return repositoriesUtil.GetList[Animal](r.DB, query, motherId)
 }
 
-func (r *AnimalRepository) FindByName(name string) (*[]Animal, error) {
+func (r *AnimalRepository) FindByName(name string, userId string) (*[]Animal, error) {
 	query := r.SelectQuery + "WHERE animals.name = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[Animal](r.DB, query, name, r.UserId)
+	return repositoriesUtil.GetList[Animal](r.DB, query, name, userId)
 }
 
-func (r *AnimalRepository) FindByIdentificationNumber(number string) (*[]Animal, error) {
+func (r *AnimalRepository) FindByNumber(number string, userId string) (*[]Animal, error) {
 	query := r.SelectQuery + "WHERE animals.number = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[Animal](r.DB, query, number, r.UserId)
+	return repositoriesUtil.GetList[Animal](r.DB, query, number, userId)
 }
 
 func (r *AnimalRepository) Add(create *AnimalSave) (*AnimalSave, error) {

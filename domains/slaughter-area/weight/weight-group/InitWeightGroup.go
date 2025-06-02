@@ -6,7 +6,7 @@ import (
 )
 
 func InitWeightGroup(app *app.App) {
-	repository := NewRepository(app.DBconn, app.GetUserId())
+	repository := NewRepository(app.DBconn)
 	handler := WeightGroupHandler{repository}
 
 	app.HandleFunc("GET slaughter-area/weight/groups/", handler.FindAll)

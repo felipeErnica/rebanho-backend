@@ -11,19 +11,23 @@ import (
 )
 
 type PageProps struct {
-	QueryBody  string
-	Sort       string
-	Order      string
-	Limit      *int
-	NullFields []string
-	Cursor     string
-	Filter     any
-	TableName  string
-	DbConn     *sqlx.DB
-	UserId     string
+	Sort   string
+	Order  string
+	Cursor string
+	Filter any
+	UserId string
 }
 
-type SelectionProps[E any] struct {
+type PageBuilderProps struct {
+	QueryBody  string
+	Limit      *int
+	NullFields []string
+	TableName  string
+	DbConn     *sqlx.DB
+    PageProps
+}
+
+type PageSelectionProps[E any] struct {
 	Dest        *[]E
 	Filter      any
 	Query       string
@@ -35,7 +39,7 @@ type SelectionProps[E any] struct {
 }
 
 /*Envia as inforações para obter a lista da página*/
-func getPageList[E any](props SelectionProps[E]) error {
+func getPageList[E any](props PageSelectionProps[E]) error {
 	query := strings.Join(strings.Fields(props.Query), " ")
 	db := props.DbConn
 	filterArgs := getFilterArgs(props.Filter)
@@ -97,7 +101,7 @@ sort - Coluna de ordenação
 order - Direção do ordenamento (crescente e descrescente)
 filter - Critérios de filtro (valores e campo)
 */
-func BuildPage[E any](props PageProps) (page *entity.Page[E], err error) {
+func BuildPage[E any](props PageBuilderProps) (page *entity.Page[E], err error) {
 
 	firstParam, secondParam, err := decodeCursor(props.Cursor)
 	if err != nil {
@@ -106,10 +110,10 @@ func BuildPage[E any](props PageProps) (page *entity.Page[E], err error) {
 
 	const PAGE_LIMIT = 200
 
-    limit := PAGE_LIMIT
-    if props.Limit != nil {
-        limit = *props.Limit
-    }
+	limit := PAGE_LIMIT
+	if props.Limit != nil {
+		limit = *props.Limit
+	}
 
 	pageProps := PageQueryProps{
 		Filter:     props.Filter,
@@ -130,7 +134,7 @@ func BuildPage[E any](props PageProps) (page *entity.Page[E], err error) {
 
 	//Parâmetros para obter as informações da página
 	list := []E{}
-	selectionProps := SelectionProps[E]{
+	selectionProps := PageSelectionProps[E]{
 		Dest:        &list,
 		Query:       query,
 		IsFirstPage: props.Cursor == "",

@@ -16,9 +16,9 @@ func NewRepository(db *sqlx.DB) *SlaughterhouseRepository {
     return &SlaughterhouseRepository{selectQuery, "slaughterhouses", db}
 }
 
-func (r *SlaughterhouseRepository) FindAll() (*[]Slaughterhouse, error) {
+func (r *SlaughterhouseRepository) FindAll(userId string) (*[]Slaughterhouse, error) {
     query := r.SelectQuery + " WHERE user_id = $1 AND deleted_at is null"
-	return repositoriesUtil.GetList[Slaughterhouse](r.Db, query)
+	return repositoriesUtil.GetList[Slaughterhouse](r.Db, query, userId)
 }
 
 func (r *SlaughterhouseRepository) FindById(id string) (*Slaughterhouse, error) {

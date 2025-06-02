@@ -3,27 +3,18 @@ package app
 import (
 	"net/http"
 
-	"github.com/felipeErnica/rebanho-backend/middlewares"
+	"github.com/felipeErnica/rebanho-backend/config/middlewares"
 	"github.com/jmoiron/sqlx"
 )
 
 type App struct {
 	mux         *http.ServeMux
 	middlewares []middlewares.Middleware
-	userId      string
 	DBconn      *sqlx.DB
 }
 
 func NewApp() *App {
 	return &App{mux: http.NewServeMux()}
-}
-
-func (a *App) SetUserId(id string) {
-	a.userId = id
-}
-
-func (a *App) GetUserId() string {
-	return a.userId
 }
 
 func (a *App) UseGroup(mids ...middlewares.Middleware) {

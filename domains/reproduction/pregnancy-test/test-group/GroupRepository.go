@@ -9,17 +9,16 @@ type TestGroupRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
-	UserId      string
 }
 
-func NewRepository(db *sqlx.DB, userId string) *TestGroupRepository {
+func NewRepository(db *sqlx.DB) *TestGroupRepository {
 	selectQuery := ` SELECT pregnancy_test_groups.* FROM pregnancy_test_groups`
-	return &TestGroupRepository{selectQuery, "pregnancy_test_groups", db, userId}
+	return &TestGroupRepository{selectQuery, "pregnancy_test_groups", db}
 }
 
-func (r *TestGroupRepository) FindAll() (*[]TestGroup, error) {
+func (r *TestGroupRepository) FindAll(userId string) (*[]TestGroup, error) {
 	query := r.SelectQuery + " WHERE pregnancy_test_groups.user_id = $1 AND pregnancy_test_groups.deleted_at is null"
-	return repositoriesUtil.GetList[TestGroup](r.Db, query, r.UserId)
+	return repositoriesUtil.GetList[TestGroup](r.Db, query)
 }
 
 func (r *TestGroupRepository) FindById(id string) (*TestGroup, error) {

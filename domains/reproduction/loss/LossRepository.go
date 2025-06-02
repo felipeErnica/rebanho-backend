@@ -10,34 +10,24 @@ type LossRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
-	UserId      string
 }
 
-func NewRepository(db *sqlx.DB, userId string) *LossRepository {
+func NewRepository(db *sqlx.DB) *LossRepository {
 	selectQuery := `
         SELECT loss.*, 
             animals.name as animal_name, animals.number as animal_number, animals.order as animal_order
         FROM Pregnancy_losses as loss
             LEFT JOIN animals ON animals.id = loss.animal_id
     `
-	return &LossRepository{selectQuery, "losses", db, userId}
+	return &LossRepository{selectQuery, "losses", db}
 }
 
-func (r *LossRepository) FindPage(
-	sort string,
-	order string,
-	cursor string,
-	filter *PregnancyLossFilter,
-) (*entity.Page[PregnancyLoss], error) {
+func (r *LossRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[PregnancyLoss], error) {
 
 	nullFields := []string{"observation"}
-	props := repositoriesUtil.PageProps{
+	props := repositoriesUtil.PageBuilderProps{
 		QueryBody:  r.SelectQuery,
-		Filter:     filter,
-		Sort:       sort,
-		Order:      order,
-		Cursor:     cursor,
-		UserId:     r.UserId,
+		PageProps:  pageProps,
 		NullFields: nullFields,
 		TableName:  r.TableName,
 		DbConn:     r.Db,

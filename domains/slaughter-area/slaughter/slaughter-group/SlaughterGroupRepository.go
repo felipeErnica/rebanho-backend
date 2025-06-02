@@ -9,21 +9,20 @@ type SlaughterGroupRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
-	UserId      string
 }
 
-func NewRepository(db *sqlx.DB, userId string) *SlaughterGroupRepository {
+func NewRepository(db *sqlx.DB) *SlaughterGroupRepository {
 	selectQuery := `
     SELECT slaughter_groups.*, slaughterhouses.name
     FROM slaughter_groups
         LEFT JOIN slaughterhouses ON slaughterhouses.id = slaughter_groups.slaughterhouse_id
     `
-	return &SlaughterGroupRepository{selectQuery, "slaughter_groups", db, userId}
+	return &SlaughterGroupRepository{selectQuery, "slaughter_groups", db}
 }
 
-func (r *SlaughterGroupRepository) FindAll() (*[]SlaughterGroup, error) {
+func (r *SlaughterGroupRepository) FindAll(userId string) (*[]SlaughterGroup, error) {
 	query := r.SelectQuery + " WHERE slaughter_groups.user_id = $1 AND slaughter_groups.deleted_at is null"
-	return repositoriesUtil.GetList[SlaughterGroup](r.Db, query, r.UserId)
+	return repositoriesUtil.GetList[SlaughterGroup](r.Db, query, userId)
 }
 
 func (r *SlaughterGroupRepository) FindById(id string) (*SlaughterGroup, error) {

@@ -6,7 +6,7 @@ import (
 )
 
 func InitLoss(app *app.App) {
-	repository := NewRepository(app.DBconn, app.GetUserId())
+	repository := NewRepository(app.DBconn)
 	handler := PregnancyLossHandler{repository}
 
 	app.HandleFunc("GET reproduction/losses/page", handler.FindPage)

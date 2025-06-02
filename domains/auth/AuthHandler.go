@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/felipeErnica/rebanho-backend/middlewares"
+	authConfig "github.com/felipeErnica/rebanho-backend/config/auth-config"
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	"github.com/felipeErnica/rebanho-backend/util"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
@@ -33,7 +33,7 @@ func (h *UserHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString, err := middlewares.GenerateToken(user.Id)
+	tokenString, err := authConfig.GenerateToken(user.Id)
 	if err != nil {
 		util.LogError(err.Error())
 		w.WriteHeader(http.StatusUnauthorized)

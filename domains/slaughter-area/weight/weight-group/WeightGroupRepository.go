@@ -9,17 +9,16 @@ type WeightGroupRepository struct {
 	SelectQuery string
 	TableName   string
 	Db          *sqlx.DB
-	UserId      string
 }
 
-func NewRepository(db *sqlx.DB, userId string) *WeightGroupRepository {
+func NewRepository(db *sqlx.DB) *WeightGroupRepository {
 	selectQuery := "SELECT weight_groups.* FROM weight_groups"
-	return &WeightGroupRepository{selectQuery, "weight_groups", db, userId}
+	return &WeightGroupRepository{selectQuery, "weight_groups", db}
 }
 
-func (r *WeightGroupRepository) FindAll() (*[]WeightGroup, error) {
+func (r *WeightGroupRepository) FindAll(userId string) (*[]WeightGroup, error) {
 	query := r.SelectQuery + " WHERE user_id = $1 AND deleted_at is null"
-	return repositoriesUtil.GetList[WeightGroup](r.Db, query, r.UserId)
+	return repositoriesUtil.GetList[WeightGroup](r.Db, query)
 }
 
 func (r *WeightGroupRepository) FindById(id string) (*WeightGroup, error) {

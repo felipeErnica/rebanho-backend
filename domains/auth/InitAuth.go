@@ -2,7 +2,7 @@ package auth
 
 import (
 	"github.com/felipeErnica/rebanho-backend/app"
-	"github.com/felipeErnica/rebanho-backend/middlewares"
+	"github.com/felipeErnica/rebanho-backend/config/middlewares"
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 

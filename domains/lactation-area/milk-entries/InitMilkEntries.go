@@ -6,7 +6,7 @@ import (
 )
 
 func InitMilkEntries(app *app.App) {
-	repository := NewRepository(app.DBconn, app.GetUserId())
+	repository := NewRepository(app.DBconn)
 	handler := MilkHandler{repository}
 
 	app.HandleFunc("GET lactation-area/milkEntries/page", handler.FindPage)

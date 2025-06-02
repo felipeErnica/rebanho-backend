@@ -6,7 +6,7 @@ import (
 )
 
 func InitPasture(app *app.App) {
-	repository := NewRepository(app.DBconn, app.GetUserId())
+	repository := NewRepository(app.DBconn)
 	handler := PastureHandler{repository}
 
 	app.HandleFunc("GET farm-area/pastures", handler.FindAll)

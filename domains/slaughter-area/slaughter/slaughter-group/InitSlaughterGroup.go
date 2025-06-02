@@ -6,7 +6,7 @@ import (
 )
 
 func InitSlaughterGroup(app *app.App) {
-	repository := NewRepository(app.DBconn, app.GetUserId())
+	repository := NewRepository(app.DBconn)
 	handler := SlaughterGroupHandler{repository}
 
 	app.HandleFunc("GET slaughter-area/slaughter/groups", handler.FindAll)

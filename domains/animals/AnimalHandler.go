@@ -13,33 +13,40 @@ type AnimalHandler struct {
 
 func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 	filter := AnimalFilter{}
-	handlersUtil.DecodeFilter(w, r, &filter)
+	if !handlersUtil.DecodeFilter(w, r, &filter) {
+        return
+    }
     handlersUtil.ReturnPage(w, r, h.Repository, filter)
 }
 
 func (h *AnimalHandler) FindById(w http.ResponseWriter, r *http.Request) {
-    handlersUtil.FindById[Animal](w, r, h.Repository)
+    handlersUtil.FindById(w, r, h.Repository)
 }
 
 func (h *AnimalHandler) FindByName(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	animals, err := h.Repository.FindByName(name)
+    userId, ok := handlersUtil.GetUserId(w, r)
+    if !ok {
+        return
+    }
+	animals, err := h.Repository.FindByName(name, userId)
     if err != nil {
         serverErrors.DatabaseGetError(err, w)
         return
     }
-
 	handlersUtil.SendList(w, animals)
 }
 
 func (h *AnimalHandler) FindByNumber(w http.ResponseWriter, r *http.Request) {
 	number := r.PathValue("number")
-	animals, err := h.Repository.FindByIdentificationNumber(number)
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+	animals, err := h.Repository.FindByNumber(number, userId)
     if err != nil {
         serverErrors.DatabaseGetError(err, w)
         return
     }
-
 	handlersUtil.SendList(w, animals)
 }
 
