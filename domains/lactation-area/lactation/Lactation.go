@@ -45,11 +45,11 @@ type LactationSave struct {
 
 type LactationFilter struct {
 	CowId                *[]string  `json:"cowId" db:"cow_id"`
-	CowPasture           *[]string  `json:"cowPasture" db:"cow_pasture"`
-	MinCalfBirthDate     *time.Time `json:"minCalfBirthDate" db:"calf_birth_date"`
-	MaxCalfBirthDate     *time.Time `json:"maxCalfBirthDate" db:"calf_birth_date"`
-	CalfSex              *string    `json:"calfSex" db:"calf_sex"`
-	CalfFather           *[]string  `json:"calfFather" db:"calf_father"`
+    CowPasture           *[]string  `json:"cowPasture" db:"name" table:"pastures"`
+    MinCalfBirthDate     *time.Time `json:"minCalfBirthDate" db:"birth_date" table:"calf"`
+    MaxCalfBirthDate     *time.Time `json:"maxCalfBirthDate" db:"birth_date" table:"calf"`
+    CalfSex              *string    `json:"calfSex" db:"sex" table:"calf"`
+    CalfFather           *[]string  `json:"calfFather" db:"father_id" table:"calf"`
 	MinStartDate         *time.Time `json:"minStartDate" db:"start_date"`
 	MaxStartDate         *time.Time `json:"maxStartDate" db:"start_date"`
 	MinEndDate           *time.Time `json:"minEndDate" db:"end_date"`

@@ -33,10 +33,10 @@ type SlaughterEntrySave struct {
 
 type SlaughterEntryFilter struct {
 	AnimalId       *[]string  `json:"animalId" db:"animal_id"`
-	MinAnimalBirth *time.Time `json:"minAnimalBirth" db:"animal_birth"`
-	MaxAnimalBirth *time.Time `json:"maxAnimalBirth" db:"animal_birth"`
-	MinGroupDate   *time.Time `json:"minGroupDate" db:"group_date"`
-	MaxGroupDate   *time.Time `json:"maxGroupDate" db:"group_date"`
+	MinAnimalBirth *time.Time `json:"minAnimalBirth" db:"birth_date" table:"animals"`
+	MaxAnimalBirth *time.Time `json:"maxAnimalBirth" db:"birth_date" table:"animals"`
+	MinGroupDate   *time.Time `json:"minGroupDate" db:"slaughter_date" table:"slaughter_groups"`
+	MaxGroupDate   *time.Time `json:"maxGroupDate" db:"slaughter_date" table:"slaughter_groups"`
 	MinWeight      *float64   `json:"minWeight" db:"weight"`
 	MaxWeight      *float64   `json:"maxWeight" db:"weight"`
 	MinDeadWeight  *float64   `json:"minDeadWeight" db:"dead_weight"`

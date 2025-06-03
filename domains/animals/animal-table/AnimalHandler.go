@@ -12,8 +12,7 @@ type AnimalHandler struct {
 }
 
 func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request) {
-	filter := AnimalFilter{}
-	if !handlersUtil.DecodeFilter(w, r, &filter) {
+    filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{}); if !ok {
         return
     }
     handlersUtil.ReturnPage(w, r, h.Repository, filter)
@@ -74,8 +73,7 @@ func (h *AnimalHandler) FindByMotherId(w http.ResponseWriter, r *http.Request) {
 
 func (h *AnimalHandler) FindByPastureId(w http.ResponseWriter, r *http.Request) {
 	pastureId := r.PathValue("pastureId")
-    filter := AnimalFilter{}
-    if !handlersUtil.DecodeFilter(w, r, &filter) {
+    filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{}); if !ok {
         return
     }
     filter.IsFiltered = true

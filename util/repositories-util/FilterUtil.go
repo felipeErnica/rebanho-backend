@@ -60,7 +60,7 @@ func buildFilterStatement(value any, sqlField string, structField string, numPar
 	return statement, newNumParam, err
 }
 
-func buildFilterStatements(filter any, tableName string, numParam int) (filterStatement string, newNumParam int, err error) {
+func buildFilterStatements(filter any, mainTable string, numParam int) (filterStatement string, newNumParam int, err error) {
 	var buffer bytes.Buffer
 
 	filterTypes := reflect.TypeOf(filter)
@@ -73,6 +73,12 @@ func buildFilterStatements(filter any, tableName string, numParam int) (filterSt
 	for i := 1; i < filterTypes.NumField(); i++ {
 		field := filterTypes.Field(i)
 		structField := field.Name
+            
+        tableName, ok := field.Tag.Lookup("table")
+        if !ok {
+            tableName = mainTable
+        }
+
 		sqlField := fmt.Sprintf("%s.%s", tableName, field.Tag.Get("db"))
 		value := filterValues.Field(i)
 		if !value.IsNil() {

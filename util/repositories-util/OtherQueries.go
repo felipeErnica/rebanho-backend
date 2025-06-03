@@ -31,7 +31,7 @@ func generateInsertQuery(object any, tableName string) string {
 	var buffer bytes.Buffer
 	buffer.WriteString(":" + fieldNames[0])
 	for i := 1; i < len(fieldNames); i++ {
-		buffer.WriteString(":" + fieldNames[i] + ",")
+		buffer.WriteString(", :" + fieldNames[i])
 	}
 	valuesFields := buffer.String()
 
@@ -73,6 +73,7 @@ func Update[E any](db *sqlx.DB, tableName string, object *E) error {
 /*Adiciona um objeto a Tabela SQL*/
 func Add[E any](db *sqlx.DB, tableName string, object *E) (*E, error) {
 	query := generateInsertQuery(object, tableName)
+    fmt.Println(query)
 	_, err := db.NamedExec(query, object)
 	return object, err
 }

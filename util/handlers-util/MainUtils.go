@@ -85,16 +85,17 @@ func SendList[E any](w http.ResponseWriter, model *[]E) {
 
 /*
 Decodifica o filtro contido no corpo da solicitação HTTP
-e retorna um erro caso o formato esteja incorreto.
+e retorna um erro caso o formato esteja incorreto. Como parâmetro,
+utiliza um filtro vazio do mesmo tipo do filtro a ser retornado.
 */
-func DecodeFilter[F any](w http.ResponseWriter, r *http.Request, filter *F) bool {
+func DecodeFilter[F any](w http.ResponseWriter, r *http.Request, filter F) (F, bool) {
 	err := json.NewDecoder(r.Body).Decode(&filter)
 	if err != nil {
 		err = errors.New(fmt.Sprintf("Falha na decodificação do filtro: %s", err.Error()))
 		serverErrors.JsonServerError(err, w)
-		return false
+		return filter, false
 	}
-	return true
+	return filter, true
 }
 
 /*
@@ -158,9 +159,15 @@ CreatedAt - Preenche o momento da criação
 UserId - Recupera o ID do usuário salvo no Contexto da requisição HTTP
 */
 func fillCreationFields[E any](w http.ResponseWriter, r *http.Request, obj *E) bool {
-	fieldId := reflect.ValueOf(obj).FieldByName("Id")
-	fieldUserId := reflect.ValueOf(obj).FieldByName("UserId")
-	fieldCreatedAt := reflect.ValueOf(obj).FieldByName("CreatedAt")
+    value := reflect.ValueOf(obj)
+    if value.Kind() == reflect.Pointer {
+        value = value.Elem()
+    }
+
+
+    fieldId := value.FieldByName("Id")
+	fieldUserId := value.FieldByName("UserId")
+	fieldCreatedAt := value.FieldByName("CreatedAt")
 
 	if !fieldId.CanSet() || !fieldUserId.CanSet() || !fieldCreatedAt.CanSet() {
 		err := errors.New("Formato de estrura não suporta adições!")
@@ -209,7 +216,7 @@ func Add[E any](w http.ResponseWriter, r *http.Request, repository RepositoryAdd
 /*
 Atualiza uma entidade no banco, e retorna o resultado na Resposta HTTP
 */
-func Update[E any](w http.ResponseWriter, r *http.Request, repository RepositoryAdd[E]) {
+func Update[E any](w http.ResponseWriter, r *http.Request, repository RepositoryUpdate[E]) {
 	var obj E
 	DecodeEntity(w, r, &obj)
 	err := repository.Update(&obj)

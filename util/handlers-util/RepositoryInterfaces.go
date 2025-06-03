@@ -19,7 +19,10 @@ type RepositoryFindAll[E any] interface {
 
 type RepositoryAdd[E any] interface {
 	Add(*E) (*E, error)
-    Update(*E) error
+}
+
+type RepositoryUpdate[E any] interface {
+	Update(*E) error
 }
 
 type RepositoryDelete interface {

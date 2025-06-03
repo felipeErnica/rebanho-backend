@@ -12,8 +12,7 @@ type PregnancyLossHandler struct {
 }
 
 func (h *PregnancyLossHandler) FindPage(w http.ResponseWriter, r *http.Request) {
-    filter := PregnancyLossFilter{}
-    if !handlersUtil.DecodeFilter(w, r, &filter) {
+    filter, ok := handlersUtil.DecodeFilter(w, r, PregnancyLossFilter{}); if !ok {
         return
     }
     handlersUtil.ReturnPage(w, r, h.Repository, &filter)

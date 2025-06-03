@@ -12,8 +12,7 @@ type SlaughterEntryHandler struct {
 }
 
 func (h *SlaughterEntryHandler) FindPage(w http.ResponseWriter, r *http.Request) {
-	filter := SlaughterEntryFilter{}
-	if !handlersUtil.DecodeFilter(w, r, &filter) {
+    filter, ok := handlersUtil.DecodeFilter(w, r, SlaughterEntryFilter{}); if !ok {
         return
     }
 	handlersUtil.ReturnPage(w, r, h.Repository, filter)

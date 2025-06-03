@@ -15,9 +15,9 @@ type Farm struct {
 }
 
 type FarmFilter struct {
-	Name      string `json:"name" db:"name"`
-	State     string `json:"state" db:"state"`
-	City      string `json:"city" db:"city"`
-	TaxNumber string `json:"taxNumber" db:"tax_number"`
-	Status    string `json:"status" db:"status"`
+	Name      *string `json:"name" db:"name"`
+	State     *[]string `json:"state" db:"state"`
+	City      *string `json:"city" db:"city"`
+	TaxNumber *string `json:"taxNumber" db:"tax_number"`
+	Status    *string `json:"status" db:"status"`
 }
