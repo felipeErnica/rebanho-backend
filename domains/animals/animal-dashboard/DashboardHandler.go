@@ -40,3 +40,18 @@ func (h *DashboardHandler) GroupByAgeAndFarm(w http.ResponseWriter, r *http.Requ
     }
     handlersUtil.SendList(w, obj)
 }
+
+func (h *DashboardHandler) GroupByAge(w http.ResponseWriter, r *http.Request) {
+    filter, ok := handlersUtil.DecodeFilter(w, r, AnimalsDashboardFilter{}); if !ok {
+        return
+    }
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+    obj, err := h.Repository.GroupByAge(userId, filter)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+    handlersUtil.SendList(w, obj)
+}

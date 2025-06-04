@@ -31,6 +31,10 @@ func buildFilterString(field string, numParam int) (string, int) {
 	return fmt.Sprintf("%s LIKE $%d", field, numParam), numParam + 1
 }
 
+func buildFilterBool(field string, numParam int) (string, int) {
+	return fmt.Sprintf("%s = $%d", field, numParam), numParam + 1
+}
+
 func buildFilterStatement(value any, sqlField string, structField string, numParam int) (statement string, newNumParam int, err error) {
 	switch t := value.(type) {
 	case string:
@@ -52,6 +56,8 @@ func buildFilterStatement(value any, sqlField string, structField string, numPar
 		statement, newNumParam = buildFilterMinNumberAndDate(sqlField, numParam)
 	case []string:
 		statement, newNumParam = buildFilterArrays(t, sqlField, numParam)
+    case bool:
+        statement, newNumParam = buildFilterBool(sqlField, numParam)
 	default:
         errMsg := fmt.Sprintf("Tipo Inválido: %s", structField)
 		err = errors.New(errMsg)

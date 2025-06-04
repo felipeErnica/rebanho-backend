@@ -31,14 +31,13 @@ func getDashboardWhereStatement(filter any, tablename string, userId string) (st
 	args := []any{userId}
 	if isFiltered(filter) {
 		filterArgs := getFilterArgs(filter)
-		filterStatement, _, err := buildFilterStatements(filter, tablename, 1)
+		filterStatement, _, err := buildFilterStatements(filter, tablename, 2)
 		if err != nil {
 			return "", []any{}, err
 		}
 		whereStatement = whereStatement + filterStatement
 		args = append(args, filterArgs...)
 	}
-
 	return whereStatement, args, nil
 }
 

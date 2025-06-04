@@ -23,8 +23,8 @@ func (a *App) UseGroup(mids ...middlewares.Middleware) {
 
 func (a *App) HandleFunc(pattern string, handler http.HandlerFunc) {
 	finalHandler := handler
-	for _, m := range a.middlewares {
-		finalHandler = m(finalHandler)
+	for _, middleware := range a.middlewares {
+		finalHandler = middleware(finalHandler)
 	}
 	a.mux.HandleFunc(pattern, finalHandler)
 }

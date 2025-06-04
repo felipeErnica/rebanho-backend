@@ -24,7 +24,7 @@ type PageBuilderProps struct {
 	NullFields []string
 	TableName  string
 	DbConn     *sqlx.DB
-    PageProps
+	PageProps
 }
 
 type PageSelectionProps[E any] struct {
@@ -46,10 +46,8 @@ func getPageList[E any](props PageSelectionProps[E]) error {
 	args := []any{props.UserId}
 	fmt.Println(query)
 
-	/*
-	   Constrói a lista de paramêtros da solicitação, levando em conta
-	   a paginação e os critério de filtro
-	*/
+	//Constrói a lista de paramêtros da solicitação, levando em conta
+	//a paginação e os critério de filtro.
 	if len(filterArgs) != 0 {
 		args = append(args, filterArgs...)
 	}
@@ -81,12 +79,10 @@ func getFilterArgs(filter any) []any {
 	for i := 1; i < values.NumField(); i++ {
 		field := values.Field(i)
 		if !field.IsNil() {
-
 			value := field.Elem().Interface()
 			if field.Elem().Type().String() == "string" {
 				value = "%" + value.(string) + "%"
 			}
-
 			args = append(args, value)
 		}
 	}
