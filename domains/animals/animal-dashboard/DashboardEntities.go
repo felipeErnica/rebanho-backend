@@ -32,6 +32,23 @@ type AnimalsByAge struct {
 	Female      int    `json:"female" db:"female"`
 }
 
+type TotalByYear struct {
+    TotalAnimals int `json:"totalAnimals" db:"total_animals"`
+}
+
+type AnimalByType struct {
+	BeefCattle          int `json:"beefCattle" db:"beef_cattle"`
+	DairyCattle         int `json:"dairyCattle" db:"dairy_cattle"`
+	ReproductionAnimals int `json:"reproductionAnimals" db:"reproduction_animals"`
+	Offspring           int `json:"offspring" db:"offspring"`
+}
+
+type AnimalEntriesFilter struct {
+	AnimalsDashboardFilter
+	MinEntryDate *time.Time `json:"minEntryDate" db:"min_entry_date"`
+	MaxExitDate  *time.Time `json:"maxExitDate" db:"max_exit_date"`
+}
+
 type AnimalsDashboardFilter struct {
 	IsFiltered     bool       `json:"isFiltered"`
 	MinWeaningDate *time.Time `json:"minWeaningDate" db:"weaning_date"`

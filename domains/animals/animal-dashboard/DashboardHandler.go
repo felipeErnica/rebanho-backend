@@ -26,6 +26,21 @@ func (h *DashboardHandler) TotalBySex(w http.ResponseWriter, r *http.Request) {
     handlersUtil.SendEntity(w, total)
 }
 
+func (h *DashboardHandler) TotalByType(w http.ResponseWriter, r *http.Request) {
+    filter, ok := handlersUtil.DecodeFilter(w ,r , AnimalsDashboardFilter{}); if !ok {
+        return
+    }
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+    total, err := h.Repository.TotalByType(userId, filter)
+    if err != nil {
+        serverErrors.DatabaseGetError(err , w)
+        return
+    }
+    handlersUtil.SendEntity(w, total)
+}
+
 func (h *DashboardHandler) GroupByAgeAndFarm(w http.ResponseWriter, r *http.Request) {
     filter, ok := handlersUtil.DecodeFilter(w, r, AnimalsDashboardFilter{}); if !ok {
         return

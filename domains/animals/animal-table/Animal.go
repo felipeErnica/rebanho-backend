@@ -23,6 +23,7 @@ type Animal struct {
 	PastureId            *string    `json:"pastureId" db:"pasture_id"`
 	PastureName          *string    `json:"pastureName" db:"pasture_name"`
 	Status               string     `json:"status" db:"status"`
+	AnimalType           string     `json:"animalType" db:"animal_type"`
 	Isr                  float64    `json:"isr" db:"isr"`
 	AverageProd          float64    `json:"averageProd" db:"average_prod"`
 	AverageBirthInterval float64    `json:"averageBirthInterval" db:"average_birth_interval"`
@@ -37,32 +38,32 @@ type Animal struct {
 }
 
 type AnimalSave struct {
-    Id                   string     `json:"id" db:"id"`
-    ChipId               string     `json:"chipId" db:"chip_id"`
-    Name                 *string    `json:"name" db:"name"`
-    Color                *string    `json:"color" db:"color"`
-    WeightBirth          *float64   `json:"weightBirth" db:"weight_birth"`
-    IdentificationNumber *string    `json:"number" db:"number"`
-    AnimalOrder          int        `json:"animalOrder" db:"animal_order"`
-    Sex                  *string    `json:"sex" db:"sex"`
-    WeaningDate          *time.Time `json:"weaningDate" db:"weaning_date"`
-    Father               string     `json:"fatherId" db:"father_id"`
-    Mother               string     `json:"motherId" db:"mother_id"`
-    BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
-    DeathDate            *time.Time `json:"deathDate" db:"death_date"`
-    PastureId            string     `json:"pasture" db:"pasture_id"`
-    Status               string     `json:"status" db:"status"`
-    Isr                  float64    `json:"isr" db:"isr"`
-    AverageProd          float64    `json:"averageProd" db:"average_prod"`
-    AverageBirthInterval float64    `json:"averageBirthInterval" db:"average_birth_interval"`
-    AveragePeak          *float64   `json:"averagePeak" db:"average_peak"`
-    ChildrenQuantity     int        `json:"childrenQuantity" db:"children_quantity"`
-    Observation          *string    `json:"observation" db:"observation"`
-    IsDna                bool       `json:"isDna" db:"is_dna"`
-    IsGenotipagem        bool       `json:"isGenotipagem" db:"is_genotipagem"`
-    CreatedAt            time.Time  `json:"createdAt" db:"created_at"`
-    DeletedAt            *time.Time `json:"deletedAt" db:"deleted_at"`
-    UserId               string     `json:"userId" db:"user_id"`
+	Id                   string     `json:"id" db:"id"`
+	ChipId               *string     `json:"chipId" db:"chip_id"`
+	Name                 *string    `json:"name" db:"name"`
+	Color                *string    `json:"color" db:"color"`
+	WeightBirth          *float64   `json:"weightBirth" db:"weight_birth"`
+	IdentificationNumber *string    `json:"number" db:"number"`
+	AnimalOrder          int        `json:"animalOrder" db:"animal_order"`
+	Sex                  *string    `json:"sex" db:"sex"`
+	WeaningDate          *time.Time `json:"weaningDate" db:"weaning_date"`
+	Father               string     `json:"fatherId" db:"father_id"`
+	Mother               string     `json:"motherId" db:"mother_id"`
+	BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
+	DeathDate            *time.Time `json:"deathDate" db:"death_date"`
+	PastureId            string     `json:"pasture" db:"pasture_id"`
+	Status               string     `json:"status" db:"status"`
+	Isr                  float64    `json:"isr" db:"isr"`
+	AverageProd          float64    `json:"averageProd" db:"average_prod"`
+	AverageBirthInterval float64    `json:"averageBirthInterval" db:"average_birth_interval"`
+	AveragePeak          *float64   `json:"averagePeak" db:"average_peak"`
+	ChildrenQuantity     int        `json:"childrenQuantity" db:"children_quantity"`
+	Observation          *string    `json:"observation" db:"observation"`
+	IsDna                bool       `json:"isDna" db:"is_dna"`
+	IsGenotipagem        bool       `json:"isGenotipagem" db:"is_genotipagem"`
+	CreatedAt            time.Time  `json:"createdAt" db:"created_at"`
+	DeletedAt            *time.Time `json:"deletedAt" db:"deleted_at"`
+	UserId               string     `json:"userId" db:"user_id"`
 }
 
 type AnimalFilter struct {

@@ -1,6 +1,8 @@
 package animalDashboard
 
 import (
+	"time"
+
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -11,6 +13,24 @@ type DashboardRepository struct {
 
 func NewRepository(db *sqlx.DB) *DashboardRepository {
 	return &DashboardRepository{db}
+}
+
+func (r *DashboardRepository) TotalByYear(userId string, minDate time.Time, maxDate time.Time, filter AnimalsDashboardFilter) (*TotalByYear, error) {
+	query := `
+        WITH date_series AS (
+            SELECT generate_series($1, $2, interval '1 year') as year
+        ),
+        SELECT 
+            date.year as year
+            COUNT(animal_id) as total_animals
+        FROM animal_entries as entries
+            JOIN date_series as date ON entries.entry_date <= date.year + interval '1 year' - interval '1 day'
+            AND (entries.exit_date IS NULL OR entries.exit_date > date.year + interval '1 year' - interval '1 day')
+        GROUP BY date.year
+    `
+    total := &TotalByYear{}
+    err := r.DB.Get(total, query)
+    return  total, err
 }
 
 func (r *DashboardRepository) TotalBySex(userId string, filter AnimalsDashboardFilter) (*TotalBySex, error) {
@@ -24,14 +44,34 @@ func (r *DashboardRepository) TotalBySex(userId string, filter AnimalsDashboardF
             COUNT(animals.id) FILTER (WHERE animals.sex = 'M') as total_males
         FROM animals
     `
-	props := repositoriesUtil.TotalProps{
+	props := repositoriesUtil.TotalProps[TotalBySex]{
 		Query:     query,
 		TableName: "animals",
 		UserId:    userId,
 		Filter:    filter,
 		DB:        r.DB,
 	}
-	return repositoriesUtil.GetTotalResults[TotalBySex](props)
+
+	return repositoriesUtil.GetTotalResults(props)
+}
+
+func (r *DashboardRepository) TotalByType(userId string, filter AnimalsDashboardFilter) (*AnimalByType, error) {
+	query := `
+        SELECT
+            COUNT(animals.id) FILTER (WHERE animals.type = 'BEEF_CATTLE') as beef_cattle,
+            COUNT(animals.id) FILTER (WHERE animals.type = 'DAIRY_CATTLE') as dairy_cattle, 
+            COUNT(animals.id) FILTER (WHERE animals.type = 'REPRODUCTION_ANIMALS') as reproduction_animals, 
+            COUNT(animals.id) FILTER (WHERE animals.type = 'OFFSPRING') as offspring
+        FROM animals
+    `
+	props := repositoriesUtil.TotalProps[AnimalByType]{
+		Query:     query,
+		TableName: "animals",
+		UserId:    userId,
+		Filter:    filter,
+		DB:        r.DB,
+	}
+	return repositoriesUtil.GetTotalResults(props)
 }
 
 func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter AnimalsDashboardFilter) (*[]AnimalsByAgeAndFarm, error) {
@@ -98,7 +138,7 @@ func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter AnimalsDas
         FROM animals
         LEFT JOIN farms ON farms.id = animals.farm_id
     `
-	props := repositoriesUtil.GroupByProps{
+	props := repositoriesUtil.GroupByProps[AnimalsByAgeAndFarm]{
 		Query:     query,
 		TableName: "animals",
 		GroupBy:   "farms.name",
@@ -106,11 +146,11 @@ func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter AnimalsDas
 		Filter:    filter,
 		DB:        r.DB,
 	}
-	return repositoriesUtil.GetGroupByResults[AnimalsByAgeAndFarm](props)
+	return repositoriesUtil.GetGroupByResults(props)
 }
 
 func (r *DashboardRepository) GroupByAge(userId string, filter AnimalsDashboardFilter) (*[]AnimalsByAge, error) {
-    query := `
+	query := `
         SELECT 
             age_category,
             COUNT(categorized_animals.id) FILTER (WHERE categorized_animals.sex = 'M') as male,
@@ -128,13 +168,14 @@ func (r *DashboardRepository) GroupByAge(userId string, filter AnimalsDashboardF
             FROM animals
         ) as categorized_animals
     `
-	props := repositoriesUtil.GroupByProps{
+	props := repositoriesUtil.GroupByProps[AnimalsByAge]{
 		Query:     query,
 		TableName: "categorized_animals",
 		GroupBy:   "categorized_animals.age_category",
+		OrderBy:   "categorized_animals.age_category",
 		UserId:    userId,
 		Filter:    filter,
 		DB:        r.DB,
 	}
-    return repositoriesUtil.GetGroupByResults[AnimalsByAge](props)
+	return repositoriesUtil.GetGroupByResults(props)
 }

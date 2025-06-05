@@ -6,16 +6,17 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type GroupByProps struct {
+type GroupByProps[E any] struct {
 	Query     string
 	TableName string
 	GroupBy   string
+	OrderBy   string
 	UserId    string
 	Filter    any
 	DB        *sqlx.DB
 }
 
-type TotalProps struct {
+type TotalProps[E any] struct {
 	Query     string
 	TableName string
 	UserId    string
@@ -44,7 +45,7 @@ func getDashboardWhereStatement(filter any, tablename string, userId string) (st
 /*
 Constrói uma consulta SQL de GROUP BY e retorna os resultados.
 */
-func GetGroupByResults[E any](props GroupByProps) (*[]E, error) {
+func GetGroupByResults[E any](props GroupByProps[E]) (*[]E, error) {
 	groupStatement := fmt.Sprintf("GROUP BY %s", props.GroupBy)
 	whereStatement, args, err := getDashboardWhereStatement(props.Filter, props.TableName, props.UserId)
 	if err != nil {
@@ -52,13 +53,19 @@ func GetGroupByResults[E any](props GroupByProps) (*[]E, error) {
 	}
 
 	groupQuery := props.Query + "\n" + whereStatement + "\n" + groupStatement
+    if props.OrderBy != "" {
+        orderBy := fmt.Sprintf("ORDER BY %s", props.OrderBy)
+        groupQuery = groupQuery + "\n" + orderBy
+    }
+
+
 	return GetList[E](props.DB, groupQuery, args...)
 }
 
 /*
 Constrói uma consulta SQL que retorna informações quantitativas sobre os campos e retorna os resultados.
 */
-func GetTotalResults[E any](props TotalProps) (*E, error) {
+func GetTotalResults[E any](props TotalProps[E]) (*E, error) {
 	whereStatement, args, err := getDashboardWhereStatement(props.Filter, props.TableName, props.UserId)
 	if err != nil {
 		return nil, err
