@@ -15,22 +15,39 @@ func NewRepository(db *sqlx.DB) *DashboardRepository {
 	return &DashboardRepository{db}
 }
 
-func (r *DashboardRepository) TotalByYear(userId string, minDate time.Time, maxDate time.Time, filter AnimalsDashboardFilter) (*TotalByYear, error) {
+func (r *DashboardRepository) GroupByYear(
+    userId string, 
+    minYear int, 
+    maxYear int, 
+    filter AnimalsDashboardFilter,
+) (*[]TotalByYear, error) {
+
+    minDate := time.Date(minYear, 12, 31, 0, 0, 0, 0, time.Now().Local().Location())
+    maxDate := time.Date(maxYear, 12, 31, 0, 0, 0, 0, time.Now().Local().Location())
+
 	query := `
-        WITH date_series AS (
-            SELECT generate_series($1, $2, interval '1 year') as year
-        ),
+        WITH date_series AS (SELECT generate_series($1, $2, interval '1 year') as year)
         SELECT 
-            date.year as year
+            EXTRACT(YEAR FROM date_series.year) as year,
             COUNT(animal_id) as total_animals
         FROM animal_entries as entries
-            JOIN date_series as date ON entries.entry_date <= date.year + interval '1 year' - interval '1 day'
-            AND (entries.exit_date IS NULL OR entries.exit_date > date.year + interval '1 year' - interval '1 day')
-        GROUP BY date.year
+            JOIN date_series ON entries.entry_date <= date_series.year
+            AND (entries.exit_date IS NULL OR entries.exit_date > date_series.year)
     `
-    total := &TotalByYear{}
-    err := r.DB.Get(total, query)
-    return  total, err
+
+	props := repositoriesUtil.GroupByProps[TotalByYear]{
+		Query:     query,
+		TableName: "entries",
+		GroupBy:   "year",
+		OrderBy:   "year",
+		UserId:    userId,
+		Filter:    filter,
+		NumParam:  3,
+		DB:        r.DB,
+        OtherArgs: []any{minDate, maxDate},
+	}
+
+	return repositoriesUtil.GetGroupByResults(props)
 }
 
 func (r *DashboardRepository) TotalBySex(userId string, filter AnimalsDashboardFilter) (*TotalBySex, error) {
@@ -153,6 +170,7 @@ func (r *DashboardRepository) GroupByAge(userId string, filter AnimalsDashboardF
 	query := `
         SELECT 
             age_category,
+            MIN(categorized_animals.birth_date) as min_birth_date,
             COUNT(categorized_animals.id) FILTER (WHERE categorized_animals.sex = 'M') as male,
             COUNT(categorized_animals.id) FILTER (WHERE categorized_animals.sex = 'F') as female
         FROM (
@@ -172,7 +190,7 @@ func (r *DashboardRepository) GroupByAge(userId string, filter AnimalsDashboardF
 		Query:     query,
 		TableName: "categorized_animals",
 		GroupBy:   "categorized_animals.age_category",
-		OrderBy:   "categorized_animals.age_category",
+		OrderBy:   "min_birth_date DESC",
 		UserId:    userId,
 		Filter:    filter,
 		DB:        r.DB,

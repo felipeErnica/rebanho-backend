@@ -9,4 +9,5 @@ func InitDashboard(app *app.App) {
     app.HandleFunc("POST /animals/dashboard/types", handler.TotalByType)
     app.HandleFunc("POST /animals/dashboard/group-age-farm", handler.GroupByAgeAndFarm)
     app.HandleFunc("POST /animals/dashboard/group-age", handler.GroupByAge)
+    app.HandleFunc("POST /animals/dashboard/group-year", handler.GroupByYear)
 }

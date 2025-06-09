@@ -27,13 +27,15 @@ type AnimalsByAgeAndFarm struct {
 }
 
 type AnimalsByAge struct {
-	AgeCategory string `json:"ageCategory" db:"age_category"`
-	Male        int    `json:"male" db:"male"`
-	Female      int    `json:"female" db:"female"`
+	AgeCategory  string    `json:"ageCategory" db:"age_category"`
+	MinBirthDate time.Time `json:"minBirthDate" db:"min_birth_date"`
+	Male         int       `json:"male" db:"male"`
+	Female       int       `json:"female" db:"female"`
 }
 
 type TotalByYear struct {
-    TotalAnimals int `json:"totalAnimals" db:"total_animals"`
+    Year int `json:"year" db:"year"`
+	TotalAnimals int `json:"totalAnimals" db:"total_animals"`
 }
 
 type AnimalByType struct {
