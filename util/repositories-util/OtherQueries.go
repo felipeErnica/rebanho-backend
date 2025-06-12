@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -73,13 +74,15 @@ func Update[E any](db *sqlx.DB, tableName string, object *E) error {
 /*Adiciona um objeto a Tabela SQL*/
 func Add[E any](db *sqlx.DB, tableName string, object *E) (*E, error) {
 	query := generateInsertQuery(object, tableName)
-    fmt.Println(query)
+	fmt.Println(query)
 	_, err := db.NamedExec(query, object)
 	return object, err
 }
 
 /*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/
 func GetOne[E any](db *sqlx.DB, query string, args ...any) (*E, error) {
+    println()
+	fmt.Println(strings.Join(strings.Fields(query), " "))
 	var object E
 	err := db.Get(&object, query, args...)
 	if err != nil {
@@ -90,6 +93,8 @@ func GetOne[E any](db *sqlx.DB, query string, args ...any) (*E, error) {
 
 /*Retorna uma lista de objetos da Tabela SQL de acordo com os parâmetros informados*/
 func GetList[E any](db *sqlx.DB, query string, args ...any) (*[]E, error) {
+    println()
+	fmt.Println(strings.Join(strings.Fields(query), " "))
 	object := []E{}
 	err := db.Select(&object, query, args...)
 	if err != nil {

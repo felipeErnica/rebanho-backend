@@ -42,16 +42,19 @@ func buildFilterStatement(value any, sqlField string, structField string, numPar
 	case time.Time:
 		if strings.HasPrefix(structField, "Max") {
 			statement, newNumParam = buildFilterMaxNumberAndDate(sqlField, numParam)
+            break
 		}
 		statement, newNumParam = buildFilterMinNumberAndDate(sqlField, numParam)
 	case int:
 		if strings.HasPrefix(structField, "Max") {
 			statement, newNumParam = buildFilterMaxNumberAndDate(sqlField, numParam)
+            break
 		}
 		statement, newNumParam = buildFilterMinNumberAndDate(sqlField, numParam)
 	case float64:
 		if strings.HasPrefix(structField, "Max") {
 			statement, newNumParam = buildFilterMaxNumberAndDate(sqlField, numParam)
+            break
 		}
 		statement, newNumParam = buildFilterMinNumberAndDate(sqlField, numParam)
 	case []string:

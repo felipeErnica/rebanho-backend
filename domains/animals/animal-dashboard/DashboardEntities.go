@@ -34,7 +34,7 @@ type AnimalsByAge struct {
 }
 
 type TotalByYear struct {
-    Year int `json:"year" db:"year"`
+	Year         int `json:"year" db:"year"`
 	TotalAnimals int `json:"totalAnimals" db:"total_animals"`
 }
 
@@ -52,12 +52,11 @@ type AnimalEntriesFilter struct {
 }
 
 type AnimalsDashboardFilter struct {
-	IsFiltered     bool       `json:"isFiltered"`
-	MinWeaningDate *time.Time `json:"minWeaningDate" db:"weaning_date"`
-	MaxWeaningDate *time.Time `json:"maxWeaningDate" db:"weaning_date"`
-	MinBirthDate   *time.Time `json:"minBirthDate" db:"birth_date"`
-	MaxBirthDate   *time.Time `json:"maxBirthDate" db:"birth_date"`
-	Farms          *[]string  `json:"farms" db:"farm_id"`
-	PastureId      *string    `json:"pastureId" db:"pasture_id"`
-	IsActive       *bool      `json:"isActive" db:"is_active"`
+	IsFiltered   bool       `json:"isFiltered"`
+	FarmId       *string    `json:"farms" db:"farm_id"`
+	PastureId    *string    `json:"pastureId" db:"pasture_id"`
+	MinBirthDate *time.Time `json:"minBirthDate" db:"birth_date"`
+	MaxBirthDate *time.Time `json:"maxBirthDate" db:"birth_date"`
+	AnimalType   *string    `json:"animalType" db:"type"`
+	IsActive     *bool      `json:"isActive" db:"is_active"`
 }
