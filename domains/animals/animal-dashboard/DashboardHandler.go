@@ -2,8 +2,6 @@ package animalDashboard
 
 import (
 	"net/http"
-	"strconv"
-
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
@@ -17,23 +15,11 @@ func (h *DashboardHandler) GroupByYear(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	minYearStr := r.URL.Query().Get("from")
-	maxYearStr := r.URL.Query().Get("to")
-	minYear, err := strconv.Atoi(minYearStr)
-	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
-		return
-	}
-	maxYear, err := strconv.Atoi(maxYearStr)
-	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
-		return
-	}
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
-	total, err := h.Repository.GroupByYear(userId, minYear, maxYear, filter)
+	total, err := h.Repository.GroupByYear(userId, filter)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
