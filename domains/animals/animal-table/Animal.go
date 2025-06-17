@@ -37,9 +37,14 @@ type Animal struct {
 	UserId               string     `json:"userId" db:"user_id"`
 }
 
+type AnimalSearch struct {
+	Id         string `json:"id" db:"id"`
+	PublicName string `json:"publicName" db:"public_name"`
+}
+
 type AnimalSave struct {
 	Id                   string     `json:"id" db:"id"`
-	ChipId               *string     `json:"chipId" db:"chip_id"`
+	ChipId               *string    `json:"chipId" db:"chip_id"`
 	Name                 *string    `json:"name" db:"name"`
 	Color                *string    `json:"color" db:"color"`
 	WeightBirth          *float64   `json:"weightBirth" db:"weight_birth"`

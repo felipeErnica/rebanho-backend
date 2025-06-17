@@ -76,6 +76,36 @@ func (r *AnimalRepository) FindByNumber(number string, userId string) (*[]Animal
 	return repositoriesUtil.GetList[Animal](r.DB, query, number, userId)
 }
 
+func (r *AnimalRepository) SearchFather(userId string, input string) (*[]AnimalSearch, error) {
+    query := `
+        select id, concat_ws(' - ', number, name) as public_name 
+            from animals 
+        where user_id = $1 
+            and sex = 'M' 
+            and type <> 'OFFSPRING'
+            and (name is not null)
+            and concat_ws(' - ', number, name) ilike $2
+        order by public_name
+        limit 20
+    `
+    return repositoriesUtil.GetList[AnimalSearch](r.DB, query, userId, input)
+}
+
+func (r *AnimalRepository) SearchMother(userId string, input string) (*[]AnimalSearch, error) {
+    query := `
+        select id, concat_ws(' - ', number, name) as public_name 
+            from animals 
+        where user_id = $1 
+            and sex = 'F' 
+            and type <> 'OFFSPRING'
+            and (name is not null)
+            and concat_ws(' - ', number, name) ilike $2
+        order by public_name
+        limit 20
+    `
+    return repositoriesUtil.GetList[AnimalSearch](r.DB, query, userId, input)
+}
+
 func (r *AnimalRepository) Add(create *AnimalSave) (*AnimalSave, error) {
 	return repositoriesUtil.Add(r.DB, r.TableName, create)
 }

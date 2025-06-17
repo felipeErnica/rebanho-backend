@@ -81,6 +81,34 @@ func (h *AnimalHandler) FindByPastureId(w http.ResponseWriter, r *http.Request) 
     handlersUtil.ReturnPage(w, r, h.Repository, filter)
 }
 
+func (h *AnimalHandler) SearchFather(w http.ResponseWriter, r *http.Request) {
+	input := "%" + r.URL.Query().Get("input") + "%"
+    userId, ok := handlersUtil.GetUserId(w, r)
+    if !ok {
+        return
+    }
+    list, err := h.Repository.SearchFather(userId, input)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+    handlersUtil.SendList(w, list)
+}
+
+func (h *AnimalHandler) SearchMother(w http.ResponseWriter, r *http.Request) {
+	input := "%" + r.URL.Query().Get("input") + "%"
+    userId, ok := handlersUtil.GetUserId(w, r)
+    if !ok {
+        return
+    }
+    list, err := h.Repository.SearchMother(userId, input)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+    handlersUtil.SendList(w, list)
+}
+
 func (h *AnimalHandler) Add(w http.ResponseWriter, r *http.Request) {
     handlersUtil.Add(w, r, h.Repository)
 }
