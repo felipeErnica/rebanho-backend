@@ -9,6 +9,7 @@ type TotalBySex struct {
 }
 
 type AnimalsByAgeAndFarm struct {
+	FarmId        string `json:"farmId" db:"farm_id"`
 	FarmName      string `json:"farmName" db:"farm_name"`
 	NewbornMale   int    `json:"newbornMale" db:"newborn_male"`
 	NewbornFemale int    `json:"newbornFemale" db:"newborn_female"`
@@ -48,15 +49,16 @@ type AnimalByType struct {
 }
 
 type AnimalEntriesFilter struct {
-	AnimalsDashboardFilter
+	DashboardFilter
 	MinEntryDate *time.Time `json:"minEntryDate" db:"min_entry_date"`
 	MaxExitDate  *time.Time `json:"maxExitDate" db:"max_exit_date"`
 }
 
-type AnimalsDashboardFilter struct {
+type DashboardFilter struct {
 	IsFiltered   bool       `json:"isFiltered"`
-	FarmId       *string    `json:"farms" db:"farm_id"`
+	FarmId       *string    `json:"farmId" db:"farm_id"`
 	PastureId    *string    `json:"pastureId" db:"pasture_id"`
+	Sex          *string    `json:"sex" db:"sex"`
 	MinBirthDate *time.Time `json:"minBirthDate" db:"birth_date"`
 	MaxBirthDate *time.Time `json:"maxBirthDate" db:"birth_date"`
 	AnimalType   *string    `json:"animalType" db:"type"`

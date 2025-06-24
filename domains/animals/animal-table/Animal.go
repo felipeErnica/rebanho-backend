@@ -22,8 +22,9 @@ type Animal struct {
 	DeathDate            *time.Time `json:"deathDate" db:"death_date"`
 	PastureId            *string    `json:"pastureId" db:"pasture_id"`
 	PastureName          *string    `json:"pastureName" db:"pasture_name"`
+	FarmId               *string    `json:"farmId" db:"farm_id"`
+	Type                 string     `json:"type" db:"type"`
 	Status               string     `json:"status" db:"status"`
-	AnimalType           string     `json:"animalType" db:"animal_type"`
 	Isr                  float64    `json:"isr" db:"isr"`
 	AverageProd          float64    `json:"averageProd" db:"average_prod"`
 	AverageBirthInterval float64    `json:"averageBirthInterval" db:"average_birth_interval"`
@@ -32,6 +33,7 @@ type Animal struct {
 	Observation          *string    `json:"observation" db:"observation"`
 	IsDna                bool       `json:"isDna" db:"is_dna"`
 	IsGenotipagem        bool       `json:"isGenotipagem" db:"is_genotipagem"`
+	IsActive             bool       `json:"isActive" db:"is_active"`
 	CreatedAt            time.Time  `json:"createdAt" db:"created_at"`
 	DeletedAt            *time.Time `json:"deletedAt" db:"deleted_at"`
 	UserId               string     `json:"userId" db:"user_id"`

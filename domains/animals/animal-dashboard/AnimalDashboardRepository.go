@@ -15,7 +15,7 @@ func NewRepository(db *sqlx.DB) *DashboardRepository {
 
 func (r *DashboardRepository) GroupByYear(
 	userId string,
-	filter AnimalsDashboardFilter,
+	filter DashboardFilter,
 ) (*[]TotalByYear, error) {
 
 	query := `
@@ -47,7 +47,7 @@ func (r *DashboardRepository) GroupByYear(
 	return repositoriesUtil.GetGroupByResults(props)
 }
 
-func (r *DashboardRepository) TotalBySex(userId string, filter AnimalsDashboardFilter) (*TotalBySex, error) {
+func (r *DashboardRepository) TotalBySex(userId string, filter DashboardFilter) (*TotalBySex, error) {
 	isActive := true
 	filter.IsFiltered = true
 	filter.IsActive = &isActive
@@ -69,7 +69,7 @@ func (r *DashboardRepository) TotalBySex(userId string, filter AnimalsDashboardF
 	return repositoriesUtil.GetTotalResults(props)
 }
 
-func (r *DashboardRepository) TotalByType(userId string, filter AnimalsDashboardFilter) (*AnimalByType, error) {
+func (r *DashboardRepository) TotalByType(userId string, filter DashboardFilter) (*AnimalByType, error) {
 	query := `
         select
             COUNT(animals.id) FILTER (WHERE animals.type = 'BEEF_CATTLE') as beef_cattle,
@@ -88,12 +88,13 @@ func (r *DashboardRepository) TotalByType(userId string, filter AnimalsDashboard
 	return repositoriesUtil.GetTotalResults(props)
 }
 
-func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter AnimalsDashboardFilter) (*[]AnimalsByAgeAndFarm, error) {
+func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter DashboardFilter) (*[]AnimalsByAgeAndFarm, error) {
 	isActive := true
 	filter.IsFiltered = true
 	filter.IsActive = &isActive
 	query := `
         select 
+            farms.id as farm_id,
             farms.name AS farm_name,
             COUNT(animals.id) FILTER (
                 WHERE age(animals.birth_date) < interval '3 months'
@@ -156,7 +157,7 @@ func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter AnimalsDas
 	props := repositoriesUtil.GroupByProps[AnimalsByAgeAndFarm]{
 		Query:     query,
 		TableName: "animals",
-		GroupBy:   "farms.name",
+		GroupBy:   "farms.name, farms.id",
 		UserId:    userId,
 		Filter:    filter,
 		DB:        r.DB,
@@ -164,7 +165,84 @@ func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter AnimalsDas
 	return repositoriesUtil.GetGroupByResults(props)
 }
 
-func (r *DashboardRepository) GroupByAge(userId string, filter AnimalsDashboardFilter) (*[]AnimalsByAge, error) {
+func (r *DashboardRepository) GroupByAgeAndPasture(userId string, filter DashboardFilter) (*[]AnimalsByAgeAndFarm, error) {
+	isActive := true
+	filter.IsFiltered = true
+	filter.IsActive = &isActive
+	query := `
+        select 
+            pastures.id as farm_id,
+            pastures.name AS farm_name,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) < interval '3 months'
+                AND animals.sex = 'M'
+            ) AS newborn_male,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) < interval '3 months'
+                AND animals.sex = 'F'
+            ) AS newborn_female,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) between interval '3 months' and interval '9 months'
+                AND animals.sex = 'M'
+            ) AS baby_male,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) between interval '3 months' and interval '9 months'
+                AND animals.sex = 'F'
+            ) AS baby_female,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) between interval '9 months' and interval '13 months'
+                AND animals.sex = 'M'
+            ) AS child_male,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) between interval '9 months' and interval '13 months'
+                AND animals.sex = 'F'
+            ) AS child_female,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) between interval '13 months' and interval '25 months'
+                AND animals.sex = 'M'
+            ) AS young_male,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) between interval '13 months' and interval '25 months'
+                AND animals.sex = 'F'
+            ) AS young_female,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) between interval '25 months' and interval '37 months'
+                AND animals.sex = 'M'
+            ) AS adult_male,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) between interval '25 months' and interval '37 months'
+                AND animals.sex = 'F'
+            ) AS adult_female,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) > interval '37 months' 
+                AND animals.sex = 'M'
+            ) AS old_male,
+            COUNT(animals.id) FILTER (
+                WHERE age(animals.birth_date) > interval '37 months' 
+                AND animals.sex = 'F'
+            ) AS old_female,
+            COUNT(animals.id) FILTER (
+                WHERE animals.sex = 'M'
+            ) AS total_male,
+            COUNT(animals.id) FILTER (
+                WHERE animals.sex = 'F'
+            ) AS total_female,
+            COUNT(animals.id) as total 
+        FROM animals
+        LEFT JOIN pastures ON pastures.id = animals.pasture_id
+    `
+	props := repositoriesUtil.GroupByProps[AnimalsByAgeAndFarm]{
+		Query:     query,
+		TableName: "animals",
+		GroupBy:   "pastures.name, pastures.id",
+		UserId:    userId,
+		Filter:    filter,
+		DB:        r.DB,
+	}
+	return repositoriesUtil.GetGroupByResults(props)
+}
+
+func (r *DashboardRepository) GroupByAge(userId string, filter DashboardFilter) (*[]AnimalsByAge, error) {
 	query := `
         select 
             CASE 

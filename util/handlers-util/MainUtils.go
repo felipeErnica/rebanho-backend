@@ -33,7 +33,7 @@ func getPageParameters(r *http.Request) (sort string, order string, cursor strin
 }
 
 /*
-Decodifica a entidae contida no corpo da solicitação HTTP
+Decodifica a entide contida no corpo da solicitação HTTP
 e retorna um erro caso o formato esteja incorreto.
 */
 func DecodeEntity[E any](w http.ResponseWriter, r *http.Request, entity *E) bool {
@@ -124,6 +124,27 @@ func ReturnPage[E any, F any](w http.ResponseWriter, r *http.Request, repository
 }
 
 /*
+Retorna uma lista como resposta HTTP ao texto a ser pesquisado, o repositório deve conter uma função Search.
+*/
+func ReturnSearchResults[E any](
+    w http.ResponseWriter, 
+    r *http.Request, 
+    search func(string, string) (*[]E, error),
+) {
+	input := "%" + r.URL.Query().Get("input") + "%"
+	userId, ok := GetUserId(w, r)
+	if !ok {
+		return
+	}
+	list, err := search(userId, input)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+	SendList(w, list)
+}
+
+/*
 Retorna uma entidade como resposta HTTP pelo id fornecido, o repositório deve conter uma função FindById.
 */
 func FindById[E any](w http.ResponseWriter, r *http.Request, repository RepositoryFindById[E]) {
@@ -159,13 +180,12 @@ CreatedAt - Preenche o momento da criação
 UserId - Recupera o ID do usuário salvo no Contexto da requisição HTTP
 */
 func fillCreationFields[E any](w http.ResponseWriter, r *http.Request, obj *E) bool {
-    value := reflect.ValueOf(obj)
-    if value.Kind() == reflect.Pointer {
-        value = value.Elem()
-    }
+	value := reflect.ValueOf(obj)
+	if value.Kind() == reflect.Pointer {
+		value = value.Elem()
+	}
 
-
-    fieldId := value.FieldByName("Id")
+	fieldId := value.FieldByName("Id")
 	fieldUserId := value.FieldByName("UserId")
 	fieldCreatedAt := value.FieldByName("CreatedAt")
 

@@ -1,6 +1,7 @@
 package pasture
 
 import (
+	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -19,6 +20,20 @@ func NewRepository(db *sqlx.DB) *PastureRepository {
         LEFT JOIN farms ON farms.id = pastures.farm_id
     `
 	return &PastureRepository{selectQuery, "pastures", db}
+}
+
+func (r *PastureRepository) SearchPasture(userId string, input string, farmId string) (*[]entity.SearchEntity, error) {
+	query := `
+        select id, name as label 
+        from pastures 
+        where 
+            user_id = $1 
+            and name ilike $2 
+            and farm_id = $3
+            and deleted_at is null
+        order by label
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, userId, input, farmId)
 }
 
 func (r *PastureRepository) FindAll(userId string) (*[]Pasture, error) {

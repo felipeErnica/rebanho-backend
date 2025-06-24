@@ -9,6 +9,7 @@ func InitPasture(app *app.App) {
 	repository := NewRepository(app.DBconn)
 	handler := PastureHandler{repository}
 
+	app.HandleFunc("GET /farm-area/pastures/search", handler.SearchPasture)
 	app.HandleFunc("GET /farm-area/pastures", handler.FindAll)
 	app.HandleFunc("GET /farm-area/pastures/{id}", handler.FindById)
 	app.HandleFunc("POST /farm-area/pastures/add", handler.Add)
