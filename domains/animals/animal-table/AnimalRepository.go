@@ -7,105 +7,132 @@ import (
 )
 
 type AnimalRepository struct {
-	SelectQuery string
-	NullFields  []string
-	TableName   string
-	DB          *sqlx.DB
+	SelectQuery     string
+	TableName       string
+	SortExpressions []repositoriesUtil.SortExpression
+	DB              *sqlx.DB
 }
 
 func NewRepository(db *sqlx.DB) *AnimalRepository {
 	selectQuery := `
-        SELECT animals.*, 
-            father.name as father_name, father.number as father_number,
-            mother.number as mother_number, mother.name as mother_name,
-            pastures.name as pasture_name
-        FROM animals
-            LEFT JOIN animals as father ON father.id = animals.father_id
-            LEFT JOIN animals as mother ON mother.id = animals.mother_id
-            LEFT JOIN pastures ON pastures.id = animals.pasture_id
+        select animals.*, 
+            coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+            concat_ws(' - ', father.ring_number, father.name) as father_name, 
+            concat_ws(' - ', mother.ring_number, mother.name) as mother_name,
+            pastures.name as pasture_name,
+            farms.id as farm_id, farms.name as farm_name
+        from animals
+            left join animals as father ON father.id = animals.father_id
+            left join animals as mother ON mother.id = animals.mother_id
+            left join pastures ON pastures.id = animals.pasture_id
+            left join farms ON farms.id = pastures.farm_id
     `
-	nullFields := []string{
-		"chip_id",
-		"name",
-		"number",
-		"color",
-		"pasture_id",
-		"father_id",
-		"mother_id",
-		"weaning_date",
-		"birth_date",
-		"death_date",
-		"observation",
+	sortExpressions := []repositoriesUtil.SortExpression{
+		*repositoriesUtil.NewSort("name", "coalesce(animals.name, '')"),
+		*repositoriesUtil.NewSort("isr", "coalesce(animals.isr, 0)"),
+		*repositoriesUtil.NewSort("average_birth_interval", "coalesce(animals.average_birth_interval, 0)"),
+		*repositoriesUtil.NewSort("average_prod_interval", "coalesce(animals.average_prod_interval, 0)"),
+		*repositoriesUtil.NewSort("average_prod", "coalesce(animals.average_prod, 0)"),
+		*repositoriesUtil.NewSort("average_peak", "coalesce(animals.average_peak, 0)"),
+		*repositoriesUtil.NewSort("death_date", "coalesce(animals.death_date, '-infinity')"),
+		*repositoriesUtil.NewSort("weaning_date", "coalesce(animals.weaning_date, '-infinity')"),
+		*repositoriesUtil.NewSort("birth_date", "coalesce(animals.birth_date, '-infinity')"),
+		*repositoriesUtil.NewSort("animal_order", "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)"),
 	}
-	return &AnimalRepository{selectQuery, nullFields, "animals", db}
+	return &AnimalRepository{selectQuery, "animals", sortExpressions, db}
 }
 
 func (r *AnimalRepository) FindPage(props repositoriesUtil.PageProps) (page *entity.Page[Animal], err error) {
+	countQuery := `
+        select count (animals.id) as total
+        from animals
+            left join animals as father ON father.id = animals.father_id
+            left join animals as mother ON mother.id = animals.mother_id
+            left join pastures ON pastures.id = animals.pasture_id
+            left join farms ON farms.id = pastures.farm_id
+    `
 	buildProps := repositoriesUtil.PageBuilderProps{
-		QueryBody:  r.SelectQuery,
-		NullFields: r.NullFields,
-		TableName:  r.TableName,
-		DbConn:     r.DB,
-		PageProps:  props,
+		CountQuery:      countQuery,
+		QueryBody:       r.SelectQuery,
+		TableName:       r.TableName,
+		DbConn:          r.DB,
+		PageProps:       props,
+		SortExpressions: r.SortExpressions,
 	}
 	return repositoriesUtil.BuildPage[Animal](buildProps)
 }
 
 func (r *AnimalRepository) FindById(id string) (*Animal, error) {
-	query := r.SelectQuery + "WHERE animals.id = $1"
+	query := r.SelectQuery + "where animals.id = $1"
 	return repositoriesUtil.GetOne[Animal](r.DB, query, id)
 }
 
 func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]Animal, error) {
-	query := r.SelectQuery + "WHERE animals.father_id = $1"
+	query := r.SelectQuery + "where animals.father_id = $1"
 	return repositoriesUtil.GetList[Animal](r.DB, query, fatherId)
 }
 
 func (r *AnimalRepository) FindByMotherId(motherId string) (*[]Animal, error) {
-	query := r.SelectQuery + "WHERE animals.mother_id = $1"
+	query := r.SelectQuery + "where animals.mother_id = $1"
 	return repositoriesUtil.GetList[Animal](r.DB, query, motherId)
 }
 
 func (r *AnimalRepository) FindByName(name string, userId string) (*[]Animal, error) {
-	query := r.SelectQuery + "WHERE animals.name = $1 AND animals.user_id = $2"
+	query := r.SelectQuery + "where animals.name = $1 AND animals.user_id = $2"
 	return repositoriesUtil.GetList[Animal](r.DB, query, name, userId)
 }
 
-func (r *AnimalRepository) FindByNumber(number string, userId string) (*[]Animal, error) {
-	query := r.SelectQuery + "WHERE animals.number = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[Animal](r.DB, query, number, userId)
+func (r *AnimalRepository) FindByNumber(ringNumber string, userId string) (*[]Animal, error) {
+	query := r.SelectQuery + "where animals.ring_number = $1 AND animals.user_id = $2"
+	return repositoriesUtil.GetList[Animal](r.DB, query, ringNumber, userId)
 }
 
 func (r *AnimalRepository) SearchFather(userId string, input string) (*[]entity.SearchEntity, error) {
-    query := `
-        select id, concat_ws(' - ', number, name) as label 
+	query := `
+        select id, concat_ws(' - ', ring_number, name) as label 
             from animals 
         where user_id = $1 
             and sex = 'M' 
-            and type <> 'OFFSPRING'
+            and animal_type <> 'OFFSPRING'
             and (name is not null)
-            and concat_ws(' - ', number, name) ilike $2
+            and concat_ws(' - ', ring_number, name) ilike $2
             and deleted_at is null
-        order by label
+        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
         limit 20
     `
-    return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
 }
 
 func (r *AnimalRepository) SearchMother(userId string, input string) (*[]entity.SearchEntity, error) {
-    query := `
-        select id, concat_ws(' - ', number, name) as label 
+	query := `
+        select id, concat_ws(' - ', ring_number, name) as label 
             from animals 
         where user_id = $1 
             and sex = 'F' 
-            and type <> 'OFFSPRING'
+            and animal_type <> 'OFFSPRING'
             and (name is not null)
-            and concat_ws(' - ', number, name) ilike $2
+            and concat_ws(' - ', ring_number, name) ilike $2
             and deleted_at is null
-        order by label
+        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
         limit 20
     `
-    return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
+}
+
+func (r *AnimalRepository) SearchBull(userId string, input string) (*[]entity.SearchEntity, error) {
+	query := `
+        select id, concat_ws(' - ', ring_number, name) as label 
+            from animals 
+        where user_id = $1 
+            and sex = 'M' 
+            and animal_type = 'REPRODUCTION_ANIMAL'
+            and (name is not null)
+            and concat_ws(' - ', ring_number, name) ilike $2
+            and deleted_at is null
+        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
+        limit 20
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
 }
 
 func (r *AnimalRepository) Add(create *AnimalSave) (*AnimalSave, error) {

@@ -25,9 +25,7 @@ func NewRepository(db *sqlx.DB) *MilkRepository {
 }
 
 func (r *MilkRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[MilkEntry], error) {
-	nullFields := []string{}
 	props := repositoriesUtil.PageBuilderProps{
-		NullFields: nullFields,
 		QueryBody:  r.SelectQuery,
 		TableName:  r.TableName,
 		DbConn:     r.Db,

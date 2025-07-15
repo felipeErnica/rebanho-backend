@@ -89,6 +89,10 @@ func (h *AnimalHandler) SearchMother(w http.ResponseWriter, r *http.Request) {
     handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchMother)
 }
 
+func (h *AnimalHandler) SearchBull(w http.ResponseWriter, r *http.Request) {
+    handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchBull)
+}
+
 func (h *AnimalHandler) Add(w http.ResponseWriter, r *http.Request) {
     handlersUtil.Add(w, r, h.Repository)
 }

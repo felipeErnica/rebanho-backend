@@ -2,39 +2,47 @@ package repositoriesUtil
 
 import (
 	"fmt"
-	"slices"
-	"strings"
 )
 
+type SortExpression struct {
+	Column     string
+	Expression string
+}
+
+func NewSort(column string, statement string) *SortExpression {
+	return &SortExpression{
+		Column:     column,
+		Expression: statement,
+	}
+}
+
 type PageQueryProps struct {
-	QueryBody  string
-	Sort       string
-	Order      string
-	Limit      int
-	IsNull     bool
-	NullFields []string
-	Cursor     string
-	Filter     any
-	TableName  string
+	CountQuery      string
+	QueryBody       string
+	Sort            string
+	Order           string
+	Limit           int
+	Cursor          string
+	Filter          any
+	TableName       string
+	SortExpressions []SortExpression
 }
 
 func buildSortStatement(props PageQueryProps) string {
-	orderField := fmt.Sprintf("%s.%s", props.TableName, props.Sort) + " " + strings.ToUpper(props.Order)
-	sortStatement := fmt.Sprintf("ORDER BY %s, %s.created_at DESC", orderField, props.TableName)
-
-	if isNullable(props.Sort, props.NullFields) {
-		nullStatement := "NULLS FIRST"
-		if props.Order == "asc" {
-			nullStatement = "NULLS LAST"
+	for _, condition := range props.SortExpressions {
+		if condition.Column == props.Sort {
+			return condition.Expression
 		}
-		orderField = orderField + " " + nullStatement
-		sortStatement = fmt.Sprintf("ORDER BY %s, %s.created_at DESC", orderField, props.TableName)
 	}
-	return sortStatement
+	return fmt.Sprintf("%s.%s", props.TableName, props.Sort)
 }
 
-func isNullable(sort string, nullFields []string) bool {
-	return slices.Contains(nullFields, sort)
+func buildOrderStatement(props PageQueryProps) string {
+	paramField := buildSortStatement(props) + " " + props.Order
+	createdAtField := fmt.Sprintf("%s.created_at", props.TableName)
+	idField := fmt.Sprintf("%s.id", props.TableName)
+	sortStatement := fmt.Sprintf("order by %s, %s, %s", paramField, createdAtField, idField)
+	return sortStatement
 }
 
 func buildWhereStatement(props PageQueryProps) (whereStatement string, err error) {
@@ -44,10 +52,10 @@ func buildWhereStatement(props PageQueryProps) (whereStatement string, err error
 	}
 	numParam := 1
 
-	whereStatement = fmt.Sprintf("WHERE %[1]s.deleted_at is null AND %[1]s.user_id = $%[2]d", props.TableName, numParam)
+	whereStatement = fmt.Sprintf("where %[1]s.deleted_at is null and %[1]s.user_id = $%[2]d", props.TableName, numParam)
 	numParam++
 	if isFiltered(props.Filter) {
-		filterStatements, filterParam, err := buildFilterStatements(props.Filter, props.TableName, numParam)
+		filterStatements, filterParam, err := BuildFilterExpressions(props.Filter, props.TableName, numParam)
 		if err != nil {
 			return whereStatement, err
 		}
@@ -59,25 +67,34 @@ func buildWhereStatement(props PageQueryProps) (whereStatement string, err error
 		return whereStatement, err
 	}
 
-	paginationCriteria := fmt.Sprintf("(%[1]s.%[2]s, %[1]s.created_at) %[3]s ($%[4]d, $%[5]d)",
-		props.TableName, props.Sort, signal, numParam, numParam + 1)
-	if props.IsNull {
-		paginationCriteria = fmt.Sprintf("%[1]s.%[2]s is null OR (%[1]s.%[2]s is not null and %[1]s.created_at %[3]% $%[4]d)",
-			props.TableName, props.Sort, signal, numParam)
-	}
-
-	whereStatement = whereStatement + " AND " + paginationCriteria
+	paramField := buildSortStatement(props)
+	createdAtField := fmt.Sprintf("%s.created_at", props.TableName)
+	idField := fmt.Sprintf("%s.id", props.TableName)
+	fieldsExpression := fmt.Sprintf("%s, %s, %s", paramField, createdAtField, idField)
+	paramsExpression := fmt.Sprintf("$%d, $%d, $%d", numParam, numParam+1, numParam+2)
+	paginationCriteria := fmt.Sprintf("(%s) %s (%s)", fieldsExpression, signal, paramsExpression)
+	whereStatement = whereStatement + " and " + paginationCriteria
 	return whereStatement, err
 }
 
 func buildPageQuery(props PageQueryProps) (query string, err error) {
-	whereStatement, err := buildWhereStatement(props)
+    whereStatement, err := buildWhereStatement(props)
 	if err != nil {
 		return query, err
 	}
-
-	sortStatement := buildSortStatement(props)
-	limitStatement := fmt.Sprintf("LIMIT %d", props.Limit)
+	sortStatement := buildOrderStatement(props)
+	limitStatement := fmt.Sprintf("limit %d", props.Limit)
 	query = props.QueryBody + "\n" + whereStatement + "\n" + sortStatement + "\n" + limitStatement
 	return query, err
+}
+
+func buildCountQuery(props PageQueryProps) (string, error) {
+    whereStatement := fmt.Sprintf("where %[1]s.deleted_at is null and %[1]s.user_id = $1", props.TableName)
+	filterStatement, _, err := BuildFilterExpressions(props.Filter, props.TableName, 2)
+	if err != nil {
+		return "", err
+	}
+    whereStatement = whereStatement + filterStatement
+    query := props.CountQuery + "\n" + whereStatement
+    return query, err
 }

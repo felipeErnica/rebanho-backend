@@ -8,10 +8,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 /*
-Cria um novo cursor com a informação do último objeto da lista. 
+Cria um novo cursor com a informação do último objeto da lista.
 Os parâmetros são selecionados com base na coluna de ordenamento e na data de criação
 */
 func createCursorKey[E any](sort string, list []E) (cursor string, err error) {
@@ -40,36 +42,56 @@ func createCursorKey[E any](sort string, list []E) (cursor string, err error) {
 
 	firstParam := getFirstParam(value)
 	createdAt := values.FieldByName("CreatedAt").Interface()
-	secondParam, ok := createdAt.(time.Time)
+	id := values.FieldByName("Id").Interface()
+	castCreatedAt, ok := createdAt.(time.Time)
 	if !ok {
 		err = errors.New("Formato de CreatedAt não é data")
 		return
 	}
+	castId, ok := id.(uuid.UUID)
+	if !ok {
+		err = errors.New("Formato de Id não é data")
+		return
+	}
 
-	data := fmt.Sprintf("%s,%s", firstParam, secondParam.Format(time.RFC3339Nano))
+	data := fmt.Sprintf("%s,%s,%s", firstParam, castCreatedAt.Format(time.RFC3339Nano), castId)
 	cursor = base64.StdEncoding.EncodeToString([]byte(data))
 	return cursor, err
 }
 
-/*Converte o valor do parâmetros para texto, se o valor for nulo,
+/*
+Converte o valor do parâmetros para texto, se o valor for nulo,
 retorna "null", se for data, insere o prefixo {date} para tratamento
-apropiado posteriormente*/
+apropiado posteriormente
+*/
 func getFirstParam(value any) string {
 	switch t := value.(type) {
 	case *string:
-		param := "null"
+		param := ""
 		if t != nil {
 			param = *t
 		}
 		return param
-	case string:
-		return t
 	case *time.Time:
-		param := "null"
+		param := "-infinity"
 		if t != nil {
-			param = fmt.Sprintf("date%s", t.Format(time.RFC3339Nano))
+			param = fmt.Sprintf("{date}%s", t.Format(time.RFC3339Nano))
 		}
 		return param
+	case *int:
+		param := "0"
+		if t != nil {
+			param = fmt.Sprintf("%d", *t)
+		}
+		return param
+	case *float64:
+		param := "0"
+		if t != nil {
+			param = fmt.Sprintf("%f", *t)
+		}
+		return param
+	case string:
+		return t
 	case time.Time:
 		return fmt.Sprintf("{date}%s", t.Format(time.RFC3339Nano))
 	case float64:
@@ -84,41 +106,44 @@ func getFirstParam(value any) string {
 }
 
 /*Decodificação do Cursor, para obter as informações necessárias para a próxima página*/
-func decodeCursor(cursor string) (firstParam any, secondParam *time.Time, err error) {
+func decodeCursor(cursor string) (any, *time.Time, uuid.UUID, error) {
 	if cursor == "" {
-		return
+		return nil, nil, uuid.Nil, nil
 	}
 
 	byt, err := base64.StdEncoding.DecodeString(cursor)
 	if err != nil {
-		return
+		return nil, nil, uuid.Nil, err
 	}
 
 	arrKey := strings.Split(string(byt), ",")
-	if len(arrKey) != 2 {
+	if len(arrKey) != 3 {
 		err = errors.New("cursor is invalid")
-		return
+		return nil, nil, uuid.Nil, err
 	}
 
-	parsedSecond, err := time.Parse(time.RFC3339Nano, arrKey[1])
+	parsedCreatedAt, err := time.Parse(time.RFC3339Nano, arrKey[1])
 	if err != nil {
-		return arrKey[0], &parsedSecond, err
+		return nil, nil, uuid.Nil, err
+	}
+
+	parsedId, err := uuid.Parse(arrKey[2])
+	if err != nil {
+		return nil, nil, uuid.Nil, err
 	}
 
 	if arrKey[0] == "null" {
-		return nil, &parsedSecond, err
+		return nil, &parsedCreatedAt, parsedId, nil
 	}
 
-    //Tratamento de valores de data, verificando e apagando o prefixo
+	//Tratamento de valores de data, verificando e apagando o prefixo
 	if strings.HasPrefix(arrKey[0], "{date}") {
 		date := strings.ReplaceAll(arrKey[0], "{date}", "")
-		firstParam, err = time.Parse(time.RFC3339Nano, date)
+		firstParam, err := time.Parse(time.RFC3339Nano, date)
 		if err != nil {
-			return
+			return nil, nil, uuid.Nil, err
 		}
-		return firstParam, &parsedSecond, err
+		return firstParam, &parsedCreatedAt, parsedId, err
 	}
-
-	firstParam = arrKey[0]
-	return firstParam, &parsedSecond, err
+	return arrKey[0], &parsedCreatedAt, parsedId, err
 }

@@ -1,12 +1,13 @@
 package repositoriesUtil
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -19,11 +20,12 @@ type PageProps struct {
 }
 
 type PageBuilderProps struct {
-	QueryBody  string
-	Limit      *int
-	NullFields []string
-	TableName  string
-	DbConn     *sqlx.DB
+	QueryBody       string
+	CountQuery      string
+	Limit           *int
+	TableName       string
+	DbConn          *sqlx.DB
+	SortExpressions []SortExpression
 	PageProps
 }
 
@@ -33,7 +35,8 @@ type PageSelectionProps[E any] struct {
 	Query       string
 	IsFirstPage bool
 	FirstParam  any
-	SecondParam *time.Time
+	CreatedAt   *time.Time
+	Id          uuid.UUID
 	DbConn      *sqlx.DB
 	UserId      string
 }
@@ -42,9 +45,9 @@ type PageSelectionProps[E any] struct {
 func getPageList[E any](props PageSelectionProps[E]) error {
 	query := strings.Join(strings.Fields(props.Query), " ")
 	db := props.DbConn
-	filterArgs := getFilterArgs(props.Filter)
+	filterArgs := GetFilterArgs(props.Filter)
 	args := []any{props.UserId}
-	fmt.Println(query)
+	util.LogInfo(query, true)
 
 	//Constrói a lista de paramêtros da solicitação, levando em conta
 	//a paginação e os critério de filtro.
@@ -56,8 +59,12 @@ func getPageList[E any](props PageSelectionProps[E]) error {
 		args = append(args, props.FirstParam)
 	}
 
-	if props.SecondParam != nil {
-		args = append(args, props.SecondParam)
+	if props.CreatedAt != nil {
+		args = append(args, props.CreatedAt)
+	}
+
+	if props.Id != uuid.Nil {
+		args = append(args, props.Id)
 	}
 
 	err := db.Select(props.Dest, query, args...)
@@ -68,25 +75,56 @@ func getPageList[E any](props PageSelectionProps[E]) error {
 	return nil
 }
 
+func getSliceArgs(slice []string, args []any) []any {
+	for _, arg := range slice {
+		args = append(args, arg)
+	}
+	return args
+}
+
 /*Constrói e organiza os valores do filtro*/
-func getFilterArgs(filter any) []any {
+func GetFilterArgs(filter any) []any {
 	values := reflect.ValueOf(filter)
+	fields := reflect.TypeOf(filter)
 	if values.Kind() == reflect.Pointer {
 		values = values.Elem()
+		fields = fields.Elem()
 	}
 
 	args := []any{}
 	for i := 1; i < values.NumField(); i++ {
-		field := values.Field(i)
-		if !field.IsNil() {
-			value := field.Elem().Interface()
-			if field.Elem().Type().String() == "string" {
+		fieldValue := values.Field(i)
+		fieldType := fields.Field(i)
+		if !fieldValue.IsNil() {
+			value := fieldValue.Elem().Interface()
+			if fieldValue.Elem().Type().String() == "string" && !strings.HasSuffix(fieldType.Name, "Id") {
 				value = "%" + value.(string) + "%"
 			}
-			args = append(args, value)
+			if fieldValue.Elem().Kind() == reflect.Slice {
+				slice := fieldValue.Elem().Interface().([]string)
+				args = getSliceArgs(slice, args)
+			} else {
+				args = append(args, value)
+			}
 		}
 	}
 	return args
+}
+
+func getTotalCount(query string, userId string, filter any, db *sqlx.DB) (int, error) {
+	query = strings.Join(strings.Fields(query), " ")
+	args := []any{userId}
+	filterArgs := GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+    util.LogInfo(query, true)
+	result := db.QueryRow(query, args...)
+    if result.Err() != nil {
+        return 0, result.Err()
+    }
+
+    var total int
+    result.Scan(&total)
+	return total, nil
 }
 
 /*
@@ -98,7 +136,7 @@ filter - Critérios de filtro (valores e campo)
 */
 func BuildPage[E any](props PageBuilderProps) (page *entity.Page[E], err error) {
 
-	firstParam, secondParam, err := decodeCursor(props.Cursor)
+	firstParam, createdAt, id, err := decodeCursor(props.Cursor)
 	if err != nil {
 		return
 	}
@@ -111,18 +149,27 @@ func BuildPage[E any](props PageBuilderProps) (page *entity.Page[E], err error) 
 	}
 
 	pageProps := PageQueryProps{
-		Filter:     props.Filter,
-		QueryBody:  props.QueryBody,
-		Sort:       props.Sort,
-		Order:      props.Order,
-		Limit:      limit,
-		IsNull:     firstParam == nil,
-		Cursor:     props.Cursor,
-		NullFields: props.NullFields,
-		TableName:  props.TableName,
+		Filter:          props.Filter,
+		CountQuery:      props.CountQuery,
+		QueryBody:       props.QueryBody,
+		Sort:            props.Sort,
+		Order:           props.Order,
+		Limit:           limit,
+		Cursor:          props.Cursor,
+		TableName:       props.TableName,
+		SortExpressions: props.SortExpressions,
 	}
 
 	query, err := buildPageQuery(pageProps)
+	if err != nil {
+		return page, err
+	}
+
+	countQuery, err := buildCountQuery(pageProps)
+	if err != nil {
+		return page, err
+	}
+	total, err := getTotalCount(countQuery, props.UserId, props.Filter, props.DbConn)
 	if err != nil {
 		return page, err
 	}
@@ -134,7 +181,8 @@ func BuildPage[E any](props PageBuilderProps) (page *entity.Page[E], err error) 
 		Query:       query,
 		IsFirstPage: props.Cursor == "",
 		FirstParam:  firstParam,
-		SecondParam: secondParam,
+		CreatedAt:   createdAt,
+		Id:          id,
 		Filter:      props.Filter,
 		DbConn:      props.DbConn,
 		UserId:      props.UserId,
@@ -153,6 +201,7 @@ func BuildPage[E any](props PageBuilderProps) (page *entity.Page[E], err error) 
 	//Criação da página
 	page = &entity.Page[E]{
 		List:        &list,
+		Total:       total,
 		HasNextPage: len(list) >= limit,
 		NextCursor:  nextCursor,
 	}

@@ -28,22 +28,12 @@ func NewRepository(db *sqlx.DB) *SlaughterEntryRepository {
 }
 
 func (r *SlaughterEntryRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[SlaughterEntry], error) {
-
-	nullFields := []string{
-		"animal_name",
-		"animal_order",
-		"animal_number",
-		"animal_birth",
-	}
-
 	props := repositoriesUtil.PageBuilderProps{
 		QueryBody:  r.SelectQuery,
-		NullFields: nullFields,
 		TableName:  r.TableName,
 		DbConn:     r.Db,
 		PageProps:  pageProps,
 	}
-
 	return repositoriesUtil.BuildPage[SlaughterEntry](props)
 }
 

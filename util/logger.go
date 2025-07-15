@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 )
@@ -9,10 +10,13 @@ var handler = slog.NewTextHandler(os.Stdout, nil)
 var logger = slog.New(handler)
 
 func LogDomainsInit(name string) {
-    LogInfo("Domínio de " + name + " iniciado com sucesso!")
+    LogInfo("Domínio de " + name + " iniciado com sucesso!", false)
 }
 
-func LogInfo(msg string) {
+func LogInfo(msg string, jumpLine bool) {
+    if jumpLine {
+        fmt.Println()
+    }
     logger.Info(msg)
 }
 

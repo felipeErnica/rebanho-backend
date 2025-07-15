@@ -56,6 +56,7 @@ func GetUserId(w http.ResponseWriter, r *http.Request) (string, bool) {
 		serverErrors.DatabaseGetError(err, w)
 		return userId, false
 	}
+
 	return userId, true
 }
 
@@ -127,9 +128,9 @@ func ReturnPage[E any, F any](w http.ResponseWriter, r *http.Request, repository
 Retorna uma lista como resposta HTTP ao texto a ser pesquisado, o repositório deve conter uma função Search.
 */
 func ReturnSearchResults[E any](
-    w http.ResponseWriter, 
-    r *http.Request, 
-    search func(string, string) (*[]E, error),
+	w http.ResponseWriter,
+	r *http.Request,
+	search func(string, string) (*[]E, error),
 ) {
 	input := "%" + r.URL.Query().Get("input") + "%"
 	userId, ok := GetUserId(w, r)

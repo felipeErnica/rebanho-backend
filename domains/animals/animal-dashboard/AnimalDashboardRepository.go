@@ -19,19 +19,19 @@ func (r *DashboardRepository) GroupByYear(
 ) (*[]TotalByYear, error) {
 
 	query := `
-        WITH min_max as (
+        with min_max as (
             select 
-                min(make_date(extract(year from entry_date)::int,12,31)) as min_date, 
-                max(make_date(extract(year from entry_date)::int,12,31)) as max_date 
+                min(make_date(extract(year from entry_date)::int, 12, 31)) as min_date, 
+                max(make_date(extract(year from entry_date)::int, 12, 31)) as max_date 
             from animal_entries
         ),
-        date_series AS (select generate_series(min_date, max_date, interval '1 year') as year from min_max)
+        date_series as (select generate_series(min_date, max_date, interval '1 year') as year from min_max)
         select 
-            EXTRACT(YEAR FROM date_series.year) as year,
+            extract(year from date_series.year) as year,
             count(animal_id) as total_animals
-        FROM animal_entries as entries
-            JOIN date_series ON entries.entry_date <= date_series.year
-            AND (entries.exit_date IS NULL OR entries.exit_date > date_series.year)
+        from animal_entries as entries
+            join date_series on entries.entry_date <= date_series.year
+            and (entries.exit_date is null or entries.exit_date > date_series.year)
     `
 
 	props := repositoriesUtil.GroupByProps[TotalByYear]{
@@ -48,21 +48,21 @@ func (r *DashboardRepository) GroupByYear(
 }
 
 func (r *DashboardRepository) TotalBySex(userId string, filter DashboardFilter) (*TotalBySex, error) {
-	isActive := true
-	filter.IsFiltered = true
-	filter.IsActive = &isActive
 	query := `
         select
-            COUNT(animals.id) as total_animals,
-            COUNT(animals.id) FILTER (WHERE animals.sex = 'F') as total_females,
-            COUNT(animals.id) FILTER (WHERE animals.sex = 'M') as total_males
-        FROM animals
+            count(animals.id) as total_animals,
+            count(animals.id) filter (where animals.sex = 'F') as total_females,
+            count(animals.id) filter (where animals.sex = 'M') as total_males
+        from animals
     `
+	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
+
 	props := repositoriesUtil.TotalProps[TotalBySex]{
 		Query:     query,
 		TableName: "animals",
 		UserId:    userId,
 		Filter:    filter,
+		Where:     where,
 		DB:        r.DB,
 	}
 
@@ -72,171 +72,173 @@ func (r *DashboardRepository) TotalBySex(userId string, filter DashboardFilter) 
 func (r *DashboardRepository) TotalByType(userId string, filter DashboardFilter) (*AnimalByType, error) {
 	query := `
         select
-            COUNT(animals.id) FILTER (WHERE animals.type = 'BEEF_CATTLE') as beef_cattle,
-            COUNT(animals.id) FILTER (WHERE animals.type = 'DAIRY_CATTLE') as dairy_cattle, 
-            COUNT(animals.id) FILTER (WHERE animals.type = 'REPRODUCTION_ANIMALS') as reproduction_animals, 
-            COUNT(animals.id) FILTER (WHERE animals.type = 'OFFSPRING') as offspring
-        FROM animals
+            count(animals.id) filter (where animals.animal_type = 'BEEF_ANIMAL') as beef_cattle,
+            count(animals.id) filter (where animals.animal_type = 'DAIRY_ANIMAL') as dairy_cattle, 
+            count(animals.id) filter (where animals.animal_type = 'REPRODUCTION_ANIMAL') as reproduction_animals, 
+            count(animals.id) filter (where animals.animal_type = 'OFFSPRING') as offspring
+        from animals
     `
+	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
 	props := repositoriesUtil.TotalProps[AnimalByType]{
 		Query:     query,
 		TableName: "animals",
 		UserId:    userId,
 		Filter:    filter,
+		Where:     where,
 		DB:        r.DB,
 	}
 	return repositoriesUtil.GetTotalResults(props)
 }
 
 func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter DashboardFilter) (*[]AnimalsByAgeAndFarm, error) {
-	isActive := true
-	filter.IsFiltered = true
-	filter.IsActive = &isActive
 	query := `
         select 
             farms.id as farm_id,
-            farms.name AS farm_name,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) < interval '3 months'
-                AND animals.sex = 'M'
-            ) AS newborn_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) < interval '3 months'
-                AND animals.sex = 'F'
-            ) AS newborn_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '3 months' and interval '9 months'
-                AND animals.sex = 'M'
-            ) AS baby_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '3 months' and interval '9 months'
-                AND animals.sex = 'F'
-            ) AS baby_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '9 months' and interval '13 months'
-                AND animals.sex = 'M'
-            ) AS child_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '9 months' and interval '13 months'
-                AND animals.sex = 'F'
-            ) AS child_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '13 months' and interval '25 months'
-                AND animals.sex = 'M'
-            ) AS young_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '13 months' and interval '25 months'
-                AND animals.sex = 'F'
-            ) AS young_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '25 months' and interval '37 months'
-                AND animals.sex = 'M'
-            ) AS adult_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '25 months' and interval '37 months'
-                AND animals.sex = 'F'
-            ) AS adult_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) > interval '37 months' 
-                AND animals.sex = 'M'
-            ) AS old_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) > interval '37 months' 
-                AND animals.sex = 'F'
-            ) AS old_female,
-            COUNT(animals.id) FILTER (
-                WHERE animals.sex = 'M'
-            ) AS total_male,
-            COUNT(animals.id) FILTER (
-                WHERE animals.sex = 'F'
-            ) AS total_female,
-            COUNT(animals.id) as total 
-        FROM animals
-        LEFT JOIN farms ON farms.id = animals.farm_id
+            farms.name as farm_name,
+            count(animals.id) filter (
+                where age(animals.birth_date) < interval '3 months'
+                and animals.sex = 'M'
+            ) as newborn_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) < interval '3 months'
+                and animals.sex = 'F'
+            ) as newborn_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '3 months' and interval '9 months'
+                and animals.sex = 'M'
+            ) as baby_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '3 months' and interval '9 months'
+                and animals.sex = 'F'
+            ) as baby_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '9 months' and interval '13 months'
+                and animals.sex = 'M'
+            ) as child_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '9 months' and interval '13 months'
+                and animals.sex = 'F'
+            ) as child_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '13 months' and interval '25 months'
+                and animals.sex = 'M'
+            ) as young_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '13 months' and interval '25 months'
+                and animals.sex = 'F'
+            ) as young_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '25 months' and interval '37 months'
+                and animals.sex = 'M'
+            ) as adult_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '25 months' and interval '37 months'
+                and animals.sex = 'F'
+            ) as adult_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) > interval '37 months' 
+                and animals.sex = 'M'
+            ) as old_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) > interval '37 months' 
+                and animals.sex = 'F'
+            ) as old_female,
+            count(animals.id) filter (
+                where animals.sex = 'M'
+            ) as total_male,
+            count(animals.id) filter (
+                where animals.sex = 'F'
+            ) as total_female,
+            count(animals.id) as total 
+        from animals
+        left join pastures on pastures.id = animals.pasture_id
+        left join farms on farms.id = pastures.farm_id
     `
+	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
 	props := repositoriesUtil.GroupByProps[AnimalsByAgeAndFarm]{
 		Query:     query,
 		TableName: "animals",
 		GroupBy:   "farms.name, farms.id",
 		UserId:    userId,
 		Filter:    filter,
+		Where:     where,
 		DB:        r.DB,
 	}
 	return repositoriesUtil.GetGroupByResults(props)
 }
 
 func (r *DashboardRepository) GroupByAgeAndPasture(userId string, filter DashboardFilter) (*[]AnimalsByAgeAndFarm, error) {
-	isActive := true
-	filter.IsFiltered = true
-	filter.IsActive = &isActive
 	query := `
         select 
             pastures.id as farm_id,
-            pastures.name AS farm_name,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) < interval '3 months'
-                AND animals.sex = 'M'
-            ) AS newborn_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) < interval '3 months'
-                AND animals.sex = 'F'
-            ) AS newborn_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '3 months' and interval '9 months'
-                AND animals.sex = 'M'
-            ) AS baby_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '3 months' and interval '9 months'
-                AND animals.sex = 'F'
-            ) AS baby_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '9 months' and interval '13 months'
-                AND animals.sex = 'M'
-            ) AS child_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '9 months' and interval '13 months'
-                AND animals.sex = 'F'
-            ) AS child_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '13 months' and interval '25 months'
-                AND animals.sex = 'M'
-            ) AS young_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '13 months' and interval '25 months'
-                AND animals.sex = 'F'
-            ) AS young_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '25 months' and interval '37 months'
-                AND animals.sex = 'M'
-            ) AS adult_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) between interval '25 months' and interval '37 months'
-                AND animals.sex = 'F'
-            ) AS adult_female,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) > interval '37 months' 
-                AND animals.sex = 'M'
-            ) AS old_male,
-            COUNT(animals.id) FILTER (
-                WHERE age(animals.birth_date) > interval '37 months' 
-                AND animals.sex = 'F'
-            ) AS old_female,
-            COUNT(animals.id) FILTER (
-                WHERE animals.sex = 'M'
-            ) AS total_male,
-            COUNT(animals.id) FILTER (
-                WHERE animals.sex = 'F'
-            ) AS total_female,
-            COUNT(animals.id) as total 
-        FROM animals
-        LEFT JOIN pastures ON pastures.id = animals.pasture_id
+            pastures.name as farm_name,
+            count(animals.id) filter (
+                where age(animals.birth_date) < interval '3 months'
+                and animals.sex = 'M'
+            ) as newborn_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) < interval '3 months'
+                and animals.sex = 'F'
+            ) as newborn_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '3 months' and interval '9 months'
+                and animals.sex = 'M'
+            ) as baby_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '3 months' and interval '9 months'
+                and animals.sex = 'F'
+            ) as baby_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '9 months' and interval '13 months'
+                and animals.sex = 'M'
+            ) as child_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '9 months' and interval '13 months'
+                and animals.sex = 'F'
+            ) as child_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '13 months' and interval '25 months'
+                and animals.sex = 'M'
+            ) as young_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '13 months' and interval '25 months'
+                and animals.sex = 'F'
+            ) as young_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '25 months' and interval '37 months'
+                and animals.sex = 'M'
+            ) as adult_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) between interval '25 months' and interval '37 months'
+                and animals.sex = 'F'
+            ) as adult_female,
+            count(animals.id) filter (
+                where age(animals.birth_date) > interval '37 months' 
+                and animals.sex = 'M'
+            ) as old_male,
+            count(animals.id) filter (
+                where age(animals.birth_date) > interval '37 months' 
+                and animals.sex = 'F'
+            ) as old_female,
+            count(animals.id) filter (
+                where animals.sex = 'M'
+            ) as total_male,
+            count(animals.id) filter (
+                where animals.sex = 'F'
+            ) as total_female,
+            count(animals.id) as total 
+        from animals
+        left join pastures on pastures.id = animals.pasture_id
     `
+	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
 	props := repositoriesUtil.GroupByProps[AnimalsByAgeAndFarm]{
 		Query:     query,
 		TableName: "animals",
 		GroupBy:   "pastures.name, pastures.id",
 		UserId:    userId,
 		Filter:    filter,
+		Where:     where,
+		OrderBy:   "pastures.name",
 		DB:        r.DB,
 	}
 	return repositoriesUtil.GetGroupByResults(props)
@@ -245,28 +247,30 @@ func (r *DashboardRepository) GroupByAgeAndPasture(userId string, filter Dashboa
 func (r *DashboardRepository) GroupByAge(userId string, filter DashboardFilter) (*[]AnimalsByAge, error) {
 	query := `
         select 
-            CASE 
-                WHEN age(animals.birth_date) < interval '3 months' THEN '0-2 meses'
-                WHEN age(animals.birth_date) BETWEEN interval '3 months' AND interval '9 months' THEN '3-8 meses'
-                WHEN age(animals.birth_date) BETWEEN interval '9 months' AND interval '13 months' THEN '9-12 meses'
-                WHEN age(animals.birth_date) BETWEEN interval '13 months' AND interval '25 months' THEN '13-24 meses'
-                WHEN age(animals.birth_date) BETWEEN interval '25 months' AND interval '37 months' THEN '25-36 meses'
-                WHEN age(animals.birth_date) > interval '37 months' THEN '+36 meses'
-                ELSE 'Desconhecido'
-            END AS age_category,
-            MAX(animals.birth_date) as max_birth_date,
-            MIN(animals.birth_date) as min_birth_date,
-            COUNT(animals.id) FILTER (WHERE animals.sex = 'M') as male,
-            COUNT(animals.id) FILTER (WHERE animals.sex = 'F') as female
-        FROM animals
+            case 
+                when age(animals.birth_date) < interval '3 months' then '0-2 meses'
+                when age(animals.birth_date) between interval '3 months' and interval '9 months' then '3-8 meses'
+                when age(animals.birth_date) between interval '9 months' and interval '13 months' then '9-12 meses'
+                when age(animals.birth_date) between interval '13 months' and interval '25 months' then '13-24 meses'
+                when age(animals.birth_date) between interval '25 months' and interval '37 months' then '25-36 meses'
+                when age(animals.birth_date) > interval '37 months' then '+36 meses'
+                else 'Desconhecido'
+            end as age_category,
+            max(animals.birth_date) as max_birth_date,
+            min(animals.birth_date) as min_birth_date,
+            count(animals.id) filter (where animals.sex = 'M') as male,
+            count(animals.id) filter (where animals.sex = 'F') as female
+        from animals
     `
+	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
 	props := repositoriesUtil.GroupByProps[AnimalsByAge]{
 		Query:     query,
 		TableName: "animals",
 		GroupBy:   "age_category",
-		OrderBy:   "min_birth_date DESC",
+		OrderBy:   "min_birth_date desc",
 		UserId:    userId,
 		Filter:    filter,
+		Where:     where,
 		DB:        r.DB,
 	}
 	return repositoriesUtil.GetGroupByResults(props)

@@ -23,12 +23,9 @@ func NewRepository(db *sqlx.DB) *LossRepository {
 }
 
 func (r *LossRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[PregnancyLoss], error) {
-
-	nullFields := []string{"observation"}
 	props := repositoriesUtil.PageBuilderProps{
 		QueryBody:  r.SelectQuery,
 		PageProps:  pageProps,
-		NullFields: nullFields,
 		TableName:  r.TableName,
 		DbConn:     r.Db,
 	}

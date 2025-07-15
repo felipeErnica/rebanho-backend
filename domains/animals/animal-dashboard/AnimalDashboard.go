@@ -1,6 +1,10 @@
 package animalDashboard
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type TotalBySex struct {
 	TotalAnimals int `json:"totalAnimals" db:"total_animals"`
@@ -9,31 +13,31 @@ type TotalBySex struct {
 }
 
 type AnimalsByAgeAndFarm struct {
-	FarmId        string `json:"farmId" db:"farm_id"`
-	FarmName      string `json:"farmName" db:"farm_name"`
-	NewbornMale   int    `json:"newbornMale" db:"newborn_male"`
-	NewbornFemale int    `json:"newbornFemale" db:"newborn_female"`
-	BabyMale      int    `json:"babyMale" db:"baby_male"`
-	BabyFemale    int    `json:"babyFemale" db:"baby_female"`
-	ChildMale     int    `json:"childMale" db:"child_male"`
-	ChildFemale   int    `json:"childFemale" db:"child_female"`
-	YoungMale     int    `json:"youngMale" db:"young_male"`
-	YoungFemale   int    `json:"youngFemale" db:"young_female"`
-	AdultMale     int    `json:"adultMale" db:"adult_male"`
-	AdultFemale   int    `json:"adultFemale" db:"adult_female"`
-	OldMale       int    `json:"oldMale" db:"old_male"`
-	OldFemale     int    `json:"oldFemale" db:"old_female"`
-	TotalMale     int    `json:"totalMale" db:"total_male"`
-	TotalFemale   int    `json:"totalFemale" db:"total_female"`
-	Total         int    `json:"total" db:"total"`
+	FarmId        *uuid.UUID `json:"farmId" db:"farm_id"`
+	FarmName      *string    `json:"farmName" db:"farm_name"`
+	NewbornMale   int        `json:"newbornMale" db:"newborn_male"`
+	NewbornFemale int        `json:"newbornFemale" db:"newborn_female"`
+	BabyMale      int        `json:"babyMale" db:"baby_male"`
+	BabyFemale    int        `json:"babyFemale" db:"baby_female"`
+	ChildMale     int        `json:"childMale" db:"child_male"`
+	ChildFemale   int        `json:"childFemale" db:"child_female"`
+	YoungMale     int        `json:"youngMale" db:"young_male"`
+	YoungFemale   int        `json:"youngFemale" db:"young_female"`
+	AdultMale     int        `json:"adultMale" db:"adult_male"`
+	AdultFemale   int        `json:"adultFemale" db:"adult_female"`
+	OldMale       int        `json:"oldMale" db:"old_male"`
+	OldFemale     int        `json:"oldFemale" db:"old_female"`
+	TotalMale     int        `json:"totalMale" db:"total_male"`
+	TotalFemale   int        `json:"totalFemale" db:"total_female"`
+	Total         int        `json:"total" db:"total"`
 }
 
 type AnimalsByAge struct {
-	AgeCategory  string    `json:"ageCategory" db:"age_category"`
-	MinBirthDate time.Time `json:"minBirthDate" db:"min_birth_date"`
-	MaxBirthDate time.Time `json:"maxBirthDate" db:"max_birth_date"`
-	Male         int       `json:"male" db:"male"`
-	Female       int       `json:"female" db:"female"`
+	AgeCategory  string     `json:"ageCategory" db:"age_category"`
+	MinBirthDate *time.Time `json:"minBirthDate" db:"min_birth_date"`
+	MaxBirthDate *time.Time `json:"maxBirthDate" db:"max_birth_date"`
+	Male         int        `json:"male" db:"male"`
+	Female       int        `json:"female" db:"female"`
 }
 
 type TotalByYear struct {
@@ -56,11 +60,10 @@ type AnimalEntriesFilter struct {
 
 type DashboardFilter struct {
 	IsFiltered   bool       `json:"isFiltered"`
-	FarmId       *string    `json:"farmId" db:"farm_id"`
+	FarmId       *string    `json:"farmId" db:"farm_id" table:"pastures"`
 	PastureId    *string    `json:"pastureId" db:"pasture_id"`
 	Sex          *string    `json:"sex" db:"sex"`
 	MinBirthDate *time.Time `json:"minBirthDate" db:"birth_date"`
 	MaxBirthDate *time.Time `json:"maxBirthDate" db:"birth_date"`
-	AnimalType   *string    `json:"animalType" db:"type"`
-	IsActive     *bool      `json:"isActive" db:"is_active"`
+	AnimalType   *string    `json:"animalType" db:"animal_type"`
 }

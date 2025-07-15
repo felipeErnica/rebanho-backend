@@ -14,7 +14,8 @@ type GroupByProps[E any] struct {
 	UserId    string
 	Filter    any
 	NumParam  int
-    OtherArgs []any
+	OtherArgs []any
+	Where     string
 	DB        *sqlx.DB
 }
 
@@ -24,20 +25,35 @@ type TotalProps[E any] struct {
 	UserId    string
 	Filter    any
 	NumParam  int
-    OtherArgs []any
+	OtherArgs []any
+	Where     string
 	DB        *sqlx.DB
+}
+
+type WhereProps struct {
+	TableName string
+	UserId    string
+	Filter    any
+	NumParam  int
+	OtherArgs []any
+	Where     string
 }
 
 /*
 Constrói a condição de filtragem das consultas referentes a dashboards
 */
-func getDashboardWhereStatement(filter any, tablename string, userId string, numParam int, otherArgs ...any) (string, []any, error) {
-	whereStatement := fmt.Sprintf("WHERE %s.user_id = $%d", tablename, numParam)
-	args := otherArgs
-    args = append(args, userId)
-	if isFiltered(filter) {
-		filterArgs := getFilterArgs(filter)
-		filterStatement, _, err := buildFilterStatements(filter, tablename, numParam + 1)
+func getDashboardWhereStatement(props WhereProps) (string, []any, error) {
+
+	whereStatement := fmt.Sprintf("where %s.user_id = $%d and deleted_at is null", props.TableName, props.NumParam)
+	if props.Where != "" {
+		whereStatement = props.Where + fmt.Sprintf(" and %s.user_id = $%d and deleted_at is null", props.TableName, props.NumParam)
+	}
+
+	args := props.OtherArgs
+	args = append(args, props.UserId)
+	if isFiltered(props.Filter) {
+		filterArgs := GetFilterArgs(props.Filter)
+		filterStatement, _, err := BuildFilterExpressions(props.Filter, props.TableName, props.NumParam+1)
 		if err != nil {
 			return "", []any{}, err
 		}
@@ -58,14 +74,22 @@ func GetGroupByResults[E any](props GroupByProps[E]) (*[]E, error) {
 	}
 
 	groupStatement := fmt.Sprintf("GROUP BY %s", props.GroupBy)
-	whereStatement, args, err := getDashboardWhereStatement(props.Filter, props.TableName, props.UserId, numParam, props.OtherArgs...)
+	whereStatement, args, err := getDashboardWhereStatement(WhereProps{
+		NumParam:  numParam,
+		TableName: props.TableName,
+		Filter:    props.Filter,
+		UserId:    props.UserId,
+		OtherArgs: props.OtherArgs,
+		Where:     props.Where,
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
 	groupQuery := props.Query + "\n" + whereStatement + "\n" + groupStatement
 	if props.OrderBy != "" {
-		orderBy := fmt.Sprintf("ORDER BY %s", props.OrderBy)
+		orderBy := fmt.Sprintf("order by %s", props.OrderBy)
 		groupQuery = groupQuery + "\n" + orderBy
 	}
 
@@ -82,7 +106,14 @@ func GetTotalResults[E any](props TotalProps[E]) (*E, error) {
 		numParam = props.NumParam
 	}
 
-	whereStatement, args, err := getDashboardWhereStatement(props.Filter, props.TableName, props.UserId, numParam)
+	whereStatement, args, err := getDashboardWhereStatement(WhereProps{
+		NumParam:  numParam,
+		TableName: props.TableName,
+		Filter:    props.Filter,
+		UserId:    props.UserId,
+		OtherArgs: props.OtherArgs,
+		Where:     props.Where,
+	})
 	if err != nil {
 		return nil, err
 	}

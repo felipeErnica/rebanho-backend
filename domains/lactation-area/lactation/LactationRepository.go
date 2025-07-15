@@ -25,15 +25,10 @@ func NewRepository(db *sqlx.DB) *LactationRepository {
 }
 
 func (r *LactationRepository) FindPage(pageProps repositoriesUtil.PageProps) (page *entity.Page[Lactation], err error) {
-	nullFields := []string{
-		"end_date",
-		"observation",
-	}
 	props := repositoriesUtil.PageBuilderProps{
 		TableName:  r.TableName,
 		QueryBody:  r.SelectQuery,
 		DbConn:     r.Db,
-		NullFields: nullFields,
         PageProps: pageProps,
 	}
 	return repositoriesUtil.BuildPage[Lactation](props)

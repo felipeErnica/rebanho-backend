@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/felipeErnica/rebanho-backend/util"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -81,8 +82,7 @@ func Add[E any](db *sqlx.DB, tableName string, object *E) (*E, error) {
 
 /*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/
 func GetOne[E any](db *sqlx.DB, query string, args ...any) (*E, error) {
-    println()
-	fmt.Println(strings.Join(strings.Fields(query), " "))
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
 	var object E
 	err := db.Get(&object, query, args...)
 	if err != nil {
@@ -93,8 +93,7 @@ func GetOne[E any](db *sqlx.DB, query string, args ...any) (*E, error) {
 
 /*Retorna uma lista de objetos da Tabela SQL de acordo com os parâmetros informados*/
 func GetList[E any](db *sqlx.DB, query string, args ...any) (*[]E, error) {
-    println()
-	fmt.Println(strings.Join(strings.Fields(query), " "))
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
 	object := []E{}
 	err := db.Select(&object, query, args...)
 	if err != nil {

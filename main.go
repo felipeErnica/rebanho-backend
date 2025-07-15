@@ -15,7 +15,7 @@ import (
 
 func main() {
 
-	util.LogInfo("Iniciando server....")
+	util.LogInfo("Iniciando server....", false)
 
 	dataBaseInfo := db.ConnectPostgres().ReturnDatabaseInfo()
 	db, err := sqlx.Open("postgres", dataBaseInfo)
@@ -51,5 +51,5 @@ func main() {
 		serverErrors.InitServerError(err)
 	}
 
-	util.LogInfo("Server encerrado com sucesso!")
+	util.LogInfo("Server encerrado com sucesso!", false)
 }

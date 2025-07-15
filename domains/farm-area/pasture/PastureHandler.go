@@ -1,7 +1,9 @@
 package pasture
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
@@ -13,12 +15,19 @@ type PastureHandler struct {
 
 func (h *PastureHandler) SearchPasture(w http.ResponseWriter, r *http.Request) {
 	input := "%" + r.URL.Query().Get("input") + "%"
-	farmId := r.URL.Query().Get("farmId")
+	farmId := r.URL.Query().Get("farmsId")
+    fmt.Println("farmId", farmId)
+    idArray := []string{}
+    if farmId != "" {
+        idArray = strings.Split(farmId, ",")
+    }
+
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
-	list, err := h.Repository.SearchPasture(userId, input, farmId)
+
+	list, err := h.Repository.SearchPasture(userId, input, idArray)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

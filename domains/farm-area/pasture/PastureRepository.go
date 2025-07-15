@@ -1,6 +1,10 @@
 package pasture
 
 import (
+	"bytes"
+	"fmt"
+	"strings"
+
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -22,22 +26,38 @@ func NewRepository(db *sqlx.DB) *PastureRepository {
 	return &PastureRepository{selectQuery, "pastures", db}
 }
 
-func (r *PastureRepository) SearchPasture(userId string, input string, farmId string) (*[]entity.SearchEntity, error) {
-	query := `
+func (r *PastureRepository) SearchPasture(userId string, input string, farmsId []string) (*[]entity.SearchEntity, error) {
+	args := []any{userId, input}
+
+	arrayStatement := ""
+	if len(farmsId) != 0 {
+		var buff bytes.Buffer
+		for i, id := range farmsId {
+			placeholder := fmt.Sprintf("$%d, ", 3+i)
+			buff.WriteString(placeholder)
+			args = append(args, id)
+		}
+		placeholderArray := buff.String()
+		placeholderArray, _ = strings.CutSuffix(placeholderArray, ", ")
+		arrayStatement = fmt.Sprintf("and farm_id in (%s)", placeholderArray)
+	}
+
+	query := fmt.Sprintf(`
         select id, name as label 
         from pastures 
         where 
             user_id = $1 
             and name ilike $2 
-            and farm_id = $3
+            %s
             and deleted_at is null
         order by label
-    `
-	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, userId, input, farmId)
+    `, arrayStatement)
+
+	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
 }
 
 func (r *PastureRepository) FindAll(userId string) (*[]Pasture, error) {
-	query := r.SelectQuery + " WHERE pastures.user_id = $1 AND pastures.deleted_at is null"
+	query := r.SelectQuery + " where pastures.user_id = $1 AND pastures.deleted_at is null"
 	return repositoriesUtil.GetList[Pasture](r.Db, query)
 }
 
