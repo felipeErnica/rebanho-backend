@@ -103,6 +103,20 @@ func (r *AnimalRepository) SearchFather(userId string, input string) (*[]entity.
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
 }
 
+func (r *AnimalRepository) SearchAnimals(userId string, input string) (*[]entity.SearchEntity, error) {
+	query := `
+        select id, concat_ws(' - ', ring_number, name, to_char(birth_date, 'DD/MM/YYYY')) as label 
+            from animals 
+        where user_id = $1 
+            and animal_type <> 'OUTSIDE_ANIMAL'
+            and concat_ws(' - ', ring_number, name) ilike $2
+            and deleted_at is null
+        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), birth_date
+        limit 20
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
+}
+
 func (r *AnimalRepository) SearchMother(userId string, input string) (*[]entity.SearchEntity, error) {
 	query := `
         select id, concat_ws(' - ', ring_number, name) as label 

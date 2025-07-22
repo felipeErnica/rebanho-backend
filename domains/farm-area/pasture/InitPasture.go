@@ -12,6 +12,7 @@ func InitPasture(app *app.App) {
 	app.HandleFunc("GET /farm-area/pastures/search", handler.SearchPasture)
 	app.HandleFunc("GET /farm-area/pastures", handler.FindAll)
 	app.HandleFunc("GET /farm-area/pastures/{id}", handler.FindById)
+	app.HandleFunc("GET /farm-area/pastures/{id}/animals", handler.FindAnimalsByPasture)
 	app.HandleFunc("POST /farm-area/pastures/add", handler.Add)
 	app.HandleFunc("POST /farm-area/pastures/save", handler.Update)
 	app.HandleFunc("DELETE /farm-area/pastures/delete/{id}", handler.Delete)

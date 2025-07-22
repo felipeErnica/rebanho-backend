@@ -2,10 +2,12 @@ package repositoriesUtil
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
+	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	"github.com/jmoiron/sqlx"
 )
@@ -100,4 +102,50 @@ func GetList[E any](db *sqlx.DB, query string, args ...any) (*[]E, error) {
 		return nil, err
 	}
 	return &object, err
+}
+
+/*Retorna uma página, contendo uma lista de objetos da Consulta SQL,
+o número total de linhas,
+um booleano indicando se há uma próxima página e
+um cursor codificado indicando a próxima página.*/
+func GetPage[E any](
+    db *sqlx.DB, 
+    query string, 
+    countQuery string, 
+    sort string, 
+    cursorArgs []any, 
+    args ...any,
+) (*entity.Page[E], error) {
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	util.LogInfo(strings.Join(strings.Fields(countQuery), " "), true)
+
+    listArgs := append(args, cursorArgs...)
+	list := []E{}
+	err := db.Select(&list, query, listArgs...)
+	if err != nil {
+        err = errors.New("Erro na lista: " + err.Error())
+		return nil, err
+	}
+
+    totalResult := db.QueryRow(countQuery, args...)
+    var total int
+    err = totalResult.Scan(&total)
+    if err != nil {
+        err = errors.New("Erro na contagem: " + err.Error())
+        return nil, err
+    }
+    
+    cursor, err := CreateCursorKey(sort, list)
+    if err != nil {
+        return nil, err
+    }
+    fmt.Println("cursor: ", cursor)
+
+    page := entity.Page[E]{
+        List: &list,
+        NextCursor: cursor,
+        HasNextPage: cursor != "",
+        Total: total,
+    }
+	return &page, err
 }

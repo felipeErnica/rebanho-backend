@@ -10,6 +10,7 @@ type FarmInfo struct {
 }
 
 type PastureInfo struct {
+	PastureId     uuid.UUID  `json:"pastureId" db:"pasture_id"`
 	PastureName   string     `json:"pastureName" db:"pasture_name"`
 	BullId        *uuid.UUID `json:"bullId" db:"bull_id"`
 	BullName      *string    `json:"bullName" db:"bull_name"`

@@ -16,47 +16,70 @@ import (
 Cria um novo cursor com a informação do último objeto da lista.
 Os parâmetros são selecionados com base na coluna de ordenamento e na data de criação
 */
-func createCursorKey[E any](sort string, list []E) (cursor string, err error) {
+func CreateCursorKey[E any](sort string, list []E) (cursor string, err error) {
 	listSize := len(list)
 	if listSize == 0 {
 		err = errors.New("A lista está vazia")
 		return
 	}
 
+	sortFields := strings.Split(sort, ",")
 	lastEntry := list[len(list)-1]
 	entryType := reflect.TypeOf(lastEntry)
 	values := reflect.ValueOf(lastEntry)
-	var value any
+	cursorArgs := []string{}
 
-	for i := range entryType.NumField() {
-		field := entryType.Field(i)
-		tag := field.Tag.Get("db")
-		if tag == "" {
-			err = errors.New("O campo não existe")
-			return
+	for _, sortField := range sortFields {
+		arg, err := getValueFromSortField(sortField, entryType, values)
+		if err != nil {
+			return "", err
 		}
-		if strings.EqualFold(sort, tag) {
-			value = values.Field(i).Interface()
-		}
+		cursorArgs = append(cursorArgs, arg)
 	}
 
-	firstParam := getFirstParam(value)
 	createdAt := values.FieldByName("CreatedAt").Interface()
 	id := values.FieldByName("Id").Interface()
-	castCreatedAt, ok := createdAt.(time.Time)
+	castedCreatedAt, ok := createdAt.(time.Time)
 	if !ok {
 		err = errors.New("Formato de CreatedAt não é data")
 		return
 	}
-	castId, ok := id.(uuid.UUID)
+	castedId, ok := id.(uuid.UUID)
 	if !ok {
-		err = errors.New("Formato de Id não é data")
+		err = errors.New("Formato de Id não é uuid")
 		return
 	}
 
-	data := fmt.Sprintf("%s,%s,%s", firstParam, castCreatedAt.Format(time.RFC3339Nano), castId)
+	args := []string{castedCreatedAt.Format(time.RFC3339Nano), castedId.String()}
+	args = append(args, cursorArgs...)
+
+	data := ""
+	for _, arg := range args {
+		data = data + arg + ","
+	}
+	data = strings.TrimSuffix(data, ",")
+
 	cursor = base64.StdEncoding.EncodeToString([]byte(data))
 	return cursor, err
+}
+
+func getValueFromSortField(sortField string, entryType reflect.Type, values reflect.Value) (string, error) {
+	var value any
+	isFound := false
+	for i := range entryType.NumField() {
+		field := entryType.Field(i)
+		tag := field.Tag.Get("db")
+		if sortField == tag {
+			isFound = true
+			value = values.Field(i).Interface()
+		}
+	}
+
+	if !isFound {
+		err := errors.New(fmt.Sprintf("O campo não existe: %s", sortField))
+		return "", err
+	}
+	return getParamValue(value), nil
 }
 
 /*
@@ -64,7 +87,7 @@ Converte o valor do parâmetros para texto, se o valor for nulo,
 retorna "null", se for data, insere o prefixo {date} para tratamento
 apropiado posteriormente
 */
-func getFirstParam(value any) string {
+func getParamValue(value any) string {
 	switch t := value.(type) {
 	case *string:
 		param := ""
@@ -106,7 +129,7 @@ func getFirstParam(value any) string {
 }
 
 /*Decodificação do Cursor, para obter as informações necessárias para a próxima página*/
-func decodeCursor(cursor string) (any, *time.Time, uuid.UUID, error) {
+func DecodeCursor(cursor string) (any, *time.Time, uuid.UUID, error) {
 	if cursor == "" {
 		return nil, nil, uuid.Nil, nil
 	}

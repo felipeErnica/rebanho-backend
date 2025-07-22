@@ -56,6 +56,48 @@ func (r *PastureRepository) SearchPasture(userId string, input string, farmsId [
 	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
 }
 
+func (r *PastureRepository) FindAnimalsByPasture(
+    pastureId string, 
+    userId string, 
+    sort string, 
+    order string,
+) (*[]PastureAnimal, error) {
+	sortMap := map[string]string{
+		"ring_number": "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
+		"name":        "coalesce(animals.name, '')",
+		"birth_date":  "coalesce(animals.birth_date, '-infinity')",
+		"death_date":  "coalesce(animals.death_date, '-infinity')",
+	}
+
+	expression, err := repositoriesUtil.GetSortExpressionFromMap(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `
+        select
+            animals.id, 
+            animals.name, 
+            animals.ring_number, 
+            animals.sex, 
+            animals.father_id, 
+            animals.mother_id, 
+            animals.birth_date, 
+            animals.death_date, 
+            animals.animal_type,
+            concat_ws(' - ', father.ring_number, father.name) as father_name, 
+            concat_ws(' - ', mother.ring_number, mother.name) as mother_name
+        from animals
+            left join animals as father on father.id = animals.father_id
+            left join animals as mother on mother.id = animals.mother_id
+        where animals.pasture_id = $1 and animals.user_id = $2 and animals.deleted_at is null
+    `
+	orderExpression := " order by " + expression
+	query = query + orderExpression
+
+	return repositoriesUtil.GetList[PastureAnimal](r.Db, query, pastureId, userId)
+}
+
 func (r *PastureRepository) FindAll(userId string) (*[]Pasture, error) {
 	query := r.SelectQuery + " where pastures.user_id = $1 AND pastures.deleted_at is null"
 	return repositoriesUtil.GetList[Pasture](r.Db, query)

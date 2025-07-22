@@ -42,6 +42,7 @@ func (r *FarmDashboardRepository) GetFarmInfo(userId string) (*[]FarmInfo, error
 func (r *FarmDashboardRepository) GetPastureInfo(userId string, farmId string) (*[]PastureInfo, error) {
 	query := `
         select
+            pastures.id as pasture_id,
             pastures.name as pasture_name,
             bull.id as bull_id,
             concat_ws(' - ', bull.ring_number, bull.name) as bull_name,
@@ -50,7 +51,7 @@ func (r *FarmDashboardRepository) GetPastureInfo(userId string, farmId string) (
             left join animals on animals.pasture_id = pastures.id
             left join animals as bull on bull.id = pastures.bull_id
         where pastures.user_id = $1 and pastures.farm_id = $2 and pastures.deleted_at is null
-        group by pastures.name, bull.id, bull.name
+        group by pastures.name, pastures.id, bull.id, bull.name
         order by pastures.name
     `
     return repositoriesUtil.GetList[PastureInfo](r.DB, query, userId, farmId)

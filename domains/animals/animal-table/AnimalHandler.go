@@ -85,6 +85,10 @@ func (h *AnimalHandler) SearchFather(w http.ResponseWriter, r *http.Request) {
     handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchFather)
 }
 
+func (h *AnimalHandler) SearchAnimal(w http.ResponseWriter, r *http.Request) {
+    handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchAnimals)
+}
+
 func (h *AnimalHandler) SearchMother(w http.ResponseWriter, r *http.Request) {
     handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchMother)
 }

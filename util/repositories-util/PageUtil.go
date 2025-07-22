@@ -136,7 +136,7 @@ filter - Critérios de filtro (valores e campo)
 */
 func BuildPage[E any](props PageBuilderProps) (page *entity.Page[E], err error) {
 
-	firstParam, createdAt, id, err := decodeCursor(props.Cursor)
+	firstParam, createdAt, id, err := DecodeCursor(props.Cursor)
 	if err != nil {
 		return
 	}
@@ -193,7 +193,7 @@ func BuildPage[E any](props PageBuilderProps) (page *entity.Page[E], err error) 
 		return
 	}
 
-	nextCursor, err := createCursorKey(props.Sort, list)
+	nextCursor, err := CreateCursorKey(props.Sort, list)
 	if err != nil {
 		return
 	}
