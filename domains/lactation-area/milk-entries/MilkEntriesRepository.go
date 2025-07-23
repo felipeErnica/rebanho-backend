@@ -1,7 +1,6 @@
 package milkEntries
 
 import (
-	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -22,16 +21,6 @@ func NewRepository(db *sqlx.DB) *MilkRepository {
         LEFT JOIN pastures ON pastures.id = milk_entries.pasture_id
     `
 	return &MilkRepository{selectQuery, "milk_entries", db}
-}
-
-func (r *MilkRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[MilkEntry], error) {
-	props := repositoriesUtil.PageBuilderProps{
-		QueryBody:  r.SelectQuery,
-		TableName:  r.TableName,
-		DbConn:     r.Db,
-        PageProps: pageProps,
-	}
-	return repositoriesUtil.BuildPage[MilkEntry](props)
 }
 
 func (r *MilkRepository) FindByAnimal(animalId string) (*[]MilkEntry, error) {

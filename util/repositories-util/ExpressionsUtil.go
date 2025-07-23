@@ -10,7 +10,7 @@ import (
 )
 
 // Através de um mapa da campo com expressões SQL, retorna a expressão apropriada ao campo
-func GetSortExpressionFromMap(expressionMap map[string]string, sort string, order string) (string, error) {
+func GetSortExpression(expressionMap map[string]string, sort string, order string) (string, error) {
 	sortFields := strings.Split(sort, ",")
 	sortExpression := ""
 	for _, field := range sortFields {
@@ -29,7 +29,7 @@ func GetSortExpressionFromMap(expressionMap map[string]string, sort string, orde
 Através de um mapa de campos relacionados a expressões SQL, retorna a expressão de ordenamento do
 cursor relacionada ao campo
 */
-func GetCursorExpressionFromMap(
+func GetCursorExpression(
 	sortMap map[string]string,
 	sort string,
 	order string,
@@ -75,7 +75,7 @@ func GetCursorExpressionFromMap(
 	return cursorExpression, nextNumParam + 1, nil
 }
 
-func BuildFilterExpressions(filter any, mainTable string, numParam int) (string, int, error) {
+func GetFilterExpressions(filter any, mainTable string, numParam int) (string, int, error) {
 	var buffer bytes.Buffer
 
 	filterTypes := reflect.TypeOf(filter)
@@ -84,6 +84,10 @@ func BuildFilterExpressions(filter any, mainTable string, numParam int) (string,
 		filterValues = filterValues.Elem()
 		filterTypes = filterTypes.Elem()
 	}
+
+    if (!isFiltered(filterValues)) {
+        return "", numParam, nil
+    }
 
 	for i := 1; i < filterTypes.NumField(); i++ {
 		field := filterTypes.Field(i)
@@ -108,6 +112,10 @@ func BuildFilterExpressions(filter any, mainTable string, numParam int) (string,
 	}
 
 	return buffer.String(), numParam, nil
+}
+
+func isFiltered(filter reflect.Value) bool {
+	return filter.FieldByName("IsFiltered").Bool()
 }
 
 func buildFilterStatement(value any, sqlField string, structField string, numParam int) (statement string, newNumParam int, err error) {

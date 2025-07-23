@@ -10,27 +10,8 @@ import (
 
 	authConfig "github.com/felipeErnica/rebanho-backend/config/auth-config"
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
-	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/google/uuid"
 )
-
-/*
-Retorna os parâmetros da página.
-*/
-func getPageParameters(r *http.Request) (sort string, order string, cursor string) {
-	cursor = r.URL.Query().Get("cursor")
-	sort = r.URL.Query().Get("sort")
-	order = r.URL.Query().Get("order")
-
-	if sort == "" {
-		sort = "id"
-	}
-
-	if order == "" {
-		order = "asc"
-	}
-	return sort, order, cursor
-}
 
 /*
 Decodifica a entide contida no corpo da solicitação HTTP
@@ -97,31 +78,6 @@ func DecodeFilter[F any](w http.ResponseWriter, r *http.Request, filter F) (F, b
 		return filter, false
 	}
 	return filter, true
-}
-
-/*
-Retorna uma página como resposta HTTP, usando o repositório e o filtro como parâmetros.
-O repositório deve conter uma função FindPage.
-*/
-func ReturnPage[E any, F any](w http.ResponseWriter, r *http.Request, repository PageRepository[E, F], filter F) {
-	sort, order, cursor := getPageParameters(r)
-	userId, ok := GetUserId(w, r)
-	if !ok {
-		return
-	}
-	props := repositoriesUtil.PageProps{
-		Sort:   sort,
-		Order:  order,
-		Cursor: cursor,
-		Filter: filter,
-		UserId: userId,
-	}
-	page, err := repository.FindPage(props)
-	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
-		return
-	}
-	SendEntity(w, page)
 }
 
 /*

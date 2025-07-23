@@ -69,7 +69,7 @@ func (r *PastureRepository) FindAnimalsByPasture(
 		"death_date":  "coalesce(animals.death_date, '-infinity')",
 	}
 
-	expression, err := repositoriesUtil.GetSortExpressionFromMap(sortMap, sort, order)
+	expression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
 		return nil, err
 	}

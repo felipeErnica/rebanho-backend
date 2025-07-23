@@ -21,7 +21,12 @@ func (h *PastureEntryHandler) FindByPasture(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-    result, err := h.Repository.FindByPasture(pastureId, userId, cursor, sort, order)
+    filter, ok := handlersUtil.DecodeFilter(w, r, PastureEntryFilter{})
+    if !ok {
+        return
+    }
+
+    result, err := h.Repository.FindByPasture(pastureId, userId, filter, cursor, sort, order)
     if err != nil {
         serverErrors.DatabaseGetError(err, w)
         return

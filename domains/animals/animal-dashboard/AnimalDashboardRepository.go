@@ -17,7 +17,6 @@ func (r *DashboardRepository) GroupByYear(
 	userId string,
 	filter DashboardFilter,
 ) (*[]TotalByYear, error) {
-
 	query := `
         with min_max as (
             select 
@@ -34,17 +33,23 @@ func (r *DashboardRepository) GroupByYear(
             and (entries.exit_date is null or entries.exit_date > date_series.year)
     `
 
-	props := repositoriesUtil.GroupByProps[TotalByYear]{
-		Query:     query,
-		TableName: "entries",
-		GroupBy:   "year",
-		OrderBy:   "year",
-		UserId:    userId,
-		Filter:    filter,
-		DB:        r.DB,
+	whereExpression := "where animals.deleted_at is null and animals.user_id = $1"
+	orderBy := " order by entries.entry_date"
+    groupBy := " group by extract(year from date_series.year)"
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 2)
+	if err != nil {
+		return nil, err
 	}
+	if filterExpression != "" {
+		whereExpression = whereExpression + " and " + filterExpression
+	}
+	query = query + whereExpression + groupBy + orderBy
 
-	return repositoriesUtil.GetGroupByResults(props)
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetList[TotalByYear](r.DB, query, args...)
 }
 
 func (r *DashboardRepository) TotalBySex(userId string, filter DashboardFilter) (*TotalBySex, error) {
@@ -55,18 +60,26 @@ func (r *DashboardRepository) TotalBySex(userId string, filter DashboardFilter) 
             count(animals.id) filter (where animals.sex = 'M') as total_males
         from animals
     `
-	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
-
-	props := repositoriesUtil.TotalProps[TotalBySex]{
-		Query:     query,
-		TableName: "animals",
-		UserId:    userId,
-		Filter:    filter,
-		Where:     where,
-		DB:        r.DB,
+	where := `
+        where animals.user_id = $1
+            and animals.deleted_at is null
+            and animals.animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')
+    `
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 2)
+	if err != nil {
+		return nil, err
 	}
 
-	return repositoriesUtil.GetTotalResults(props)
+	if filterExpression != "" {
+		where = where + " and " + filterExpression
+	}
+	query = query + where
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetOne[TotalBySex](r.DB, query, args...)
 }
 
 func (r *DashboardRepository) TotalByType(userId string, filter DashboardFilter) (*AnimalByType, error) {
@@ -78,16 +91,27 @@ func (r *DashboardRepository) TotalByType(userId string, filter DashboardFilter)
             count(animals.id) filter (where animals.animal_type = 'OFFSPRING') as offspring
         from animals
     `
-	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
-	props := repositoriesUtil.TotalProps[AnimalByType]{
-		Query:     query,
-		TableName: "animals",
-		UserId:    userId,
-		Filter:    filter,
-		Where:     where,
-		DB:        r.DB,
+	where := ` 
+        where animals.user_id = $1
+            and animals.deleted_at is null
+            and animals.animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')
+    `
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 2)
+	if err != nil {
+		return nil, err
 	}
-	return repositoriesUtil.GetTotalResults(props)
+
+	if filterExpression != "" {
+		where = where + " and " + filterExpression
+	}
+	query = query + where
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetOne[AnimalByType](r.DB, query, args...)
 }
 
 func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter DashboardFilter) (*[]AnimalsByAgeAndFarm, error) {
@@ -154,17 +178,29 @@ func (r *DashboardRepository) GroupByAgeAndFarm(userId string, filter DashboardF
         left join pastures on pastures.id = animals.pasture_id
         left join farms on farms.id = pastures.farm_id
     `
-	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
-	props := repositoriesUtil.GroupByProps[AnimalsByAgeAndFarm]{
-		Query:     query,
-		TableName: "animals",
-		GroupBy:   "farms.name, farms.id",
-		UserId:    userId,
-		Filter:    filter,
-		Where:     where,
-		DB:        r.DB,
+	where := ` 
+        where animals.user_id = $1
+            and animals.deleted_at is null
+            and animals.animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')
+    `
+    orderBy := " order by animals.birth_date"
+    groupBy := " group by farm.name, farm.id"
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 2)
+	if err != nil {
+		return nil, err
 	}
-	return repositoriesUtil.GetGroupByResults(props)
+
+	if filterExpression != "" {
+		where = where + " and " + filterExpression
+	}
+	query = query + where + groupBy + orderBy
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetList[AnimalsByAgeAndFarm](r.DB, query, args...)
 }
 
 func (r *DashboardRepository) GroupByAgeAndPasture(userId string, filter DashboardFilter) (*[]AnimalsByAgeAndFarm, error) {
@@ -230,18 +266,29 @@ func (r *DashboardRepository) GroupByAgeAndPasture(userId string, filter Dashboa
         from animals
         left join pastures on pastures.id = animals.pasture_id
     `
-	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
-	props := repositoriesUtil.GroupByProps[AnimalsByAgeAndFarm]{
-		Query:     query,
-		TableName: "animals",
-		GroupBy:   "pastures.name, pastures.id",
-		UserId:    userId,
-		Filter:    filter,
-		Where:     where,
-		OrderBy:   "pastures.name",
-		DB:        r.DB,
+	where := ` 
+        where animals.user_id = $1
+            and animals.deleted_at is null
+            and animals.animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')
+    `
+    orderBy := " order by animals.birth_date"
+    groupBy := " group by pastures.name, pastures.id"
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 2)
+	if err != nil {
+		return nil, err
 	}
-	return repositoriesUtil.GetGroupByResults(props)
+
+	if filterExpression != "" {
+		where = where + " and " + filterExpression
+	}
+	query = query + where + groupBy + orderBy
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetList[AnimalsByAgeAndFarm](r.DB, query, args...)
 }
 
 func (r *DashboardRepository) GroupByAge(userId string, filter DashboardFilter) (*[]AnimalsByAge, error) {
@@ -262,16 +309,27 @@ func (r *DashboardRepository) GroupByAge(userId string, filter DashboardFilter) 
             count(animals.id) filter (where animals.sex = 'F') as female
         from animals
     `
-	where := "where animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')"
-	props := repositoriesUtil.GroupByProps[AnimalsByAge]{
-		Query:     query,
-		TableName: "animals",
-		GroupBy:   "age_category",
-		OrderBy:   "min_birth_date desc",
-		UserId:    userId,
-		Filter:    filter,
-		Where:     where,
-		DB:        r.DB,
+	where := ` 
+        where animals.user_id = $1
+            and animals.deleted_at is null
+            and animals.animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')
+    `
+    orderBy := " order by animals.birth_date"
+    groupBy := " group by age_category"
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 2)
+	if err != nil {
+		return nil, err
 	}
-	return repositoriesUtil.GetGroupByResults(props)
+
+	if filterExpression != "" {
+		where = where + " and " + filterExpression
+	}
+	query = query + where + groupBy + orderBy
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetList[AnimalsByAge](r.DB, query, args...)
 }

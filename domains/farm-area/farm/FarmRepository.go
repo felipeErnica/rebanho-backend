@@ -27,7 +27,7 @@ func (r *FarmRepository) FindAnimalsByFarm(
         "death_date": "coalesce(animals.death_date, '-infinity')",
     }
 
-    expression, err := repositoriesUtil.GetSortExpressionFromMap(sortMap, sort, order)
+    expression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
     if err != nil {
         return nil, err
     }
@@ -53,7 +53,7 @@ func (r *FarmRepository) FindAnimalsByFarm(
             left join animals as mother on mother.id = animals.mother_id
     `
     whereExpression := " where pastures.farm_id = $1 and animals.user_id = $2 and animals.deleted_at is null "
-    filterExpressions, _, err := repositoriesUtil.BuildFilterExpressions(filter, "animals", 3)
+    filterExpressions, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 3)
     if err != nil {
         return nil, err
     }

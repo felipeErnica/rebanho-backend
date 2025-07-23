@@ -11,13 +11,6 @@ type PregnancyLossHandler struct {
     Repository *LossRepository
 }
 
-func (h *PregnancyLossHandler) FindPage(w http.ResponseWriter, r *http.Request) {
-    filter, ok := handlersUtil.DecodeFilter(w, r, PregnancyLossFilter{}); if !ok {
-        return
-    }
-    handlersUtil.ReturnPage(w, r, h.Repository, &filter)
-}
-
 func (h *PregnancyLossHandler) FindByAnimalId(w http.ResponseWriter, r *http.Request) {
     animalId:=r.PathValue("animalId")
     list, err:= h.Repository.FindByAnimalId(animalId)

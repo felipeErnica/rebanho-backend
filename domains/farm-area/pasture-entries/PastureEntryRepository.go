@@ -1,7 +1,6 @@
 package pastureEntries
 
 import (
-	"fmt"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -29,6 +28,7 @@ func NewRepository(db *sqlx.DB) *PastureEntryRepository {
 func (r *PastureEntryRepository) FindByPasture(
 	pastureId string,
 	userId string,
+    filter PastureEntryFilter,
 	cursor string,
 	sort string,
 	order string,
@@ -41,7 +41,7 @@ func (r *PastureEntryRepository) FindByPasture(
 		"entry_date":        "coalesce(pasture_entries.entry_date, '-infinity')",
 	}
 
-	sortExpression, err := repositoriesUtil.GetSortExpressionFromMap(sortMap, sort, order)
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
 		return nil, err
 	}
@@ -71,13 +71,12 @@ func (r *PastureEntryRepository) FindByPasture(
             and pasture_entries.user_id = $2
     `
 
-	cursorArgs, err := repositoriesUtil.DecodeCursorArgs(cursor)
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("args: ", cursorArgs)
 
-	cursorExpression, _, err := repositoriesUtil.GetCursorExpressionFromMap(sortMap, sort, order, "pasture_entries", cursorArgs, 3)
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "pasture_entries", cursorArgs, 3)
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +87,9 @@ func (r *PastureEntryRepository) FindByPasture(
 	countQuery = countQuery + whereExpression
 	whereExpression = whereExpression + cursorExpression
 	orderByExpression := " order by " + sortExpression
-	query = query + whereExpression + orderByExpression + " limit 200"
+	query = query + whereExpression + orderByExpression
 
-	return repositoriesUtil.GetPage[PastureEntry](r.Db, query, countQuery, sort, cursorArgs, pastureId, userId)
+	return repositoriesUtil.GetPage[PastureEntry](r.Db, query, countQuery, sort, 200, cursorArgs, pastureId, userId)
 }
 
 func (r *PastureEntryRepository) FindByAnimalId(animalId string) (*[]PastureEntry, error) {

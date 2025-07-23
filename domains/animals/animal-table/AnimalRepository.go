@@ -7,10 +7,9 @@ import (
 )
 
 type AnimalRepository struct {
-	SelectQuery     string
-	TableName       string
-	SortExpressions []repositoriesUtil.SortExpression
-	DB              *sqlx.DB
+	SelectQuery string
+	TableName   string
+	DB          *sqlx.DB
 }
 
 func NewRepository(db *sqlx.DB) *AnimalRepository {
@@ -27,22 +26,68 @@ func NewRepository(db *sqlx.DB) *AnimalRepository {
             left join pastures ON pastures.id = animals.pasture_id
             left join farms ON farms.id = pastures.farm_id
     `
-	sortExpressions := []repositoriesUtil.SortExpression{
-		*repositoriesUtil.NewSort("name", "coalesce(animals.name, '')"),
-		*repositoriesUtil.NewSort("isr", "coalesce(animals.isr, 0)"),
-		*repositoriesUtil.NewSort("average_birth_interval", "coalesce(animals.average_birth_interval, 0)"),
-		*repositoriesUtil.NewSort("average_prod_interval", "coalesce(animals.average_prod_interval, 0)"),
-		*repositoriesUtil.NewSort("average_prod", "coalesce(animals.average_prod, 0)"),
-		*repositoriesUtil.NewSort("average_peak", "coalesce(animals.average_peak, 0)"),
-		*repositoriesUtil.NewSort("death_date", "coalesce(animals.death_date, '-infinity')"),
-		*repositoriesUtil.NewSort("weaning_date", "coalesce(animals.weaning_date, '-infinity')"),
-		*repositoriesUtil.NewSort("birth_date", "coalesce(animals.birth_date, '-infinity')"),
-		*repositoriesUtil.NewSort("animal_order", "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)"),
-	}
-	return &AnimalRepository{selectQuery, "animals", sortExpressions, db}
+	return &AnimalRepository{selectQuery, "animals", db}
 }
 
-func (r *AnimalRepository) FindPage(props repositoriesUtil.PageProps) (page *entity.Page[Animal], err error) {
+func (r *AnimalRepository) FindPage(
+	userId string,
+	cursor string,
+	sort string,
+	order string,
+	filter AnimalFilter,
+) (page *entity.Page[Animal], err error) {
+
+	sortMap := map[string]string{
+		"name":                   "coalesce(animals.name, '')",
+		"isr":                    "coalesce(animals.isr, 0)",
+		"average_birth_interval": "coalesce(animals.average_birth_interval, 0)",
+		"average_prod_interval":  "coalesce(animals.average_prod_interval, 0)",
+		"average_prod":           "coalesce(animals.average_prod, 0)",
+		"average_peak":           "coalesce(animals.average_peak, 0)",
+		"death_date":             "coalesce(animals.death_date, '-infinity')",
+		"weaning_date":           "coalesce(animals.weaning_date, '-infinity')",
+		"birth_date":             "coalesce(animals.birth_date, '-infinity')",
+		"animal_order":           "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
+	}
+
+	whereExpression := "where animals.deleted_at is null and animals.user_id = $1"
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+	sortExpression = " order by " + sortExpression
+
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "animals", cursorArgs, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression = whereExpression + " and " + filterExpression
+	}
+
+	if cursorExpression != "" {
+		whereExpression = whereExpression + " and " + cursorExpression
+	}
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+    countArgs := []any{userId}
+    countArgs = append(countArgs, filterArgs...)
+
+	query := r.SelectQuery + whereExpression + sortExpression
 	countQuery := `
         select count (animals.id) as total
         from animals
@@ -51,15 +96,7 @@ func (r *AnimalRepository) FindPage(props repositoriesUtil.PageProps) (page *ent
             left join pastures ON pastures.id = animals.pasture_id
             left join farms ON farms.id = pastures.farm_id
     `
-	buildProps := repositoriesUtil.PageBuilderProps{
-		CountQuery:      countQuery,
-		QueryBody:       r.SelectQuery,
-		TableName:       r.TableName,
-		DbConn:          r.DB,
-		PageProps:       props,
-		SortExpressions: r.SortExpressions,
-	}
-	return repositoriesUtil.BuildPage[Animal](buildProps)
+	return repositoriesUtil.GetPage[Animal](r.DB, query, countQuery, sort, 200, countArgs, args...)
 }
 
 func (r *AnimalRepository) FindById(id string) (*Animal, error) {

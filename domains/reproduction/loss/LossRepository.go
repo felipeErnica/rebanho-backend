@@ -1,7 +1,6 @@
 package loss
 
 import (
-	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -20,16 +19,6 @@ func NewRepository(db *sqlx.DB) *LossRepository {
             LEFT JOIN animals ON animals.id = loss.animal_id
     `
 	return &LossRepository{selectQuery, "losses", db}
-}
-
-func (r *LossRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[PregnancyLoss], error) {
-	props := repositoriesUtil.PageBuilderProps{
-		QueryBody:  r.SelectQuery,
-		PageProps:  pageProps,
-		TableName:  r.TableName,
-		DbConn:     r.Db,
-	}
-	return repositoriesUtil.BuildPage[PregnancyLoss](props)
 }
 
 func (r *LossRepository) FindByAnimalId(animalId string) (*[]PregnancyLoss, error) {

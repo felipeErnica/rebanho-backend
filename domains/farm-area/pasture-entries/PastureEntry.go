@@ -19,6 +19,16 @@ type PastureEntry struct {
 	UserId           uuid.UUID  `db:"user_id"`
 }
 
+type PastureEntryFilter struct {
+	IsFiltered         bool      `json:"isFiltered" db:"is_filtered"`
+	AnimalRingNumber   string    `json:"animalRingNumber" db:"animal_ring_number"`
+	AnimalName         string    `json:"animalName" db:"animal_name"`
+	MinAnimalBirthDate time.Time `json:"minAnimalBirthDate" db:"animal_birth_date"`
+	MaxAnimalBirthDate time.Time `json:"maxAnimalBirthDate" db:"animal_birth_date"`
+	MaxEntryDate       time.Time `json:"maxEntryDate" db:"entry_date"`
+	MinEntryDate       time.Time `json:"minEntryDate" db:"entry_date"`
+}
+
 type PastureEntrySave struct {
 	Id        string     `json:"id" db:"id"`
 	AnimalId  string     `json:"animalId" db:"animal_id"`

@@ -1,7 +1,6 @@
 package lactation
 
 import (
-	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -22,16 +21,6 @@ func NewRepository(db *sqlx.DB) *LactationRepository {
 		LEFT JOIN calf as animals ON calf.id = lactations.calf_id 
 	`
 	return &LactationRepository{selectQuery, "lactations", db}
-}
-
-func (r *LactationRepository) FindPage(pageProps repositoriesUtil.PageProps) (page *entity.Page[Lactation], err error) {
-	props := repositoriesUtil.PageBuilderProps{
-		TableName:  r.TableName,
-		QueryBody:  r.SelectQuery,
-		DbConn:     r.Db,
-        PageProps: pageProps,
-	}
-	return repositoriesUtil.BuildPage[Lactation](props)
 }
 
 func (r *LactationRepository) FindByAnimal(animalId string) (arr *[]Lactation, err error) {

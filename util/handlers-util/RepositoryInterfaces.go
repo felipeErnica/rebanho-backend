@@ -1,14 +1,5 @@
 package handlersUtil
 
-import (
-	"github.com/felipeErnica/rebanho-backend/entity"
-	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
-)
-
-type PageRepository[E any, F any] interface {
-	FindPage(repositoriesUtil.PageProps) (*entity.Page[E], error)
-}
-
 type RepositoryFindById[E any] interface {
 	FindById(id string) (*E, error)
 }

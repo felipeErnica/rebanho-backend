@@ -12,10 +12,6 @@ type MilkHandler struct {
 }
 
 func (h *MilkHandler) FindPage(w http.ResponseWriter, r *http.Request) {
-    filter, ok := handlersUtil.DecodeFilter(w, r, MilkEntryFilter{}); if !ok {
-        return
-    }
-    handlersUtil.ReturnPage(w, r, h.Repository, filter)
 }
 
 func (h *MilkHandler) FindByCow(w http.ResponseWriter, r *http.Request) {

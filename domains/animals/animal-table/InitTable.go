@@ -15,7 +15,6 @@ func InitTable(app *app.App) {
 	app.HandleFunc("GET /animals/info/number/{number}", handler.FindByNumber)
 	app.HandleFunc("GET /animals/info/father/{fatherId}", handler.FindByFatherId)
 	app.HandleFunc("GET /animals/info/mother/{motherId}", handler.FindByMotherId)
-	app.HandleFunc("GET /animals/info/pasture/{pastureId}/page", handler.FindByPastureId)
 	app.HandleFunc("GET /animals/info/search/father", handler.SearchFather)
 	app.HandleFunc("GET /animals/info/search/mother", handler.SearchMother)
 	app.HandleFunc("GET /animals/info/search/bull", handler.SearchBull)

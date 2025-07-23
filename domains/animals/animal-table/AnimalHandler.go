@@ -12,10 +12,25 @@ type AnimalHandler struct {
 }
 
 func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request) {
+    sort := r.URL.Query().Get("sort")
+    cursor := r.URL.Query().Get("cursor")
+    order := r.URL.Query().Get("order")
+
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+
     filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{}); if !ok {
         return
     }
-    handlersUtil.ReturnPage(w, r, h.Repository, filter)
+
+    result, err := h.Repository.FindPage(userId, cursor, sort, order, filter)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendEntity(w, result)
 }
 
 func (h *AnimalHandler) FindById(w http.ResponseWriter, r *http.Request) {
@@ -69,16 +84,6 @@ func (h *AnimalHandler) FindByMotherId(w http.ResponseWriter, r *http.Request) {
     }
 
 	handlersUtil.SendList(w, animals)
-}
-
-func (h *AnimalHandler) FindByPastureId(w http.ResponseWriter, r *http.Request) {
-	pastureId := r.PathValue("pastureId")
-    filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{}); if !ok {
-        return
-    }
-    filter.IsFiltered = true
-    filter.Pastures = &[]string{pastureId} 
-    handlersUtil.ReturnPage(w, r, h.Repository, filter)
 }
 
 func (h *AnimalHandler) SearchFather(w http.ResponseWriter, r *http.Request) {

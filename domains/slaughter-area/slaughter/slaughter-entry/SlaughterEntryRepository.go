@@ -1,7 +1,6 @@
 package slaughterEntry
 
 import (
-	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -25,16 +24,6 @@ func NewRepository(db *sqlx.DB) *SlaughterEntryRepository {
             LEFT JOIN slaughterhouses ON slaughterhouses.id = group.slaughterhouse_id
     `
 	return &SlaughterEntryRepository{selectQuery, "slaughter_entries", db}
-}
-
-func (r *SlaughterEntryRepository) FindPage(pageProps repositoriesUtil.PageProps) (*entity.Page[SlaughterEntry], error) {
-	props := repositoriesUtil.PageBuilderProps{
-		QueryBody:  r.SelectQuery,
-		TableName:  r.TableName,
-		DbConn:     r.Db,
-		PageProps:  pageProps,
-	}
-	return repositoriesUtil.BuildPage[SlaughterEntry](props)
 }
 
 func (r *SlaughterEntryRepository) FindByGroupId(groupId string) (*[]SlaughterEntry, error) {
