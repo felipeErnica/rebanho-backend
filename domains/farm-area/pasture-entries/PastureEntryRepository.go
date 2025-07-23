@@ -76,20 +76,35 @@ func (r *PastureEntryRepository) FindByPasture(
 		return nil, err
 	}
 
-	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "pasture_entries", cursorArgs, 3)
-	if err != nil {
-		return nil, err
-	}
-	if cursorExpression != "" {
-		cursorExpression = " and " + cursorExpression
+    filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 3)
+    if err != nil {
+        return nil, err
+    }
+
+	if filterExpression != "" {
+		whereExpression = whereExpression +  " and " + filterExpression
 	}
 
 	countQuery = countQuery + whereExpression
-	whereExpression = whereExpression + cursorExpression
+
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "pasture_entries", cursorArgs, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	if cursorExpression != "" {
+		whereExpression = whereExpression + " and " + cursorExpression
+	}
+
 	orderByExpression := " order by " + sortExpression
 	query = query + whereExpression + orderByExpression
 
-	return repositoriesUtil.GetPage[PastureEntry](r.Db, query, countQuery, sort, 200, cursorArgs, pastureId, userId)
+    countArgs := []any{pastureId, userId}
+    filterArgs := repositoriesUtil.GetFilterArgs(filter)
+    countArgs = append(countArgs, filterArgs...)
+    args := append(countArgs, cursorArgs...)
+
+	return repositoriesUtil.GetPage[PastureEntry](r.Db, query, countQuery, sort, 200, countArgs, args...)
 }
 
 func (r *PastureEntryRepository) FindByAnimalId(animalId string) (*[]PastureEntry, error) {

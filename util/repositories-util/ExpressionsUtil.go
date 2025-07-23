@@ -104,14 +104,15 @@ func GetFilterExpressions(filter any, mainTable string, numParam int) (string, i
 			fieldValue := value.Elem().Interface()
 			statement, param, err := buildFilterStatement(fieldValue, sqlField, structField, numParam)
 			numParam = param
-			buffer.WriteString(" and " + statement)
+			buffer.WriteString(statement + " and ")
 			if err != nil {
 				return "", 0, err
 			}
 		}
 	}
-
-	return buffer.String(), numParam, nil
+    filterExpression := buffer.String()
+    filterExpression = strings.TrimSuffix(filterExpression, " and ")
+	return filterExpression, numParam, nil
 }
 
 func isFiltered(filter reflect.Value) bool {
