@@ -18,6 +18,7 @@ type FarmAnimal struct {
 	Id          uuid.UUID  `json:"id" db:"id"`
 	Name        *string    `json:"name" db:"name"`
 	RingNumber  *string    `json:"ringNumber" db:"ring_number"`
+	RingOrder   *int       `db:"ring_order"`
 	Sex         string     `json:"sex" db:"sex"`
 	FatherId    *uuid.UUID `json:"fatherId" db:"father_id"`
 	FatherName  *string    `json:"fatherName" db:"father_name"`
@@ -27,23 +28,24 @@ type FarmAnimal struct {
 	DeathDate   *time.Time `json:"deathDate" db:"death_date"`
 	PastureId   *uuid.UUID `json:"pastureId" db:"pasture_id"`
 	PastureName *string    `json:"pastureName" db:"pasture_name"`
+	FarmId      *uuid.UUID `json:"farmId" db:"farm_id"`
 	AnimalType  string     `json:"animalType" db:"animal_type"`
-	UserId      uuid.UUID  `json:"userId" db:"user_id"`
+	CreatedAt   time.Time  `json:"createdAt" db:"created_at"`
 }
 
 type FarmAnimalFilter struct {
-	IsFiltered              bool       `json:"isFiltered"`
-	Name                    *string    `json:"name" db:"name"`
-	Number                  *string    `json:"ringNumber" db:"ring_number"`
-	Sex                     *string    `json:"sex" db:"sex"`
-	Fathers                 *[]string  `json:"fathers" db:"father_id"`
-	Mothers                 *[]string  `json:"mothers" db:"mother_id"`
-	MinBirthDate            *time.Time `json:"minBirthDate" db:"birth_date"`
-	MaxBirthDate            *time.Time `json:"maxBirthDate" db:"birth_date"`
-	MinDeathDate            *time.Time `json:"minDeathDate" db:"death_date"`
-	MaxDeathDate            *time.Time `json:"maxDeathDate" db:"death_date"`
-	Pastures                *[]string  `json:"pastures" db:"pasture_id"`
-	Types                   *[]string  `json:"types" db:"type"`
+	IsFiltered   bool       `json:"isFiltered"`
+	Name         *string    `json:"name" db:"name"`
+	Number       *string    `json:"ringNumber" db:"ring_number"`
+	Sex          *string    `json:"sex" db:"sex"`
+	Fathers      *[]string  `json:"fathers" db:"father_id"`
+	Mothers      *[]string  `json:"mothers" db:"mother_id"`
+	MinBirthDate *time.Time `json:"minBirthDate" db:"birth_date"`
+	MaxBirthDate *time.Time `json:"maxBirthDate" db:"birth_date"`
+	MinDeathDate *time.Time `json:"minDeathDate" db:"death_date"`
+	MaxDeathDate *time.Time `json:"maxDeathDate" db:"death_date"`
+	Pastures     *[]string  `json:"pastures" db:"pasture_id" table:"pastures"`
+	Types        *[]string  `json:"types" db:"type"`
 }
 
 type FarmFilter struct {

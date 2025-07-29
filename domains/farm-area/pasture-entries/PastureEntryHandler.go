@@ -11,6 +11,22 @@ type PastureEntryHandler struct {
 	Repository *PastureEntryRepository
 }
 
+func (h *PastureEntryHandler) SearchAnimalsForPasture(w http.ResponseWriter, r *http.Request) {
+	pastureId := r.PathValue("pastureId")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+    result, err := h.Repository.SearchAnimalsForPasture(pastureId, userId)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendList(w, result)
+}
+
 func (h *PastureEntryHandler) FindByPasture(w http.ResponseWriter, r *http.Request) {
 	pastureId := r.PathValue("pastureId")
     cursor := r.URL.Query().Get("cursor")

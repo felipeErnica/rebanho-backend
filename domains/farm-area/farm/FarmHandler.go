@@ -15,6 +15,7 @@ func (h *FarmHandler) FindAnimalsByFarm(w http.ResponseWriter, r *http.Request) 
 	farmId := r.PathValue("id")
 	order := r.URL.Query().Get("order")
 	sort := r.URL.Query().Get("sort")
+	cursor := r.URL.Query().Get("cursor")
 
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
@@ -26,16 +27,16 @@ func (h *FarmHandler) FindAnimalsByFarm(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	result, err := h.Repository.FindAnimalsByFarm(farmId, userId, filter, sort, order)
+	result, err := h.Repository.FindAnimalsByFarm(farmId, userId, filter, sort, order, cursor)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-	handlersUtil.SendList(w, result)
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *FarmHandler) SearchFarm(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchFarm)
+	handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchFarmById, h.Repository.SearchFarm)
 }
 
 func (h *FarmHandler) Add(w http.ResponseWriter, r *http.Request) {

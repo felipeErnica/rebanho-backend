@@ -86,19 +86,41 @@ Retorna uma lista como resposta HTTP ao texto a ser pesquisado, o repositório d
 func ReturnSearchResults[E any](
 	w http.ResponseWriter,
 	r *http.Request,
-	search func(string, string) (*[]E, error),
+	searchById func(string, []string) (*[]E, error),
+	searchByInput func(string, string) (*[]E, error),
 ) {
-	input := "%" + r.URL.Query().Get("input") + "%"
 	userId, ok := GetUserId(w, r)
 	if !ok {
 		return
 	}
-	list, err := search(userId, input)
+
+	id := r.URL.Query().Get("id")
+	if id != "" {
+		idList := ParseArray(id)
+		list, err := searchById(userId, idList)
+		if err != nil {
+			serverErrors.DatabaseGetError(err, w)
+			return
+		}
+		SendList(w, list)
+        return
+	}
+
+	input := "%" + r.URL.Query().Get("input") + "%"
+	list, err := searchByInput(userId, input)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
 	SendList(w, list)
+}
+
+func ReturnSearchResultById[E any](
+	id string,
+	w http.ResponseWriter,
+	r *http.Request,
+	search func(string, []string) (*[]E, error),
+) {
 }
 
 /*

@@ -142,7 +142,7 @@ func buildFilterStatement(value any, sqlField string, structField string, numPar
 		}
 		statement, newNumParam = buildFilterMinNumberAndDate(sqlField, numParam)
 	case []string:
-		statement, newNumParam = buildFilterArrays(t, sqlField, numParam)
+		statement, newNumParam = GetSliceExpressions(t, sqlField, numParam)
 	case bool:
 		statement, newNumParam = buildFilterBool(sqlField, numParam)
 	default:
@@ -151,17 +151,6 @@ func buildFilterStatement(value any, sqlField string, structField string, numPar
 		return
 	}
 	return statement, newNumParam, err
-}
-
-func buildFilterArrays(array []string, field string, numParam int) (string, int) {
-	params := fmt.Sprintf("$%d", numParam)
-	numParam++
-	for i := 1; i < len(array); i++ {
-		params += fmt.Sprintf(", $%d", numParam)
-		numParam++
-	}
-	statement := fmt.Sprintf("%s in (%s)", field, params)
-	return statement, numParam
 }
 
 func buildFilterMinNumberAndDate(field string, numParam int) (string, int) {
@@ -182,4 +171,15 @@ func buildFilterString(field string, numParam int) (string, int) {
 
 func buildFilterBool(field string, numParam int) (string, int) {
 	return fmt.Sprintf("%s = $%d", field, numParam), numParam + 1
+}
+
+func GetSliceExpressions(array []string, field string, numParam int) (string, int) {
+    params := ""
+	for range array {
+		params += fmt.Sprintf("$%d, ", numParam)
+		numParam++
+	}
+    params = strings.TrimSuffix(params, ", ")
+	statement := fmt.Sprintf("%s in (%s)", field, params)
+	return statement, numParam
 }

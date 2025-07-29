@@ -115,28 +115,17 @@ um cursor codificado indicando a próxima página.
 func GetPage[E any](
 	db *sqlx.DB,
 	query string,
-	countQuery string,
 	sort string,
 	limit int,
-	countArgs []any,
 	args ...any,
 ) (*entity.Page[E], error) {
 	query = query + fmt.Sprintf(" limit %d", limit)
 	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
-	util.LogInfo(strings.Join(strings.Fields(countQuery), " "), true)
 
 	list := []E{}
 	err := db.Select(&list, query, args...)
 	if err != nil {
 		err = errors.New("Erro na lista: " + err.Error())
-		return nil, err
-	}
-
-	totalResult := db.QueryRow(countQuery, countArgs...)
-	var total int
-	err = totalResult.Scan(&total)
-	if err != nil {
-		err = errors.New("Erro na contagem: " + err.Error())
 		return nil, err
 	}
 
@@ -149,7 +138,6 @@ func GetPage[E any](
 		List:        &list,
 		NextCursor:  cursor,
 		HasNextPage: len(list) == limit,
-		Total:       total,
 	}
 	return &page, err
 }

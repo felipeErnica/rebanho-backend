@@ -1,9 +1,7 @@
 package pasture
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
@@ -15,19 +13,27 @@ type PastureHandler struct {
 
 func (h *PastureHandler) SearchPasture(w http.ResponseWriter, r *http.Request) {
 	input := "%" + r.URL.Query().Get("input") + "%"
-	farmId := r.URL.Query().Get("farmsId")
-    fmt.Println("farmId", farmId)
-    idArray := []string{}
-    if farmId != "" {
-        idArray = strings.Split(farmId, ",")
-    }
+	farmId := r.URL.Query().Get("farmId")
+	farmArray := handlersUtil.ParseArray(farmId)
 
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	list, err := h.Repository.SearchPasture(userId, input, idArray)
+	id := r.URL.Query().Get("id")
+	if id != "" {
+		idList := handlersUtil.ParseArray(id)
+		list, err := h.Repository.SearchPastureById(userId, farmArray, idList)
+		if err != nil {
+			serverErrors.DatabaseGetError(err, w)
+			return
+		}
+		handlersUtil.SendList(w, list)
+		return
+	}
+
+	list, err := h.Repository.SearchPasture(userId, input, farmArray)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
@@ -40,21 +46,20 @@ func (h *PastureHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PastureHandler) FindAnimalsByPasture(w http.ResponseWriter, r *http.Request) {
-    pastureId := r.PathValue("id")
-    sort := r.URL.Query().Get("sort")
-    order := r.URL.Query().Get("order")
-    userId, ok := handlersUtil.GetUserId(w, r)
-    if !ok {
-        return
-    }
-    result, err := h.Repository.FindAnimalsByPasture(pastureId, userId, sort, order)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
-    handlersUtil.SendList(w, result)
+	pastureId := r.PathValue("id")
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+	result, err := h.Repository.FindAnimalsByPasture(pastureId, userId, sort, order)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+	handlersUtil.SendList(w, result)
 }
-
 
 func (h *PastureHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.FindById(w, r, h.Repository)

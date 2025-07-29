@@ -1,6 +1,8 @@
 package farm
 
 import (
+	"fmt"
+
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -13,60 +15,81 @@ type FarmRepository struct {
 }
 
 func (r *FarmRepository) FindAnimalsByFarm(
-    farmId string, 
-    userId string, 
-    filter FarmAnimalFilter,
-    sort string, 
-    order string,
-) (*[]FarmAnimal, error) {
+	farmId string,
+	userId string,
+	filter FarmAnimalFilter,
+	sort string,
+	order string,
+	cursor string,
+) (*entity.Page[FarmAnimal], error) {
 
-    sortMap := map[string]string{
-        "ring_number": "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
-        "name": "coalesce(animals.name, '')",
-        "birth_date": "coalesce(animals.birth_date, '-infinity')",
-        "death_date": "coalesce(animals.death_date, '-infinity')",
-    }
+	sortMap := map[string]string{
+		"ring_order": "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
+		"name":       "coalesce(animals.name, '')",
+		"birth_date": "coalesce(animals.birth_date, '-infinity')",
+	}
 
-    expression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
-    if err != nil {
-        return nil, err
-    }
+	expression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
 
-    query := `
+	query := `
         select
             animals.id, 
             animals.name, 
             animals.ring_number, 
+            coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0) as ring_order,
             animals.sex, 
             animals.father_id, 
             animals.mother_id, 
             animals.birth_date, 
-            animals.death_date, 
             animals.pasture_id, 
             animals.animal_type,
+            animals.created_at,
             concat_ws(' - ', father.ring_number, father.name) as father_name, 
             concat_ws(' - ', mother.ring_number, mother.name) as mother_name, 
-            pastures.name as pasture_name
+            pastures.name as pasture_name,
+            pastures.farm_id as farm_id
         from animals
             left join pastures on pastures.id = animals.pasture_id
             left join animals as father on father.id = animals.father_id
             left join animals as mother on mother.id = animals.mother_id
     `
-    whereExpression := " where pastures.farm_id = $1 and animals.user_id = $2 and animals.deleted_at is null "
-    filterExpressions, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 3)
-    if err != nil {
-        return nil, err
-    }
+	whereExpression := " where pastures.farm_id = $1 and animals.user_id = $2 and animals.deleted_at is null "
 
-    whereExpression = whereExpression + filterExpressions
-    orderExpression := " order by " + expression
+	filterExpressions, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 3)
+	if err != nil {
+		return nil, err
+	}
 
-    query = query + whereExpression + orderExpression
-    args := []any{ farmId, userId }
-    filterArgs := repositoriesUtil.GetFilterArgs(filter)
-    args = append(args, filterArgs...)
+	if filterExpressions != "" {
+		whereExpression = whereExpression + " and " + filterExpressions
+	}
 
-    return repositoriesUtil.GetList[FarmAnimal](r.DB, query, args...)
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "animals", cursorArgs, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	if cursorExpression != "" {
+		whereExpression = whereExpression + " and " + cursorExpression
+	}
+
+	orderExpression := " order by " + expression
+
+	query = query + whereExpression + orderExpression
+	args := []any{farmId, userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+
+	return repositoriesUtil.GetPage[FarmAnimal](r.DB, query, sort, 200, args...)
 }
 
 func NewRepository(db *sqlx.DB) *FarmRepository {
@@ -82,6 +105,31 @@ func (r *FarmRepository) SearchFarm(userId string, input string) (*[]entity.Sear
         order by label
         `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
+}
+
+func (r *FarmRepository) SearchFarmById(userId string, idList []string) (*[]entity.SearchEntity, error) {
+	query := `
+        select id, name as label 
+        from farms 
+        where user_id = $1 and deleted_at is null
+        order by name
+        `
+	if len(idList) != 0 {
+		queryId := "select id, name as label from farms"
+		idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "id", 2)
+		queryId += " where " + idExpression
+        query = fmt.Sprintf(`
+            with farm_base as (%s),
+            farm_id as (%s)
+            select * from farm_base
+            union
+            select * from farm_id
+        `, query, queryId)
+		args := []any{userId}
+		args = repositoriesUtil.GetSliceArgs(idList, args)
+		return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+	}
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
 func (r *FarmRepository) Add(farm *Farm) (*Farm, error) {

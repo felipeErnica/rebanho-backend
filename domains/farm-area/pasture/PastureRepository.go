@@ -1,9 +1,7 @@
 package pasture
 
 import (
-	"bytes"
 	"fmt"
-	"strings"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -31,15 +29,9 @@ func (r *PastureRepository) SearchPasture(userId string, input string, farmsId [
 
 	arrayStatement := ""
 	if len(farmsId) != 0 {
-		var buff bytes.Buffer
-		for i, id := range farmsId {
-			placeholder := fmt.Sprintf("$%d, ", 3+i)
-			buff.WriteString(placeholder)
-			args = append(args, id)
-		}
-		placeholderArray := buff.String()
-		placeholderArray, _ = strings.CutSuffix(placeholderArray, ", ")
-		arrayStatement = fmt.Sprintf("and farm_id in (%s)", placeholderArray)
+		args = repositoriesUtil.GetSliceArgs(farmsId, args)
+		farmExpression, _ := repositoriesUtil.GetSliceExpressions(farmsId, "farm_id", 3)
+		arrayStatement = " and " + farmExpression
 	}
 
 	query := fmt.Sprintf(`
@@ -56,11 +48,44 @@ func (r *PastureRepository) SearchPasture(userId string, input string, farmsId [
 	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
 }
 
+func (r *PastureRepository) SearchPastureById(userId string, farmsId []string, idList []string) (*[]entity.SearchEntity, error) {
+	args := []any{userId}
+	query := ` select id, name as label from pastures`
+    orderExpression := " order by label"
+	whereStatement := " where user_id = $1 and deleted_at is null"
+
+    paramIndex := 2
+	if len(farmsId) != 0 {
+		args = repositoriesUtil.GetSliceArgs(farmsId, args)
+        farmExpression, nextParam := repositoriesUtil.GetSliceExpressions(farmsId, "farm_id", paramIndex)
+        paramIndex = nextParam
+		whereStatement += " and " + farmExpression
+	}
+    query += whereStatement + orderExpression
+    
+    if len(idList) != 0 {
+        queryId := "select id, name as label from pastures"
+        args = repositoriesUtil.GetSliceArgs(idList, args)
+        idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "id", paramIndex)
+        queryId += " where " + idExpression
+        query = fmt.Sprintf(`
+            with pasture_base as (%s),
+            pasture_id as (%s)
+            select * from pasture_base
+            union
+            select * from pasture_id
+        `, query, queryId)
+        return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
+    }
+
+	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
+}
+
 func (r *PastureRepository) FindAnimalsByPasture(
-    pastureId string, 
-    userId string, 
-    sort string, 
-    order string,
+	pastureId string,
+	userId string,
+	sort string,
+	order string,
 ) (*[]PastureAnimal, error) {
 	sortMap := map[string]string{
 		"ring_number": "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
