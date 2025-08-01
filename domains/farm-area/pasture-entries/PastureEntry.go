@@ -21,6 +21,10 @@ type PastureEntry struct {
 	UserId           uuid.UUID  `db:"user_id"`
 }
 
+type PastureTotal struct {
+	Total int `json:"total" db:"total"`
+}
+
 type PastureEntryFilter struct {
 	IsFiltered         bool       `json:"isFiltered" db:"is_filtered"`
 	AnimalRingNumber   *string    `json:"animalRingNumber" db:"ring_number"`

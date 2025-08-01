@@ -11,7 +11,7 @@ type FarmHandler struct {
 	Repository *FarmRepository
 }
 
-func (h *FarmHandler) FindAnimalsByFarm(w http.ResponseWriter, r *http.Request) {
+func (h *FarmHandler) FindFarmAnimals(w http.ResponseWriter, r *http.Request) {
 	farmId := r.PathValue("id")
 	order := r.URL.Query().Get("order")
 	sort := r.URL.Query().Get("sort")
@@ -27,7 +27,27 @@ func (h *FarmHandler) FindAnimalsByFarm(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	result, err := h.Repository.FindAnimalsByFarm(farmId, userId, filter, sort, order, cursor)
+	result, err := h.Repository.FindFarmAnimals(farmId, userId, filter, sort, order, cursor)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *FarmHandler) FindFarmAnimalsTotal(w http.ResponseWriter, r *http.Request) {
+	farmId := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, FarmAnimalFilter{})
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindFarmAnimalsTotal(farmId, userId, filter)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

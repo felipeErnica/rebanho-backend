@@ -11,25 +11,37 @@ type PastureEntryHandler struct {
 	Repository *PastureEntryRepository
 }
 
-func (h *PastureEntryHandler) SearchAnimalsForPasture(w http.ResponseWriter, r *http.Request) {
+func (h *PastureEntryHandler) SearchPastureAnimals(w http.ResponseWriter, r *http.Request) {
 	pastureId := r.PathValue("pastureId")
+	input := "%" + r.URL.Query().Get("input") + "%"
+	id := r.URL.Query().Get("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-    result, err := h.Repository.SearchAnimalsForPasture(pastureId, userId)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
+	if id != "" {
+		idList := handlersUtil.ParseArray(id)
+		result, err := h.Repository.SearchPastureAnimalsById(pastureId, userId, idList)
+		if err != nil {
+			serverErrors.DatabaseGetError(err, w)
+			return
+		}
+		handlersUtil.SendList(w, result)
         return
-    }
+	}
 
-    handlersUtil.SendList(w, result)
+	result, err := h.Repository.SearchPastureAnimals(pastureId, userId, input)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+	handlersUtil.SendList(w, result)
 }
 
 func (h *PastureEntryHandler) FindByPasture(w http.ResponseWriter, r *http.Request) {
 	pastureId := r.PathValue("pastureId")
-    cursor := r.URL.Query().Get("cursor")
+	cursor := r.URL.Query().Get("cursor")
 	sort := r.URL.Query().Get("sort")
 	order := r.URL.Query().Get("order")
 	userId, ok := handlersUtil.GetUserId(w, r)
@@ -37,18 +49,39 @@ func (h *PastureEntryHandler) FindByPasture(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-    filter, ok := handlersUtil.DecodeFilter(w, r, PastureEntryFilter{})
-    if !ok {
-        return
-    }
+	filter, ok := handlersUtil.DecodeFilter(w, r, PastureEntryFilter{})
+	if !ok {
+		return
+	}
 
-    result, err := h.Repository.FindByPasture(pastureId, userId, filter, cursor, sort, order)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
+	result, err := h.Repository.FindByPasture(pastureId, userId, filter, cursor, sort, order)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
 
-    handlersUtil.SendEntity(w, result)
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *PastureEntryHandler) FindByPastureTotal(w http.ResponseWriter, r *http.Request) {
+	pastureId := r.PathValue("pastureId")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, PastureEntryFilter{})
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindByPastureTotal(pastureId, userId, filter)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *PastureEntryHandler) FindByAnimalId(w http.ResponseWriter, r *http.Request) {

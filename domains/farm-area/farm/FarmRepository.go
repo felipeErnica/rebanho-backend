@@ -14,7 +14,7 @@ type FarmRepository struct {
 	DB        *sqlx.DB
 }
 
-func (r *FarmRepository) FindAnimalsByFarm(
+func (r *FarmRepository) FindFarmAnimals(
 	farmId string,
 	userId string,
 	filter FarmAnimalFilter,
@@ -92,6 +92,34 @@ func (r *FarmRepository) FindAnimalsByFarm(
 	return repositoriesUtil.GetPage[FarmAnimal](r.DB, query, sort, 200, args...)
 }
 
+func (r *FarmRepository) FindFarmAnimalsTotal(
+	farmId string,
+	userId string,
+	filter FarmAnimalFilter,
+) (*FarmAnimalTotal, error) {
+
+	query := `
+        select count(animals.id) as total 
+        from animals 
+            left join pastures on pastures.id = animals.pasture_id
+        where pastures.farm_id = $1 and animals.user_id = $2 and animals.deleted_at is null 
+    `
+	filterExpressions, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 3)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpressions != "" {
+		query += " and " + filterExpressions
+	}
+
+	args := []any{farmId, userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetOne[FarmAnimalTotal](r.DB, query, args...)
+}
+
 func NewRepository(db *sqlx.DB) *FarmRepository {
 	query := "SELECT farms.* FROM farms"
 	return &FarmRepository{query, "farms", db}
@@ -118,7 +146,7 @@ func (r *FarmRepository) SearchFarmById(userId string, idList []string) (*[]enti
 		queryId := "select id, name as label from farms"
 		idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "id", 2)
 		queryId += " where " + idExpression
-        query = fmt.Sprintf(`
+		query = fmt.Sprintf(`
             with farm_base as (%s),
             farm_id as (%s)
             select * from farm_base

@@ -14,6 +14,10 @@ type Farm struct {
 	UserId    uuid.UUID  `json:"userId" db:"user_id"`
 }
 
+type FarmAnimalTotal struct {
+	Total int `json:"total" db:"total"`
+}
+
 type FarmAnimal struct {
 	Id          uuid.UUID  `json:"id" db:"id"`
 	Name        *string    `json:"name" db:"name"`

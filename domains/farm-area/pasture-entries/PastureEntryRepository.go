@@ -1,6 +1,8 @@
 package pastureEntries
 
 import (
+	"fmt"
+
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -24,7 +26,25 @@ func NewRepository(db *sqlx.DB) *PastureEntryRepository {
 	return &PastureEntryRepository{selectQuery, "pastures_entries", db}
 }
 
-func (r *PastureEntryRepository) SearchAnimalsForPasture(pastureId string, userId string) (*[]entity.SearchEntity, error) {
+func (r *PastureEntryRepository) SearchPastureAnimals(pastureId string, userId string, input string) (*[]entity.SearchEntity, error) {
+	query := `
+        select
+            animals.id,
+            concat_ws(' - ', animals.ring_number, animals.name, to_char(animals.birth_date, 'dd/mm/yyyy')) as label
+        from animals
+            left join pastures on pastures.id = animals.pasture_id
+        where animals.deleted_at is null 
+            and animals.pasture_id <> $1
+            and animals.user_id = $2
+            and concat_ws(' - ', animals.ring_number, animals.name, to_char(animals.birth_date, 'dd/mm/yyyy')) ilike $3
+            and animals.animal_type <> 'OUTSIDE_ANIMAL'
+        order by coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0), animals.birth_date
+        limit 20
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, pastureId, userId, input)
+}
+
+func (r *PastureEntryRepository) SearchPastureAnimalsById(pastureId string, userId string, idList []string) (*[]entity.SearchEntity, error) {
 	query := `
         select
             animals.id,
@@ -36,7 +56,26 @@ func (r *PastureEntryRepository) SearchAnimalsForPasture(pastureId string, userI
             and animals.user_id = $2
             and animals.animal_type <> 'OUTSIDE_ANIMAL'
         order by coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0), animals.birth_date
+        limit 20
     `
+    if len(idList) != 0 {
+        queryById := `
+            select id, concat_ws(' - ', ring_number, name, to_char(birth_date, 'dd/mm/yyyy')) as label
+            from animals
+        `
+        idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "animals.id", 3)
+        queryById += " where " + idExpression
+        args := []any{pastureId, userId}
+        args = repositoriesUtil.GetSliceArgs(idList, args)
+        query = fmt.Sprintf(`
+            with animal_base as (%s),
+            animal_id as (%s)
+            select * from animal_base
+            union
+            select * from animal_id
+        `, query, queryById)
+        return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
+    }
 	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, pastureId, userId)
 }
 
@@ -116,6 +155,37 @@ func (r *PastureEntryRepository) FindByPasture(
 	args = append(args, cursorArgs...)
 
 	return repositoriesUtil.GetPage[PastureEntry](r.Db, query, sort, 200, args...)
+}
+
+func (r *PastureEntryRepository) FindByPastureTotal (
+	pastureId string,
+	userId string,
+	filter PastureEntryFilter,
+) (*PastureTotal, error) {
+
+	query := "select count(pasture_entries.id) as total from pasture_entries"
+	whereExpression := `
+        where pasture_entries.deleted_at is null 
+            and pasture_entries.pasture_id = $1
+            and pasture_entries.user_id = $2
+    `
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 3)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression = whereExpression + " and " + filterExpression
+	}
+
+	query = query + whereExpression
+
+	args := []any{pastureId, userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetOne[PastureTotal](r.Db, query, args...)
 }
 
 func (r *PastureEntryRepository) FindByAnimalId(animalId string) (*[]PastureEntry, error) {
