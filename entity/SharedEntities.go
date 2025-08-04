@@ -6,7 +6,12 @@ type Page[E any] struct {
 	List        *[]E   `json:"list"`
 }
 
+type Result struct {
+	Result any
+	Err    error
+}
+
 type SearchEntity struct {
-    Id    string `json:"id" db:"id"`
+	Id    string `json:"id" db:"id"`
 	Label string `json:"label" db:"label"`
 }

@@ -33,7 +33,7 @@ func InitServerError(err error) {
 }
 
 func JsonServerError(err error, w http.ResponseWriter) {
-    util.LogError("Falha ao decodificar JSON!")
+    util.LogError("Falha ao codificar JSON!")
     util.LogError(err.Error())
     w.WriteHeader(http.StatusInternalServerError)
 }

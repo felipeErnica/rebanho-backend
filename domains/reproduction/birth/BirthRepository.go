@@ -3,6 +3,8 @@ package birth
 import (
 	"fmt"
 
+	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -27,24 +29,29 @@ func NewRepository(db *sqlx.DB) *BirthRepository {
 }
 
 func (r *BirthRepository) GetBirthsStats(userId string) (*BirthStats, error) {
-	intervalHistChan := make(chan *[]BirthIntervalHist)
-	currentIntervalChan := make(chan float64)
-	intervalTrendChan := make(chan float64)
+	intervalHistChan := make(chan entity.Result)
+	indexHistChan := make(chan entity.Result)
+	birthHistChan := make(chan entity.Result)
 
-	indexHistChan := make(chan *[]DeathIndexHist)
-	currentDeathIndexChan := make(chan float64)
-	indexTrendChan := make(chan float64)
-
-	errChan := make(chan error, 2)
-
-	go r.getBirthIntervalHistory(userId, intervalHistChan, currentIntervalChan, intervalTrendChan, errChan)
-	go r.getDeathIndex(userId, indexHistChan, currentDeathIndexChan, indexTrendChan, errChan)
+	go r.getBirthIntervalHistory(userId, intervalHistChan)
+	go r.getDeathIndex(userId, indexHistChan)
+	go r.getBirthHistory(userId, birthHistChan)
 
 	errs := []error{}
-	for range cap(errChan) {
-		if err := <-errChan; err != nil {
-			errs = append(errs, err)
-		}
+
+	intervalStats, err := util.GetResults(<-intervalHistChan, IntervalStats{})
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	deathStats, err := util.GetResults(<-indexHistChan, DeathStats{})
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	currentStats, err := util.GetResults(<-birthHistChan, CurrentStats{})
+	if err != nil {
+		errs = append(errs, err)
 	}
 
 	if len(errs) != 0 {
@@ -52,23 +59,23 @@ func (r *BirthRepository) GetBirthsStats(userId string) (*BirthStats, error) {
 	}
 
 	birthStats := &BirthStats{
-		BirthIntervalHist: *<-intervalHistChan,
-		CurrentInterval:   <-currentIntervalChan,
-		IntervalTrend:     <-intervalTrendChan,
-		DeathIndexHist:    *<-indexHistChan,
-		DeathIndex:        <-currentDeathIndexChan,
-		DeathIndexTrend:   <-indexTrendChan,
+		IntervalHist:        intervalStats.BirthIntervalHist,
+		CurrentInterval:     intervalStats.CurrentInterval,
+		IntervalTrend:       intervalStats.IntervalTrend,
+		DeathIndexHist:      deathStats.DeathIndexHist,
+		DeathIndex:          deathStats.DeathIndex,
+		DeathTrend:          deathStats.DeathIndexTrend,
+		BirthNumbersTrend:   currentStats.BirthNumbersTrend,
+		CurrentBirthNumbers: currentStats.CurrentBirthNumbers,
+		CurrentDeathNumbers: currentStats.CurrentDeathNumbers,
+		DeathNumbersTrend:   currentStats.DeathNumbersTrend,
+		BirthHistory:        currentStats.BirthHistory,
 	}
+
 	return birthStats, nil
 }
 
-func (r *BirthRepository) getBirthIntervalHistory(
-	userId string,
-	resultsChan chan *[]BirthIntervalHist,
-	intervalChan chan float64,
-	trendChan chan float64,
-	errChan chan error,
-) {
+func (r *BirthRepository) getBirthIntervalHistory(userId string, resultChan chan entity.Result) {
 	query := `
         with cte as (
             select distinct
@@ -80,17 +87,14 @@ func (r *BirthRepository) getBirthIntervalHistory(
                 and birth_interval is not null
                 and deleted_at is null
                 and created_at is not null
-            order by 1 desc
+            order by 1
         )
-        select * from cte where age(month) < interval '1 year'
+        select * from cte where age(month) between interval '1 month' and '1 year'
     `
 	results, err := repositoriesUtil.GetList[BirthIntervalHist](r.DB, query, userId)
-	errChan <- err
-	resultsChan <- results
 
 	if err != nil {
-		intervalChan <- 0
-		trendChan <- 0
+		resultChan <- entity.Result{Result: nil, Err: err}
 		return
 	}
 
@@ -98,31 +102,30 @@ func (r *BirthRepository) getBirthIntervalHistory(
 	var currentInterval, previousInterval, intervalTrend float64
 
 	switch lenght := len(intervalHist); lenght {
-	case 0, 1:
+	case 0:
 		currentInterval = 0
 		previousInterval = 0
 		intervalTrend = 0
-	case 2:
-		currentInterval = intervalHist[1].IntervalAverage
+	case 1:
+		currentInterval = intervalHist[lenght - 1].IntervalAverage
 		previousInterval = 0
 		intervalTrend = 0
 	default:
-		currentInterval = intervalHist[1].IntervalAverage
-		previousInterval = intervalHist[2].IntervalAverage
+		currentInterval = intervalHist[lenght - 1].IntervalAverage
+		previousInterval = intervalHist[lenght - 2].IntervalAverage
 		intervalTrend = ((currentInterval / previousInterval) - 1) * 100
 	}
 
-	intervalChan <- currentInterval
-	trendChan <- intervalTrend
+	intervalResult := IntervalStats{
+		IntervalTrend:     intervalTrend,
+		BirthIntervalHist: intervalHist,
+		CurrentInterval:   currentInterval,
+	}
+
+	resultChan <- entity.Result{Result: intervalResult, Err: nil}
 }
 
-func (r *BirthRepository) getDeathIndex(
-	userId string,
-	resultsChan chan *[]DeathIndexHist,
-	indexChan chan float64,
-	trendChan chan float64,
-	errChan chan error,
-) {
+func (r *BirthRepository) getDeathIndex(userId string, resultsChan chan entity.Result) {
 	query := `
         with death_tbl as (
             select 
@@ -152,16 +155,13 @@ func (r *BirthRepository) getDeathIndex(
             (coalesce(death_total, 0)::float / coalesce(birth_total, 0)::float)*100 as death_index
         from birth_tbl
             full join death_tbl on birth_tbl.birth_date = death_tbl.death_date
-        where age(birth_date) < interval '2 years'
-        order by 1 desc
+        where age(birth_date) between interval '1 month' and '2 years'
+        order by 1
     `
 	results, err := repositoriesUtil.GetList[DeathIndexHist](r.DB, query, userId)
-	errChan <- err
-	resultsChan <- results
 
 	if err != nil {
-		indexChan <- 0
-		trendChan <- 0
+		resultsChan <- entity.Result{Result: nil, Err: err}
 		return
 	}
 
@@ -169,25 +169,30 @@ func (r *BirthRepository) getDeathIndex(
 	var currentIndex, previousIndex, indexTrend float64
 
 	switch lenght := len(indexHist); lenght {
-	case 0, 1:
+	case 0:
 		currentIndex = 0
 		previousIndex = 0
 		indexTrend = 0
-	case 2:
-		currentIndex = indexHist[1].DeathIndex
+	case 1:
+		currentIndex = indexHist[lenght-1].DeathIndex
 		previousIndex = 0
 		indexTrend = 0
 	default:
-		currentIndex = indexHist[1].DeathIndex
-		previousIndex = indexHist[2].DeathIndex
+		currentIndex = indexHist[lenght-1].DeathIndex
+		previousIndex = indexHist[lenght-2].DeathIndex
 		indexTrend = ((currentIndex / previousIndex) - 1) * 100
 	}
 
-	indexChan <- currentIndex
-	trendChan <- indexTrend
+	deathStats := DeathStats{
+		DeathIndexHist:  indexHist,
+		DeathIndexTrend: indexTrend,
+		DeathIndex:      currentIndex,
+	}
+
+	resultsChan <- entity.Result{Result: deathStats, Err: nil}
 }
 
-func (r *BirthRepository) GetBirthHistory(userId string) (*[]BirthsByDate, error) {
+func (r *BirthRepository) getBirthHistory(userId string, resultChan chan entity.Result) {
 	query := `
         with death_data as ( 
         select 
@@ -218,9 +223,53 @@ func (r *BirthRepository) GetBirthHistory(userId string) (*[]BirthsByDate, error
             coalesce(death_data.death_total, 0) as death_total
         from birth_data
             full join death_data on death_data.death_month = birth_data.birth_month
+        where age(birth_data.birth_month) < interval '5 years'
         order by birth_data.birth_month
     `
-	return repositoriesUtil.GetList[BirthsByDate](r.DB, query, userId)
+	birthHist, err := repositoriesUtil.GetList[BirthsByDate](r.DB, query, userId)
+
+	if err != nil {
+		resultChan <- entity.Result{Result: nil, Err: err}
+		return
+	}
+
+	birthHistArray := *birthHist
+	var previousBirth, previousDeath, currentBirth, currentDeath int
+	var deathTrend, birthTrend float64
+
+	switch lenght := len(birthHistArray); lenght {
+	case 0, 1:
+		currentBirth = 0
+		currentDeath = 0
+		previousBirth = 0
+		previousDeath = 0
+		deathTrend = 0
+		birthTrend = 0
+	case 2:
+		currentBirth = birthHistArray[lenght-1].BirthTotal
+		currentDeath = birthHistArray[lenght-1].DeathTotal
+		previousBirth = 0
+		previousDeath = 0
+		deathTrend = 0
+		birthTrend = 0
+	default:
+		currentBirth = birthHistArray[lenght-1].BirthTotal
+		currentDeath = birthHistArray[lenght-1].DeathTotal
+		previousBirth = birthHistArray[lenght-2].BirthTotal
+		previousDeath = birthHistArray[lenght-2].DeathTotal
+		deathTrend = ((float64(currentDeath) / float64(previousDeath)) - 1)
+		birthTrend = ((float64(currentBirth) / float64(previousBirth)) - 1)
+	}
+
+	currentStats := CurrentStats{
+		DeathNumbersTrend:   deathTrend,
+		BirthNumbersTrend:   birthTrend,
+		CurrentDeathNumbers: currentDeath,
+		CurrentBirthNumbers: currentBirth,
+		BirthHistory:        birthHistArray,
+	}
+
+	resultChan <- entity.Result{Result: currentStats, Err: nil}
 }
 
 func (r *BirthRepository) TotalBySex(userId string) (*[]TotalBirthsBySex, error) {
@@ -231,7 +280,10 @@ func (r *BirthRepository) TotalBySex(userId string) (*[]TotalBirthsBySex, error)
             count(births.id) filter (where calf.sex = 'F') as females
         from births
             left join animals as calf on births.calf_id = calf.id
-        where births.user_id = $1 and births.deleted_at is null
+        where 
+            births.user_id = $1 
+            and age(calf.birth_date) < interval '5 years'
+            and births.deleted_at is null
         group by birth_month
         order by birth_month
     `
