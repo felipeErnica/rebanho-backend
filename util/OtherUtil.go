@@ -2,18 +2,28 @@ package util
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 )
 
-func GetResults[T any](result entity.Result, resultType T) (T, error) {
+func GetResults(result entity.Result, resultVar any) (error) {
     if result.Err != nil {
-        return resultType, result.Err
+        return result.Err
     }
 
-    resultContent, ok := result.Result.(T); if !ok {
-        err := errors.New("Falha ao obter um resultado assícrono: Tipo Incorreto")
-        return resultType, err
+    t := reflect.TypeOf(resultVar)
+    if t.Kind() != reflect.Pointer {
+        return errors.New("A variável deve ser um ponteiro")
     }
-    return resultContent, nil
+
+    v := reflect.ValueOf(resultVar).Elem()
+    resultValue := reflect.ValueOf(result.Result)
+    if resultValue.Kind() != v.Kind() {
+        return fmt.Errorf("Tipo incorreto: O tipo do resultado é: %T", result.Result)
+    }
+
+    v.Set(resultValue)
+    return nil
 }

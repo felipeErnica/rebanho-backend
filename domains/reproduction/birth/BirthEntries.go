@@ -55,6 +55,18 @@ type DeathIndexHist struct {
 	DeathIndex float64   `json:"deathIndex" db:"death_index"`
 }
 
+type LossHist struct {
+	Month  time.Time `json:"month" db:"month"`
+	Losses int       `json:"losses" db:"losses"`
+}
+
+type IntervalAnimal struct {
+	AnimalName      string  `json:"animalName" db:"animal_name"`
+	BirthNumbers    int     `json:"birthNumbers" db:"birth_numbers"`
+	IntervalAverage float64 `json:"intervalAverage" db:"interval_average"`
+	AverageRate     float64 `json:"averageRate" db:"average_rate"`
+}
+
 type BirthStats struct {
 	CurrentInterval     float64             `json:"currentInterval"`
 	IntervalTrend       float64             `json:"intervalTrend"`
@@ -63,9 +75,11 @@ type BirthStats struct {
 	DeathTrend          float64             `json:"deathTrend"`
 	DeathIndexHist      []DeathIndexHist    `json:"deathIndexHist"`
 	CurrentBirthNumbers int                 `json:"currentBirthNumbers"`
-	BirthNumbersTrend   float64             `json:"birthNumbersTrend"`
-	CurrentDeathNumbers int                 `json:"currentDeathNumbers"`
-	DeathNumbersTrend   float64             `json:"deathNumbersTrend"`
+	BirthNumbersTrend   int                 `json:"birthNumbersTrend"`
+	PregnantsNumber     int                 `json:"pregnantsNumber"`
+	Losses              int                 `json:"losses"`
+	LossTrend           int                 `json:"lossTrend"`
+	LossHist            []LossHist          `json:"lossHist"`
 	BirthHistory        []BirthsByDate      `json:"birthHistory" db:"birth_history"`
 }
 
@@ -81,10 +95,14 @@ type DeathStats struct {
 	DeathIndexHist  []DeathIndexHist `json:"deathIndexHist"`
 }
 
+type LossStats struct {
+	LossNumbers int        `json:"lossNumbers"`
+	LossTrend   int        `json:"lossTrend"`
+	LossHist    []LossHist `json:"lossHist"`
+}
+
 type CurrentStats struct {
 	CurrentBirthNumbers int            `json:"currentBirthNumbers"`
-	BirthNumbersTrend   float64        `json:"birthNumbersTrend"`
-	CurrentDeathNumbers int            `json:"currentDeathNumbers"`
-	DeathNumbersTrend   float64        `json:"deathNumbersTrend"`
+	BirthNumbersTrend   int            `json:"birthNumbersTrend"`
 	BirthHistory        []BirthsByDate `json:"birthHistory" db:"birth_history"`
 }
