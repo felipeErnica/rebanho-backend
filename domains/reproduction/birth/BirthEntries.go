@@ -8,18 +8,31 @@ import (
 
 type BirthEntry struct {
 	Id            uuid.UUID  `json:"id" db:"id"`
-	MotherId      string     `json:"motherId" db:"mother_id"`
-	MotherName    string     `json:"motherName" db:"mother_name"`
-	MotherNumber  string     `json:"motherNumber" db:"mother_number"`
+	MotherId      uuid.UUID  `json:"motherId" db:"mother_id"`
+	MotherName    string     `json:"motherName" db:"mother_name" table:"m"`
+	MotherOrder   int        `json:"motherOrder" db:"mother_order" table:"m"`
 	CalfId        string     `json:"calfId" db:"calf_id"`
-	CalfBirthDate string     `json:"calfBirthDate" db:"calf_birth_date"`
+	CalfName      string     `json:"calfName" db:"calf_name"`
+	CalfBirthDate time.Time  `json:"calfBirthDate" db:"calf_birth_date"`
 	CalfSex       string     `json:"calfSex" db:"calf_sex"`
+	CalfFatherId  *uuid.UUID `json:"calfFatherId" db:"calf_father_id"`
 	CalfFather    *string    `json:"calfFather" db:"calf_father"`
 	BirthInterval *int       `json:"birthInterval" db:"birth_interval"`
 	Observation   *string    `json:"observation" db:"observation"`
 	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
 	DeletedAt     *time.Time `json:"deletedAt" db:"deleted_at"`
 	UserId        uuid.UUID  `json:"userId" db:"user_id"`
+}
+
+type BirthEntryFilter struct {
+	IsFiltered       bool       `json:"isFiltered"`
+	Mothers          *[]string  `json:"mothers" db:"mother_id"`
+	MinBirthDate     *time.Time `json:"minBirthDate" db:"birth_date" table:"c" `
+	MaxBirthDate     *time.Time `json:"maxBirthDate" db:"birth_date" table:"c"`
+	Sex              *string    `json:"sex" db:"sex" table:"c"`
+	Fathers          *[]string  `json:"calfFatherId" db:"father_id" table:"c"`
+	MinBirthInterval *int       `json:"maxBirthInterval" db:"birth_interval"`
+	MaxBirthInterval *int       `json:"minBirthInterval" db:"birth_interval"`
 }
 
 type BirthEntrySave struct {
@@ -31,6 +44,11 @@ type BirthEntrySave struct {
 	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
 	DeletedAt     *time.Time `json:"deletedAt" db:"deleted_at"`
 	UserId        string     `json:"userId" db:"user_id"`
+}
+
+type BirthFooter struct {
+	Total           int     `json:"total"`
+	IntervalAverage float64 `json:"intervalAverage"`
 }
 
 type TotalBirthsBySex struct {

@@ -158,24 +158,40 @@ func (r *BirthRepository) GetBirthsStats(userId string) (*BirthStats, error) {
 
 func (r *BirthRepository) getBirthIntervalHistory(userId string, resultChan chan entity.Result) {
 	query := `
-        with cte as (
-            select distinct
-                date_trunc('month', created_at) as month,
-                avg(birth_interval) OVER (ORDER BY date_trunc('month', created_at)) AS interval_average
+        with min_date as (
+            select min(date_trunc('month', created_at)) as month 
             from births
             where 
-                user_id = $1 
+                user_id = $1
                 and birth_interval is not null
                 and deleted_at is null
-                and created_at is not null
-            order by 1
         ),
-        max_tbl as (select max(month) as max_date from cte)
-        select cte.* 
-        from cte cross join max_tbl
-        where 
-            age(month) > interval '1 month'
-            and month >= max_date - interval '1 year'
+        date_series as (
+            select generate_series(
+                min.month, 
+                date_trunc('month', now()), 
+                interval '1 month'
+            ) as month
+            from min_date min
+        ),
+		birth_month as (
+			select 
+				date_trunc('month', created_at) as month,
+				birth_interval
+			from births
+			where 
+                user_id = $1
+				and birth_interval is not null
+				and deleted_at is null
+		),
+		cte as (
+			select distinct
+				d.month,
+				avg(b.birth_interval) over (order by d.month) interval_average
+			from date_series d left join birth_month b using (month)
+			order by 1
+		)
+		select * from cte where age(month) < interval '1 year'
     `
 	results, err := repositoriesUtil.GetList[BirthIntervalHist](r.DB, query, userId)
 
@@ -213,39 +229,41 @@ func (r *BirthRepository) getBirthIntervalHistory(userId string, resultChan chan
 
 func (r *BirthRepository) getDeathIndex(userId string, resultsChan chan entity.Result) {
 	query := `
-        with death_tbl as (
+        with date_series as (
+            select date
+			from date_trunc('month', now() - interval '1 month') max_date,
+                date_trunc('month', now() - interval '2 years') min_date, 
+                generate_series(min_date, max_date, interval '1 month') date	
+        ),
+        death_tbl as (
             select 
-                date_trunc('quarter', death_date) as death_date,
-                count(*) as death_total
-        from animals
-        where
-            user_id = $1
-            and animals.death_date is not null
-            and age(death_date, birth_date) < interval '1 year'
-            and animals.deleted_at is null
-        group by 1
+                date_trunc('quarter', d.date) date,
+                count(a.*) deaths
+            from date_series d
+                left join animals a on date_trunc('month', a.death_date) = d.date 
+            where
+                a.user_id = $1
+                and a.death_date is not null
+                and age(a.death_date, a.birth_date) < interval '1 year'
+                and a.deleted_at is null
+            group by 1
         ),
         birth_tbl as (
             select
-                date_trunc('quarter', birth_date) as birth_date,
-                count(*) as birth_total
-            from births
-                left join animals on animals.id = births.calf_id
+                date_trunc('quarter', d.date) date,
+                count(b.*) births
+            from births b
+                left join animals a on a.id = b.calf_id
+                right join date_series d on date_trunc('month', a.birth_date) = d.date
             where 
-                births.user_id = $1
-                and births.deleted_at is null
+                b.user_id = $1
+                and b.deleted_at is null
             group by 1
-        ),
-        max_birth_tbl as (select max(birth_date) as max_birth_date from birth_tbl)
+        )
         select
-            birth_date as date_month,
-            (coalesce(death_total, 0)::float / coalesce(birth_total, 0)::float)*100 as death_index
-        from birth_tbl
-            full join death_tbl on birth_tbl.birth_date = death_tbl.death_date
-            cross join max_birth_tbl m
-        where 
-            age(birth_date) > interval '1 month' 
-            and birth_date >= m.max_birth_date - interval '1 year'
+            date as date_month,
+            coalesce((deaths::float / nullif(births, 0)::float)*100, 0) as death_index
+        from birth_tbl full join death_tbl using(date)
         order by 1
     `
 	results, err := repositoriesUtil.GetList[DeathIndexHist](r.DB, query, userId)
@@ -285,38 +303,35 @@ func (r *BirthRepository) getDeathIndex(userId string, resultsChan chan entity.R
 func (r *BirthRepository) getBirthHistory(userId string, resultChan chan entity.Result) {
 	query := `
         with death_data as ( 
-        select 
-            date_trunc('month', death_date) as death_month, 
-            count(*) as death_total 
-            from animals 
+            select 
+                date_trunc('month', death_date) date,
+                count(*) death_total 
+                from animals  
             where 
                 deleted_at is null 
                 and death_date is not null
                 and age(death_date, birth_date) < interval '1 year'
                 and user_id = $1
-            group by death_month 
+            group by 1
         ), 
         birth_data as (
             select 
-                date_trunc('month', calf.birth_date) as birth_month, 
+                date_trunc('month', calf.birth_date) date,
                 count(births.*) as birth_total
             from births 
                 left join animals as calf on births.calf_id = calf.id
             where 
                 births.user_id = $1
                 and births.deleted_at is null 
-            group by birth_month 
-        ),
-        max_date as (select max(birth_month) as max_date from birth_data)
+            group by 1
+        )
         select
-            birth_data.birth_month as date,
-            coalesce(birth_data.birth_total,0) as birth_total,
-            coalesce(death_data.death_total, 0) as death_total
-        from birth_data
-            full join death_data on death_data.death_month = birth_data.birth_month
-            cross join max_date m
-        where birth_data.birth_month  >= m.max_date - interval '5 years'
-        order by birth_data.birth_month
+            date,
+            coalesce(birth_data.birth_total,0) birth_total,
+            coalesce(death_data.death_total, 0) death_total
+        from birth_data full join death_data using(date)
+        where date >= now() - interval '5 years'
+        order by date
     `
 	birthHist, err := repositoriesUtil.GetList[BirthsByDate](r.DB, query, userId)
 
@@ -372,17 +387,15 @@ func (r *BirthRepository) getPregnantsNumber(userId string, result chan entity.R
 
 func (r *BirthRepository) getLossHist(userId string, resultsChan chan entity.Result) {
 	query := `
-        with max_date as (select date_trunc('month', max(loss_date)) as max_date from losses)
-        select 
-            date_trunc('month', loss_date) as month,
-            count(*) as losses
-        from losses
-            cross join max_date m
-        where 
-            user_id = $1
-            and deleted_at is null
-            and age(loss_date) > interval '1 month'
-            and loss_date >= m.max_date - interval '1 year'
+        select month, count(l.*) losses
+        from generate_series(
+			date_trunc('month', now() - interval '13 months'),
+			date_trunc('month', now() - interval '1 month'),
+			interval '1 month'
+		) month left join losses l on 
+            date_trunc('month', loss_date) = month
+            and l.deleted_at is null 
+            and l.user_id = $1 
         group by month
         order by month
     `
@@ -423,19 +436,116 @@ func (r *BirthRepository) getLossHist(userId string, resultsChan chan entity.Res
 func (r *BirthRepository) TotalBySex(userId string) (*[]TotalBirthsBySex, error) {
 	query := `
         select 
-            date_trunc('month', calf.birth_date) as birth_month,
-            count(births.id) filter (where calf.sex = 'M') as males,
-            count(births.id) filter (where calf.sex = 'F') as females
+            date_trunc('month', calf.birth_date) birth_month,
+            count(births.id) filter (where calf.sex = 'M') males,
+            count(births.id) filter (where calf.sex = 'F') females
         from births
-            left join animals as calf on births.calf_id = calf.id
+            left join animals calf on births.calf_id = calf.id
         where 
             births.user_id = $1 
-            and age(calf.birth_date) < interval '5 years'
+            and calf.birth_date >= now() - interval '5 years'
             and births.deleted_at is null
         group by birth_month
         order by birth_month
     `
 	return repositoriesUtil.GetList[TotalBirthsBySex](r.DB, query, userId)
+}
+
+func (r *BirthRepository) FindPage(
+	userId string,
+	sort string,
+	order string,
+	filter BirthEntryFilter,
+	cursor string,
+) (*entity.Page[BirthEntry], error) {
+
+	sortMap := map[string]string{
+		"calf_birth_date": "c.birth_date",
+		"mother_order":    "coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0)",
+		"mother_name":     "m.name",
+	}
+
+	query := `
+        select 
+            b.id,
+            b.mother_id,
+            b.calf_id,
+            concat_ws(' - ', m.ring_number, m.name) mother_name,
+            coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0) mother_order,
+            c.birth_date calf_birth_date,
+            c.sex calf_sex,
+            case 
+                when c.name is null then ''
+                else concat_ws(' - ', c.ring_number, c.name)
+                end as calf_name,
+            c.father_id calf_father_id,
+            concat_ws(' - ', f.ring_number, f.name) calf_father,
+            b.birth_interval,
+            b.observation
+        from births b
+            left join animals m on m.id = b.mother_id
+            left join animals c on c.id = b.calf_id
+            left join animals f on f.id = c.father_id
+    `
+	whereExpression := "where b.user_id = $1 and b.deleted_at is null "
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "b", 2)
+	cursorExpression, nextParam, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "b", cursorArgs, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
+
+	if cursorExpression != "" {
+		whereExpression += " and " + cursorExpression
+	}
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+	orderExpression := " order by " + sortExpression
+	query += whereExpression + orderExpression
+	return repositoriesUtil.GetPage[BirthEntry](r.DB, query, sort, 200, args...)
+}
+
+func (r *BirthRepository) FindPageFooter(userId string, filter BirthEntryFilter) (*BirthFooter, error) {
+	query := `
+        select 
+            count(b.*) total,
+            avg(b.birth_interval) filter (where b.birth_interval is not null) intervalAverage
+        from births b
+            left join animals m on m.id = b.mother_id
+            left join animals c on c.id = b.calf_id
+            left join animals f on f.id = c.father_id
+    `
+	whereExpression := "where b.user_id = $1 and b.deleted_at is null "
+    filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "b", 2)
+    if err != nil {
+        return nil, err
+    }
+
+    if filterExpression != "" {
+        whereExpression += " and " + filterExpression
+    }
+
+    args:= []any{userId}
+    filterArgs := repositoriesUtil.GetFilterArgs(filter)
+    args = append(args, filterArgs...)
+    query += whereExpression
+    return repositoriesUtil.GetOne[BirthFooter](r.DB, query, args...)
 }
 
 func (r *BirthRepository) FindByMotherId(motherId string) (*[]BirthEntry, error) {

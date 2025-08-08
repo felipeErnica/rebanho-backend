@@ -2,11 +2,14 @@ package insemination
 
 import (
 	"github.com/felipeErnica/rebanho-backend/app"
-	inseminationEntries "github.com/felipeErnica/rebanho-backend/domains/reproduction/insemination/insemination-entries"
-	inseminationGroup "github.com/felipeErnica/rebanho-backend/domains/reproduction/insemination/insemination-group"
+	"github.com/felipeErnica/rebanho-backend/util"
 )
 
 func InitInsemination(app *app.App) {
-    inseminationEntries.InitEntries(app)
-    inseminationGroup.InitGroup(app)
+	repository := NewEntryRepository(app.DBconn)
+    handler := InseminationHandler{repository}
+	app.HandleFunc("GET /reproduction/insemination/dashboard/birth-rate", handler.GetBirthRateStats)
+	app.HandleFunc("GET /reproduction/insemination/dashboard/insemination-hist", handler.GetInseminationHist)
+	app.HandleFunc("GET /reproduction/insemination/dashboard/best-bull", handler.GetBestBull)
+    util.LogDomainsInit("Entradas de Inseminação")
 }

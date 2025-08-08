@@ -39,7 +39,7 @@ func GetCursorExpression(
 ) (string, int, error) {
 
 	if len(cursorArgs) == 0 {
-		return "", 0, nil
+		return "", numParam, nil
 	}
 
 	sortFields := strings.Split(sort, ",")

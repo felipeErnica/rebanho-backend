@@ -8,9 +8,11 @@ import (
 func InitBirth(app *app.App) {
 	repository := NewRepository(app.DBconn)
 	handler := BirthHandler{repository}
-	app.HandleFunc("GET /reproduction/births/info/best-intervals", handler.GetBestIntervals)
-	app.HandleFunc("GET /reproduction/births/info/birth-stats", handler.GetBirthStats)
-	app.HandleFunc("GET /reproduction/births/info/total-sex", handler.TotalBySex)
+	app.HandleFunc("POST /reproduction/births/table/page/footer", handler.FindPageFooter)
+	app.HandleFunc("POST /reproduction/births/table/page", handler.FindPage)
+	app.HandleFunc("GET /reproduction/births/dashboard/best-intervals", handler.GetBestIntervals)
+	app.HandleFunc("GET /reproduction/births/dashboard/birth-stats", handler.GetBirthStats)
+	app.HandleFunc("GET /reproduction/births/dashboard/total-sex", handler.TotalBySex)
 	app.HandleFunc("GET /reproduction/births/mother/{motherId}", handler.FindByMotherId)
 	app.HandleFunc("DELETE /reproduction/births/delete/{id}", handler.Delete)
 	util.LogDomainsInit("Nascimentos")
