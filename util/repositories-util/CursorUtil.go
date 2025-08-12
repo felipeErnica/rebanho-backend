@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 /*
@@ -38,19 +36,14 @@ func CreateCursorKey[E any](sort string, list []E) (cursor string, err error) {
 	}
 
 	createdAt := values.FieldByName("CreatedAt").Interface()
-	id := values.FieldByName("Id").Interface()
-	castedCreatedAt, ok := createdAt.(time.Time)
-	if !ok {
+	id := values.FieldByName("Id").String()
+
+	castedCreatedAt, ok := createdAt.(time.Time); if !ok {
 		err = errors.New("Formato de CreatedAt não é data")
 		return
 	}
-	castedId, ok := id.(uuid.UUID)
-	if !ok {
-		err = errors.New("Formato de Id não é uuid")
-		return
-	}
 
-	args := []string{castedCreatedAt.Format(time.RFC3339Nano), castedId.String()}
+	args := []string{castedCreatedAt.Format(time.RFC3339Nano), id}
 	args = append(args, cursorArgs...)
 
 	data := ""

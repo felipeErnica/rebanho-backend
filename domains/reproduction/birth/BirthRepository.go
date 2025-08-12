@@ -518,7 +518,7 @@ func (r *BirthRepository) FindPage(
 	args = append(args, cursorArgs...)
 	orderExpression := " order by " + sortExpression
 	query += whereExpression + orderExpression
-	return repositoriesUtil.GetPage[BirthEntry](r.DB, query, sort, 200, args...)
+	return repositoriesUtil.GetPage[BirthEntry](r.DB, query, sort, 100, args...)
 }
 
 func (r *BirthRepository) FindPageFooter(userId string, filter BirthEntryFilter) (*BirthFooter, error) {

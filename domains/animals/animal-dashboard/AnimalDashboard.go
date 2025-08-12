@@ -1,10 +1,6 @@
 package animalDashboard
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 type TotalBySex struct {
 	TotalAnimals int `json:"totalAnimals" db:"total_animals"`
@@ -13,23 +9,23 @@ type TotalBySex struct {
 }
 
 type AnimalsByAgeAndFarm struct {
-	FarmId        *uuid.UUID `json:"farmId" db:"farm_id"`
-	FarmName      *string    `json:"farmName" db:"farm_name"`
-	NewbornMale   int        `json:"newbornMale" db:"newborn_male"`
-	NewbornFemale int        `json:"newbornFemale" db:"newborn_female"`
-	BabyMale      int        `json:"babyMale" db:"baby_male"`
-	BabyFemale    int        `json:"babyFemale" db:"baby_female"`
-	ChildMale     int        `json:"childMale" db:"child_male"`
-	ChildFemale   int        `json:"childFemale" db:"child_female"`
-	YoungMale     int        `json:"youngMale" db:"young_male"`
-	YoungFemale   int        `json:"youngFemale" db:"young_female"`
-	AdultMale     int        `json:"adultMale" db:"adult_male"`
-	AdultFemale   int        `json:"adultFemale" db:"adult_female"`
-	OldMale       int        `json:"oldMale" db:"old_male"`
-	OldFemale     int        `json:"oldFemale" db:"old_female"`
-	TotalMale     int        `json:"totalMale" db:"total_male"`
-	TotalFemale   int        `json:"totalFemale" db:"total_female"`
-	Total         int        `json:"total" db:"total"`
+	FarmId        *string `json:"farmId" db:"farm_id"`
+	FarmName      *string `json:"farmName" db:"farm_name"`
+	NewbornMale   int     `json:"newbornMale" db:"newborn_male"`
+	NewbornFemale int     `json:"newbornFemale" db:"newborn_female"`
+	BabyMale      int     `json:"babyMale" db:"baby_male"`
+	BabyFemale    int     `json:"babyFemale" db:"baby_female"`
+	ChildMale     int     `json:"childMale" db:"child_male"`
+	ChildFemale   int     `json:"childFemale" db:"child_female"`
+	YoungMale     int     `json:"youngMale" db:"young_male"`
+	YoungFemale   int     `json:"youngFemale" db:"young_female"`
+	AdultMale     int     `json:"adultMale" db:"adult_male"`
+	AdultFemale   int     `json:"adultFemale" db:"adult_female"`
+	OldMale       int     `json:"oldMale" db:"old_male"`
+	OldFemale     int     `json:"oldFemale" db:"old_female"`
+	TotalMale     int     `json:"totalMale" db:"total_male"`
+	TotalFemale   int     `json:"totalFemale" db:"total_female"`
+	Total         int     `json:"total" db:"total"`
 }
 
 type AnimalsByAge struct {

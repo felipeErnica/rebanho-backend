@@ -1,13 +1,9 @@
 package animalTable
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 type Animal struct {
-	Id                   uuid.UUID  `json:"id" db:"id"`
+	Id                   string     `json:"id" db:"id"`
 	OldId                int        `json:"oldId" db:"old_id"`
 	Name                 *string    `json:"name" db:"name"`
 	RingNumber           *string    `json:"ringNumber" db:"ring_number"`
@@ -15,15 +11,15 @@ type Animal struct {
 	WeightBirth          float64    `json:"weightBirth" db:"weight_birth"`
 	Sex                  string     `json:"sex" db:"sex"`
 	WeaningDate          *time.Time `json:"weaningDate" db:"weaning_date"`
-	FatherId             *uuid.UUID `json:"fatherId" db:"father_id"`
+	FatherId             *string    `json:"fatherId" db:"father_id"`
 	FatherName           *string    `json:"fatherName" db:"father_name"`
-	MotherId             *uuid.UUID `json:"motherId" db:"mother_id"`
+	MotherId             *string    `json:"motherId" db:"mother_id"`
 	MotherName           *string    `json:"motherName" db:"mother_name"`
 	BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
 	DeathDate            *time.Time `json:"deathDate" db:"death_date"`
-	PastureId            *uuid.UUID `json:"pastureId" db:"pasture_id"`
+	PastureId            *string    `json:"pastureId" db:"pasture_id"`
 	PastureName          *string    `json:"pastureName" db:"pasture_name"`
-	FarmId               *uuid.UUID `json:"farmId" db:"farm_id"`
+	FarmId               *string    `json:"farmId" db:"farm_id"`
 	FarmName             *string    `json:"farmName" db:"farm_name"`
 	AnimalType           string     `json:"animalType" db:"animal_type"`
 	Isr                  *float64   `json:"isr" db:"isr"`
@@ -33,21 +29,21 @@ type Animal struct {
 	AveragePeak          *float64   `json:"averagePeak" db:"average_peak"`
 	CreatedAt            time.Time  `json:"createdAt" db:"created_at"`
 	DeletedAt            *time.Time `json:"deletedAt" db:"deleted_at"`
-	UserId               uuid.UUID  `json:"userId" db:"user_id"`
+	UserId               string     `json:"userId" db:"user_id"`
 }
 
 type AnimalSave struct {
-	Id                   *uuid.UUID `json:"id" db:"id"`
+	Id                   *string    `json:"id" db:"id"`
 	Name                 *string    `json:"name" db:"name"`
 	WeightBirth          *float64   `json:"weightBirth" db:"weight_birth"`
 	RingNumber           *string    `json:"ringNumber" db:"ring_number"`
 	Sex                  *string    `json:"sex" db:"sex"`
 	WeaningDate          *time.Time `json:"weaningDate" db:"weaning_date"`
-	FatherId             *uuid.UUID `json:"fatherId" db:"father_id"`
-	MotherId             *uuid.UUID `json:"motherId" db:"mother_id"`
+	FatherId             *string    `json:"fatherId" db:"father_id"`
+	MotherId             *string    `json:"motherId" db:"mother_id"`
 	BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
 	DeathDate            *time.Time `json:"deathDate" db:"death_date"`
-	PastureId            *uuid.UUID `json:"pasture" db:"pasture_id"`
+	PastureId            *string    `json:"pasture" db:"pasture_id"`
 	AnimalType           string     `json:"animalType" db:"animal_type"`
 	Isr                  float64    `json:"isr" db:"isr"`
 	AverageProd          float64    `json:"averageProd" db:"average_prod"`

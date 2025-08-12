@@ -1,27 +1,23 @@
 package birth
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 type BirthEntry struct {
-	Id            uuid.UUID  `json:"id" db:"id"`
-	MotherId      uuid.UUID  `json:"motherId" db:"mother_id"`
+	Id            string  `json:"id" db:"id"`
+	MotherId      string  `json:"motherId" db:"mother_id"`
 	MotherName    string     `json:"motherName" db:"mother_name" table:"m"`
 	MotherOrder   int        `json:"motherOrder" db:"mother_order" table:"m"`
 	CalfId        string     `json:"calfId" db:"calf_id"`
 	CalfName      string     `json:"calfName" db:"calf_name"`
 	CalfBirthDate time.Time  `json:"calfBirthDate" db:"calf_birth_date"`
 	CalfSex       string     `json:"calfSex" db:"calf_sex"`
-	CalfFatherId  *uuid.UUID `json:"calfFatherId" db:"calf_father_id"`
+	CalfFatherId  *string `json:"calfFatherId" db:"calf_father_id"`
 	CalfFather    *string    `json:"calfFather" db:"calf_father"`
 	BirthInterval *int       `json:"birthInterval" db:"birth_interval"`
 	Observation   *string    `json:"observation" db:"observation"`
 	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
 	DeletedAt     *time.Time `json:"deletedAt" db:"deleted_at"`
-	UserId        uuid.UUID  `json:"userId" db:"user_id"`
+	UserId        string  `json:"userId" db:"user_id"`
 }
 
 type BirthEntryFilter struct {
