@@ -2,6 +2,7 @@ package insemination
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
@@ -12,7 +13,8 @@ type InseminationHandler struct {
 }
 
 func (h *InseminationHandler) GetBirthRateStats(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -21,12 +23,28 @@ func (h *InseminationHandler) GetBirthRateStats(w http.ResponseWriter, r *http.R
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendEntity(w, result)
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *InseminationHandler) GetPregnancyRateStats(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetPregnancyRateStats(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *InseminationHandler) GetInseminationHist(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -35,12 +53,13 @@ func (h *InseminationHandler) GetInseminationHist(w http.ResponseWriter, r *http
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendList(w, result)
+
+	handlersUtil.SendList(w, result)
 }
 
 func (h *InseminationHandler) GetPregnantsNumber(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -49,12 +68,13 @@ func (h *InseminationHandler) GetPregnantsNumber(w http.ResponseWriter, r *http.
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendEntity(w, result)
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *InseminationHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -63,12 +83,13 @@ func (h *InseminationHandler) GetLastGroups(w http.ResponseWriter, r *http.Reque
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendEntity(w, result)
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *InseminationHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -77,12 +98,13 @@ func (h *InseminationHandler) GetLastEntries(w http.ResponseWriter, r *http.Requ
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendEntity(w, result)
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *InseminationHandler) GetBestBull(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -91,20 +113,22 @@ func (h *InseminationHandler) GetBestBull(w http.ResponseWriter, r *http.Request
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendList(w, result)
+
+	handlersUtil.SendList(w, result)
 }
 
 func (h *InseminationHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
-    cursor := r.URL.Query().Get("cursor")
-    sort := r.URL.Query().Get("sort")
-    order := r.URL.Query().Get("order")
+	cursor := r.URL.Query().Get("cursor")
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
 
-    filter, ok := handlersUtil.DecodeFilter(w, r, InseminationEntryFilter{}); if !ok {
-        return
-    }
+	filter, ok := handlersUtil.DecodeFilter(w, r, InseminationEntryFilter{})
+	if !ok {
+		return
+	}
 
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -113,27 +137,37 @@ func (h *InseminationHandler) FindEntriesPage(w http.ResponseWriter, r *http.Req
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendEntity(w, result)
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *InseminationHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Request) {
-    groupId := r.PathValue("groupId")
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-		return
-	}
+	bullId := r.URL.Query().Get("bullId")
+	queryDate := r.URL.Query().Get("inseminationDate")
 
-	result, err := h.Repository.FindEntriesByGroup(userId, groupId)
+	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendList(w, result)
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindEntriesByGroup(userId, bullId, inseminationDate)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
 }
 
 func (h *InseminationHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -142,27 +176,37 @@ func (h *InseminationHandler) FindGroups(w http.ResponseWriter, r *http.Request)
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendList(w, result)
+
+	handlersUtil.SendList(w, result)
 }
 
 func (h *InseminationHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Request) {
-    groupId := r.PathValue("groupId")
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-		return
-	}
+	bullId := r.URL.Query().Get("bullId")
+	queryDate := r.URL.Query().Get("inseminationDate")
 
-	result, err := h.Repository.GetEntriesByGroupFoot(userId, groupId)
+	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendEntity(w, result)
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetEntriesByGroupFoot(userId, bullId, inseminationDate)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *InseminationHandler) GetGroupsFoot(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -171,6 +215,57 @@ func (h *InseminationHandler) GetGroupsFoot(w http.ResponseWriter, r *http.Reque
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
-    
-    handlersUtil.SendEntity(w, result)
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *InseminationHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+    filter, ok := handlersUtil.DecodeFilter(w, r, InseminationEntryFilter{}); if !ok {
+        return
+    }
+
+	result, err := h.Repository.GetEntriesFoot(userId, filter)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *InseminationHandler) SearchInseminationBulls(w http.ResponseWriter, r *http.Request) {
+    input := "%" + r.URL.Query().Get("input") + "%"
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchInseminationBulls(userId, input)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
+}
+
+func (h *InseminationHandler) SearchInseminationBullsById(w http.ResponseWriter, r *http.Request) {
+    id := r.URL.Query().Get("id")
+    idSlice := handlersUtil.ParseArray(id)
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchInseminationBullsById(userId, idSlice)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
 }

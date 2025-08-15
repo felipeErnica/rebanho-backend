@@ -1,4 +1,4 @@
-package testEntries
+package pregnancyTests
 
 import "time"
 
@@ -34,4 +34,33 @@ type TestEntrySave struct {
 	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
 	DeletedAt     *time.Time `json:"deletedAt" db:"deleted_at"`
 	UserId        string     `json:"userId" db:"user_id"`
+}
+
+type PregnancyHist struct {
+	TestDate      time.Time `json:"testDate" db:"test_date"`
+	PregnancyRate float64   `json:"pregnancyRate" db:"pregnancy_rate"`
+}
+
+type PregnancyStats struct {
+	Current float64         `json:"current"`
+	Trend   float64         `json:"trend"`
+	Hist    []PregnancyHist `json:"hist"`
+}
+
+type BirthHist struct {
+	TestDate  time.Time `json:"testDate" db:"test_date"`
+	BirthRate float64   `json:"birthRate" db:"birth_rate"`
+}
+
+type BirthStats struct {
+	Current float64     `json:"current"`
+	Trend   float64     `json:"trend"`
+	Hist    []BirthHist `json:"hist"`
+}
+
+type PregnancyTestHist struct {
+	TestDate      time.Time `json:"testDate" db:"test_date"`
+	Totals        int       `json:"totals" db:"totals"`
+	PregnancyRate float64   `json:"pregnancyRate" db:"pregnancy_rate"`
+	BirthRate     float64   `json:"birthRate" db:"birth_rate"`
 }

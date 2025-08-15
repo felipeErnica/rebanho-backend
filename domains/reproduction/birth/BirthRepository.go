@@ -60,7 +60,7 @@ func (r *BirthRepository) GetBestIntervals(userId string) (*[]IntervalAnimal, er
             select 
                 al.*,
                 100 * (al.birth_numbers - bs.min_births/bs.max_births - bs.min_births) as birth_score,
-                100 * (308 / al.interval_average) as interval_score
+                100 * (375 / al.interval_average) as interval_score
             from average_list as al
                 cross join birth_stats as bs
             where al.interval_average is not null

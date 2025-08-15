@@ -174,6 +174,11 @@ func buildFilterBool(field string, numParam int) (string, int) {
 }
 
 func GetSliceExpressions(array []string, field string, numParam int) (string, int) {
+
+    if len(array) == 0 {
+        return "", numParam
+    }
+
     params := ""
 	for range array {
 		params += fmt.Sprintf("$%d, ", numParam)
