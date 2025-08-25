@@ -15,6 +15,14 @@ func InitTests(app *app.App) {
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/last-entries", handler.GetLastEntries)
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/last-groups", handler.GetLastGroups)
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/next-births", handler.GetNextBirths)
-	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/best-results", handler.GetBestResults)
+	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/ranked-results", handler.GetRankedResults)
+
+	app.HandleFunc("POST /reproduction/pregnancy-test/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("POST /reproduction/pregnancy-test/entries/page/foot", handler.GetEntriesFoot)
+
+	app.HandleFunc("GET /reproduction/pregnancy-test/group/page", handler.FindGroups)
+	app.HandleFunc("GET /reproduction/pregnancy-test/group/{testDate}/entries", handler.FindEntriesByGroup)
+	app.HandleFunc("GET /reproduction/pregnancy-test/group/{testDate}/entries/foot", handler.GetEntriesByGroupFoot)
+
 	util.LogDomainsInit("Entradas de Toque")
 }

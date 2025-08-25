@@ -19,6 +19,23 @@ type TestEntry struct {
 	UserId          string     `json:"-" db:"user_id"`
 }
 
+type TestEntryFilter struct {
+	IsFiltered       bool      `json:"isFiltered"`
+	MinTestDate      *time.Time `json:"minTestDate" db:"test_date"`
+	MaxTestDate      *time.Time `json:"maxTestDate" db:"test_date"`
+	Animals          *[]string  `json:"animals" db:"animal_id"`
+	MinBirthForecast *time.Time `json:"minBirthForecast" db:"birth_forecast"`
+	MaxBirthForecast *time.Time `json:"maxBirthForecast" db:"birth_forecast"`
+	BirthStatus      *string    `json:"birthStatus" db:"birth_status"`
+	PregnancyStatus  *string    `json:"pregnancyStatus" db:"pregnancy_status"`
+}
+
+type TestEntryFoot struct {
+	Totals        int     `json:"totals" db:"totals"`
+	PregnancyRate float64 `json:"pregnancyRate" db:"pregnancy_rate"`
+	BirthRate     float64 `json:"birthRate" db:"birth_rate"`
+}
+
 type TestEntrySave struct {
 	Id            string     `json:"id" db:"id"`
 	GroupId       string     `json:"groupId" db:"group_id"`

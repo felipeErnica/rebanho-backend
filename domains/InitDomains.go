@@ -6,7 +6,7 @@ import (
 	"github.com/felipeErnica/rebanho-backend/domains/auth"
 	"github.com/felipeErnica/rebanho-backend/domains/cors"
 	farmArea "github.com/felipeErnica/rebanho-backend/domains/farm-area"
-	lactationArea "github.com/felipeErnica/rebanho-backend/domains/lactation-area"
+	"github.com/felipeErnica/rebanho-backend/domains/lactation"
 	"github.com/felipeErnica/rebanho-backend/domains/reproduction"
 	slaughterArea "github.com/felipeErnica/rebanho-backend/domains/slaughter-area"
 )
@@ -16,7 +16,7 @@ func InitDomains(app *app.App) {
     go auth.InitAuth(app)
     go cors.InitCorsOptions(app)
     go farmArea.InitFarmArea(app)
-	go lactationArea.InitLactationArea(app)
+	go lactation.InitLactationArea(app)
     go reproduction.InitReproduction(app)
     go slaughterArea.InitSlaughterArea(app)
 }

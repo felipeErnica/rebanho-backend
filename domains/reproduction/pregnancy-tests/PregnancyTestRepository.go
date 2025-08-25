@@ -1,6 +1,10 @@
 package pregnancyTests
 
 import (
+	"fmt"
+	"time"
+
+	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -21,7 +25,10 @@ func (r *TestEntryRepository) GetPregnancyRate(userId string) (*PregnancyStats, 
                 count(*) over (order by date_trunc('month', test_date)) totals,
                 count(*) filter (where pregnancy_status = 'SUCCESS') over (order by date_trunc('month', test_date)) pregnancies
             from birth_tests
-            where user_id = $1 and deleted_at is null
+            where 
+                age(test_date) > interval '11 months'
+                and deleted_at is null
+                and user_id = $1 
             limit 10
         )
         select 
@@ -151,8 +158,10 @@ func (r *TestEntryRepository) GetLastEntries(userId string) (*[]TestEntry, error
         select
             concat_ws(' - ', a.ring_number, a.name) animal_name,
             t.test_date,
+            t.birth_forecast,
             t.pregnancy_status,
-            t.birth_status
+            t.birth_status,
+            t.observation
         from max_date m, birth_tests t
             left join animals a on a.id = t.animal_id
         where t.test_date = m.max_date and t.user_id = $1 and t.deleted_at is null
@@ -222,7 +231,67 @@ func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, erro
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
                 count(*) filter (where birth_status = 'SUCCESS') birth_success
             from birth_tests
+            where 
+                deleted_at is null 
+                and age(test_date) > interval '11 months'
+                and user_id = $1
+            group by 1
+        ),
+        grouped_rates as (
+            select
+                animal_id,
+                totals,
+                pregnancy_success,
+                birth_success,
+                (pregnancy_success::float / totals::float)*100 pregnancy_rate,
+                (birth_success::float / totals::float)*100 birth_rate
+            from grouped_animals
+        ),
+        total_counts as (
+            select 
+                count(*) totals,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
+                count(*) filter (where birth_status = 'SUCCESS') birth_success
+            from birth_tests
             where deleted_at is null and user_id = $1
+        ),
+        total_rates as (
+            select
+                (pregnancy_success::float / totals::float)*100 total_pregnancy_rate,
+                (birth_success::float / totals::float)*100 total_birth_rate
+            from total_counts
+        )
+        select
+            concat_ws(' - ', a.ring_number, a.name) animal_name,
+            g.totals,
+            g.pregnancy_rate,
+            g.birth_rate,
+            ((g.pregnancy_rate / total_pregnancy_rate) - 1)*100 pregnancy_comparison,
+            ((g.birth_rate / total_birth_rate) - 1)*100 birth_comparison
+        from total_rates, grouped_rates g join animals a on a.id = g.animal_id
+        order by (
+            (g.totals::float / max(g.totals) over ()) * 0.4 + 
+            (g.pregnancy_rate / 100) * 0.35 + 
+            (g.birth_rate / 100) * 0.25
+        ) desc
+        limit 10
+    `
+    return repositoriesUtil.GetList[TestAnimal](r.DB, query, userId)
+}
+
+func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, error) {
+    query := `
+        with grouped_animals as (
+            select 
+                animal_id,
+                count(*) totals,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
+                count(*) filter (where birth_status = 'SUCCESS') birth_success
+            from birth_tests
+            where 
+                deleted_at is null 
+                and age(test_date) > interval '11 months'
+                and user_id = $1
             group by 1
         ),
         grouped_rates as (
@@ -258,7 +327,207 @@ func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, erro
             ((g.birth_rate / total_birth_rate) - 1)*100 birth_comparison
         from total_rates, grouped_rates g
             join animals a on a.id = g.animal_id
-        order by pregnancy_success*0.6 + birth_success*0.4 desc
+        order by (
+            (g.totals::float / max(g.totals) over ()) * 0.4 +
+            (1 - (g.pregnancy_rate / 100)) * 0.35 + 
+            (1 - (g.birth_rate / 100)) * 0.25
+        ) desc
+        limit 10
     `
     return repositoriesUtil.GetList[TestAnimal](r.DB, query, userId)
 }
+
+func (r *TestEntryRepository) FindEntriesPage(
+    filter TestEntryFilter,
+    sort string,
+    order string,
+    cursor string,
+    userId string,
+) (*entity.Page[TestEntry], error) {
+
+    sortMap := map[string]string{
+        "animal_order": "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)",
+        "test_date": "coalesce(t.test_date, '-infinity')",
+        "birth_forecast": "coalesce(t.birth_forecast, '-infinity')",
+        "name": "coalesce(a.name, '')",
+    }
+
+    query := `
+        select
+            t.id,
+            t.test_date,
+            t.animal_id,
+            concat_ws(' - ', a.ring_number, a.name) animal_name,
+            coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+            t.birth_forecast,
+            t.birth_status,
+            t.pregnancy_status,
+            t.observation,
+            t.loss_id,
+            t.calf_id,
+            t.created_at
+        from birth_tests t left join animals a on a.id = t.animal_id
+    `
+    whereExpression := "where t.user_id = $1 and t.deleted_at is null"
+    filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
+    if err != nil {
+        return nil, err
+    }
+
+    if filterExpression != "" {
+        whereExpression += " and " + filterExpression 
+    }
+
+    cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+    if err != nil {
+        return nil, err
+    }
+
+    cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "t", cursorArgs, nextParam)
+    if err != nil {
+        return nil, err
+    }
+
+    if cursorExpression != "" {
+        whereExpression += " and " + cursorExpression
+    }
+
+    sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+    if err != nil {
+        return nil, err
+    }
+    sortExpression = " order by " + sortExpression
+
+    query += whereExpression + sortExpression
+    args := []any{userId}
+    filterArgs := repositoriesUtil.GetFilterArgs(filter)
+    args = append(args, filterArgs...)
+    args = append(args, cursorArgs...)
+    return repositoriesUtil.GetPage[TestEntry](r.DB, query, sort, 100, args...)
+}
+
+func (r *TestEntryRepository) GetEntriesFoot(filter TestEntryFilter, userId string) (*TestEntryFoot, error) {
+    countQuery := `
+        select 
+            count(*) totals,
+            count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
+            count(*) filter (where birth_status = 'SUCCESS') birth_success
+        from birth_tests t
+    `
+    whereExpression := "where deleted_at is null and user_id = $1"
+    filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
+    if err != nil {
+        return nil, err
+    }
+
+    if filterExpression != "" {
+        whereExpression += " and " + filterExpression
+    }
+
+    countQuery += whereExpression
+
+    query := fmt.Sprintf(`
+        with count_query as (%s)
+        select 
+            totals,
+            (birth_success::float / totals::float)*100 birth_rate,
+            (pregnancy_success::float / totals::float)*100 pregnancy_rate
+        from count_query
+    `, countQuery)
+
+    args := []any{userId}
+    filterArgs := repositoriesUtil.GetFilterArgs(filter)
+    args = append(args, filterArgs...)
+    return repositoriesUtil.GetOne[TestEntryFoot](r.DB, query, args...)
+}
+
+func (r *TestEntryRepository) FindGroups(userId string) (*[]TestGroups, error) {
+	query := `
+        with grouped_count as (
+            select 
+                test_date,
+                count(*) animals_number,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
+                count(*) filter (where birth_status = 'SUCCESS') birth_success
+            from birth_tests
+            where deleted_at is null and user_id = $1 
+            group by 1
+        ),
+        grouped_stats as (
+            select
+                g.test_date,
+                g.animals_number,
+                (g.pregnancy_success::float / g.animals_number::float)*100 pregnancy_rate,
+                (g.birth_success::float / g.animals_number::float)*100 birth_rate
+            from grouped_count g
+        )
+        select
+            g.test_date,
+            g.animals_number,
+            g.pregnancy_rate,
+            g.birth_rate,
+            coalesce(((g.pregnancy_rate / lag(g.pregnancy_rate) over (order by test_date)) - 1)*100, 0) pregnancy_comparison,
+            coalesce(((g.birth_rate / lag(g.birth_rate) over (order by test_date)) - 1)*100, 0) birth_comparison
+        from grouped_stats g
+        order by g.test_date desc
+    `
+    return repositoriesUtil.GetList[TestGroups](r.DB, query, userId)
+}
+
+func (r *TestEntryRepository) FindEntriesByGroup(
+    sort string,
+    order string,
+    testDate time.Time, 
+    userId string,
+) (*[]TestEntry, error) {
+    query := `
+        select
+            t.id,
+            t.test_date,
+            t.animal_id,
+            concat_ws(' - ', a.ring_number, a.name) animal_name,
+            coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+            t.birth_forecast,
+            t.birth_status,
+            t.pregnancy_status,
+            t.observation,
+            t.loss_id,
+            t.calf_id,
+            t.created_at
+        from birth_tests t left join animals a on a.id = t.animal_id
+        where t.test_date = $1 and t.user_id = $2 and t.deleted_at is null
+    `
+    sortMap := map[string]string{
+        "animal_order": "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)",
+        "birth_forecast": "coalesce(t.birth_forecast, '-infinity')",
+        "name": "coalesce(a.name, '')",
+    }
+
+    sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+    if err != nil {
+        return nil, err
+    }
+
+    query = query + " order by " + sortExpression
+    return repositoriesUtil.GetList[TestEntry](r.DB, query, testDate, userId)
+}
+
+func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId string) (*TestEntryFoot, error) {
+    query := `
+        with count_query as (
+            select 
+                count(*) totals,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
+                count(*) filter (where birth_status = 'SUCCESS') birth_success
+            from birth_tests t
+            where t.test_date = $1 and t.user_id = $2 and t.deleted_at is null
+        )
+        select 
+            totals,
+            (birth_success::float / totals::float)*100 birth_rate,
+            (pregnancy_success::float / totals::float)*100 pregnancy_rate
+        from count_query
+    `
+    return repositoriesUtil.GetOne[TestEntryFoot](r.DB, query, testDate, userId)
+}
+

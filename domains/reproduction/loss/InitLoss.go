@@ -7,12 +7,14 @@ import (
 
 func InitLoss(app *app.App) {
 	repository := NewRepository(app.DBconn)
-	handler := PregnancyLossHandler{repository}
+	handler := LossHandler{repository}
 
-	app.HandleFunc("GET /reproduction/losses/animal/{animalId}", handler.FindByAnimalId)
-	app.HandleFunc("GET /reproduction/losses/{id}", handler.FindById)
-	app.HandleFunc("POST /reproduction/losses/add", handler.Add)
-	app.HandleFunc("POST /reproduction/losses/save", handler.Update)
-	app.HandleFunc("DELETE /reproduction/losses/delete/{id}", handler.Delete)
+	app.HandleFunc("GET /reproduction/losses/dashboard/loss-rate", handler.GetLossRate)
+	app.HandleFunc("GET /reproduction/losses/dashboard/losses-hist", handler.GetLossesHist)
+	app.HandleFunc("GET /reproduction/losses/dashboard/losses-animals", handler.GetMostLossesAnimals)
+
+	app.HandleFunc("POST /reproduction/losses/entries/page", handler.FindPage)
+	app.HandleFunc("POST /reproduction/losses/entries/page/foot", handler.GetPageFoot)
+
 	util.LogDomainsInit("Perdas de Parição")
 }
