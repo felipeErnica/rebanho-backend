@@ -94,3 +94,17 @@ func (h *LactationHandler) GetWorstAnimals(w http.ResponseWriter, r *http.Reques
 
     handlersUtil.SendEntity(w, result)
 }
+
+func (h *LactationHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+
+    result, err := h.Repository.GetLastEntries(userId)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendEntity(w, result)
+}

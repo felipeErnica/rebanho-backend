@@ -188,7 +188,7 @@ func (r *LactationRepository) GetMilkProduction(userId string) (*[]MilkProductio
         )
         select * from cte order by entry_date
     `
-    return repositoriesUtil.GetList[MilkProductionHist](r.DB, query, userId)
+	return repositoriesUtil.GetList[MilkProductionHist](r.DB, query, userId)
 }
 
 func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, error) {
@@ -247,7 +247,7 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
         )
         select * from results order by lac_num desc, avg_total desc
     `
-    return repositoriesUtil.GetList[AnimalsRating](r.DB, query, userId)
+	return repositoriesUtil.GetList[AnimalsRating](r.DB, query, userId)
 }
 
 func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, error) {
@@ -308,5 +308,27 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
         )
         select * from results order by lac_num desc, avg_total
     `
-    return repositoriesUtil.GetList[AnimalsRating](r.DB, query, userId)
+	return repositoriesUtil.GetList[AnimalsRating](r.DB, query, userId)
+}
+
+func (r *LactationRepository) GetLastEntries(userId string) (*[]MilkEntry, error) {
+	query := `
+		with max_tbl as (
+			select max(entry_date) max_date 
+			from milk_entries 
+			where user_id = $1 and deleted_at is null
+		)
+		select 
+			concat_ws(' - ', a.ring_number, a.name) animal_name,
+			m.entry_date,
+			m.quantity
+		from max_tbl, milk_entries m 
+			join animals a on a.id = m.animal_id
+		where 
+			m.user_id = $1 
+			and m.deleted_at is null 
+			and m.entry_date = max_date
+		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
+	`
+	return repositoriesUtil.GetList[MilkEntry](r.DB, query, userId)
 }

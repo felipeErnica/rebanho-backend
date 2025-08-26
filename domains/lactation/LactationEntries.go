@@ -2,6 +2,17 @@ package lactation
 
 import "time"
 
+type MilkEntry struct {
+	Id         string     `json:"id" db:"id"`
+	AnimalId   string     `json:"animalId" db:"animal_id"`
+	AnimalName string     `json:"animalName" db:"animal_name"`
+	EntryDate  time.Time  `json:"entryDate" db:"entry_date"`
+	Quantity   float64    `json:"quantity" db:"quantity"`
+	CreatedAt  time.Time  `json:"-" db:"created_at"`
+	DeletedAt  *time.Time `json:"-" db:"deleted_at"`
+	UserId     string     `json:"-" db:"user_id"`
+}
+
 type YearProductionHist struct {
 	EntryDate time.Time `json:"entryDate" db:"entry_date"`
 	TotalMilk float64   `json:"totalMilk" db:"total_milk"`
