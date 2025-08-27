@@ -53,6 +53,37 @@ func GetCursorArgs(cursor string) ([]any, error) {
 	return args, nil
 }
 
+/*Decodificação do Cursor, para obter as informações necessárias para a próxima página*/
+func GetCustomCursorArgs(cursor string) ([]any, error) {
+	args := []any{}
+	if cursor == "" {
+		return args, nil
+	}
+
+	byt, err := base64.StdEncoding.DecodeString(cursor)
+	if err != nil {
+		return args, err
+	}
+
+	arrKey := strings.Split(string(byt), ",")
+	if len(arrKey) < 1 {
+		err = errors.New("cursor is invalid")
+		return args, err
+	}
+
+	for i := range arrKey {
+		if arrKey[i] == "null" {
+			args = append(args, nil)
+		}
+		arg, err := verifyDate(arrKey[i])
+		if err != nil {
+			return args, err
+		}
+		args = append(args, arg)
+	}
+
+	return args, nil
+}
 // Tratamento de valores de data, verificando e apagando o prefixo de verificação
 func verifyDate(arg string) (any, error) {
 	if strings.HasPrefix(arg, "{date}") {

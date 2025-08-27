@@ -56,6 +56,40 @@ func CreateCursorKey[E any](sort string, list []E) (cursor string, err error) {
 	return cursor, err
 }
 
+/*
+Cria um novo cursor com a informação do último objeto da lista.
+Os parâmetros são selecionados com base na coluna de ordenamento e na data de criação
+*/
+func CreateCustomCursorKey[E any](sort string, list []E) (cursor string, err error) {
+	listSize := len(list)
+	if listSize == 0 {
+		err = errors.New("A lista está vazia")
+		return
+	}
+
+	sortFields := strings.Split(sort, ",")
+	lastEntry := list[len(list)-1]
+	entryType := reflect.TypeOf(lastEntry)
+	values := reflect.ValueOf(lastEntry)
+	cursorArgs := []string{}
+
+	for _, sortField := range sortFields {
+		arg, err := getValueFromSortField(sortField, entryType, values)
+		if err != nil {
+			return "", err
+		}
+		cursorArgs = append(cursorArgs, arg)
+	}
+
+	data := ""
+	for _, arg := range cursorArgs {
+		data = data + arg + ","
+	}
+	data = strings.TrimSuffix(data, ",")
+
+	cursor = base64.StdEncoding.EncodeToString([]byte(data))
+	return cursor, err
+}
 func getValueFromSortField(sortField string, entryType reflect.Type, values reflect.Value) (string, error) {
 	var value any
 	isFound := false
@@ -69,7 +103,7 @@ func getValueFromSortField(sortField string, entryType reflect.Type, values refl
 	}
 
 	if !isFound {
-		err := errors.New(fmt.Sprintf("O campo não existe: %s", sortField))
+		err := fmt.Errorf("O campo não existe: %s", sortField)
 		return "", err
 	}
 	return getParamValue(value), nil

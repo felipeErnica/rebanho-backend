@@ -1,6 +1,7 @@
 package lactation
 
 import (
+	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -211,10 +212,13 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
                 l.animal_id,
                 s.avg_prod,
                 extract(days from l.end_date - l.start_date) + 1 period,
-                (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total
+                (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total,
+                extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval
             from lactations l
                 join lac_stats s using (id)
-                join animals a on a.id = l.animal_id
+                join animals a on 
+					a.id = l.animal_id
+					and a.death_date is null
         ),
         cte as (
             select
@@ -222,7 +226,8 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
                 count(l.*) lac_num,
                 avg(l.period) avg_period,
                 avg(l.avg_prod) avg_prod,
-                avg(l.total) avg_total
+                avg(l.total) avg_total,
+                avg(l.lac_interval) avg_interval
             from lac_tbl l join animals a on a.id = l.animal_id
             group by 1
         ),
@@ -231,7 +236,8 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
                 max(lac_num) max_lac_num,
                 avg(avg_period) avg_period,
                 avg(avg_prod) avg_prod,
-                avg(avg_total) avg_total
+                avg(avg_total) avg_total,
+                avg(avg_interval) avg_interval
             from cte
         ),
         results as (
@@ -239,10 +245,15 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
                 cte.*,
                 ((cte.avg_period / s.avg_period) - 1)*100 period_rate,
                 ((cte.avg_prod / s.avg_prod) - 1)*100 prod_rate,
-                ((cte.avg_total / s.avg_total) - 1)*100 total_rate
+                ((cte.avg_total / s.avg_total) - 1)*100 total_rate,
+                ((cte.avg_interval / s.avg_interval) - 1)*100 interval_rate
             from cte, cte_stats s
             where cte.lac_num > 1
-            order by (cte.lac_num / s.max_lac_num)*0.4 + (cte.avg_total / s.avg_total)*0.6  desc
+            order by (
+				(cte.lac_num / s.max_lac_num)*0.2 + 
+				(cte.avg_total / s.avg_total)*0.4 +
+				(1 - (cte.avg_interval / s.avg_interval))*0.4 
+			) desc
             limit 10
         )
         select * from results order by lac_num desc, avg_total desc
@@ -255,7 +266,6 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
         with lac_stats as (
             select
                 l.id,
-                max(entry_date) max_date,
                 avg(m.quantity) avg_prod
             from lactations l
                 join milk_entries m on 
@@ -272,10 +282,13 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
                 l.animal_id,
                 s.avg_prod,
                 extract(days from l.end_date - l.start_date) + 1 period,
-                (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total
+                (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total,
+                extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval
             from lactations l
                 join lac_stats s using (id)
-                join animals a on a.id = l.animal_id
+                join animals a on 
+					a.id = l.animal_id
+					and a.death_date is null
         ),
         cte as (
             select
@@ -283,7 +296,8 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
                 count(l.*) lac_num,
                 avg(l.period) avg_period,
                 avg(l.avg_prod) avg_prod,
-                avg(l.total) avg_total
+                avg(l.total) avg_total,
+                avg(l.lac_interval) avg_interval
             from lac_tbl l join animals a on a.id = l.animal_id
             group by 1
         ),
@@ -292,7 +306,8 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
                 max(lac_num) max_lac_num,
                 avg(avg_period) avg_period,
                 avg(avg_prod) avg_prod,
-                avg(avg_total) avg_total
+                avg(avg_total) avg_total,
+                avg(avg_interval) avg_interval
             from cte
         ),
         results as (
@@ -300,10 +315,15 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
                 cte.*,
                 ((cte.avg_period / s.avg_period) - 1)*100 period_rate,
                 ((cte.avg_prod / s.avg_prod) - 1)*100 prod_rate,
-                ((cte.avg_total / s.avg_total) - 1)*100 total_rate
+                ((cte.avg_total / s.avg_total) - 1)*100 total_rate,
+                ((cte.avg_interval / s.avg_interval) - 1)*100 interval_rate
             from cte, cte_stats s
             where cte.lac_num > 1
-            order by (cte.lac_num / s.max_lac_num)*0.4 + (1 - (cte.avg_total / s.avg_total))*0.6 desc
+            order by (
+				(cte.lac_num / s.max_lac_num)*0.2 + 
+				(1 - (cte.avg_total / s.avg_total))*0.4 +
+				(cte.avg_interval / s.avg_interval)*0.4 
+			) desc
             limit 10
         )
         select * from results order by lac_num desc, avg_total
@@ -331,4 +351,91 @@ func (r *LactationRepository) GetLastEntries(userId string) (*[]MilkEntry, error
 		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
 	`
 	return repositoriesUtil.GetList[MilkEntry](r.DB, query, userId)
+}
+
+func (r *LactationRepository) GetLastGroups(userId string) (*[]LactationGroup, error) {
+	query := `
+		with cte as (
+			select 
+				entry_date,
+				count(*) animals_number,
+				sum(quantity) total_milk,
+				avg(quantity) avg_milk
+			from milk_entries
+			where user_id = $1 and deleted_at is null
+			group by 1
+		)
+		select 
+			cte.*,
+			coalesce(animals_number - lag(animals_number) over (order by entry_date), 0) number_difference,
+			coalesce(((total_milk / lag(total_milk) over (order by entry_date)) - 1)*100, 0) total_rate,
+			coalesce(((avg_milk / lag(avg_milk) over (order by entry_date)) - 1)*100, 0) avg_rate
+		from cte
+		order by entry_date desc
+		limit 10
+	`
+	return repositoriesUtil.GetList[LactationGroup](r.DB, query, userId)
+}
+
+func (r *LactationRepository) FindGroupsPage(
+	filter LactationGroupFilter,
+	order string,
+	cursor string,
+	userId string,
+) (*entity.Page[LactationGroup], error) {
+
+	sortMap := map[string]string{"entry_date": "cte.entry_date"}
+
+	query := `
+		with cte as (
+			select 
+				entry_date,
+				count(*) animals_number,
+				sum(quantity) total_milk,
+				avg(quantity) avg_milk
+			from milk_entries
+			where user_id = $1 and deleted_at is null
+			group by 1
+		)
+		select 
+			cte.*,
+			coalesce(animals_number - lag(animals_number) over (order by entry_date), 0) number_difference,
+			coalesce(((total_milk / lag(total_milk) over (order by entry_date)) - 1)*100, 0) total_rate,
+			coalesce(((avg_milk / lag(avg_milk) over (order by entry_date)) - 1)*100, 0) avg_rate
+		from cte
+    `
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorArgs, err := repositoriesUtil.GetCustomCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorExpression, _, err := repositoriesUtil.GetCustomCursorExpression(sortMap, "entry_date", order, "cte", cursorArgs, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	var whereExpression string
+	if filterExpression != "" {
+		whereExpression = "where " + filterExpression
+	}
+
+	if cursorExpression != "" {
+		if whereExpression != "" {
+			whereExpression += " and " + cursorExpression
+		} else {
+			whereExpression = "where " + cursorExpression
+		}
+	}
+
+	query += whereExpression + " order by cte.entry_date " + order
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+	return repositoriesUtil.GetPageCustomCursor[LactationGroup](r.DB, query, "entry_date", 100, args...)
 }

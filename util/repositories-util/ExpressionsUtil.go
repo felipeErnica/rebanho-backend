@@ -75,6 +75,49 @@ func GetCursorExpression(
 	return cursorExpression, nextNumParam + 1, nil
 }
 
+func GetCustomCursorExpression(
+	sortMap map[string]string,
+	sort string,
+	order string,
+	tableName string,
+	cursorArgs []any,
+	numParam int,
+) (string, int, error) {
+
+	if len(cursorArgs) == 0 {
+		return "", numParam, nil
+	}
+
+	sortFields := strings.Split(sort, ",")
+
+	sortExpression := ""
+	for _, field := range sortFields {
+		expression, ok := sortMap[field]
+		if !ok {
+			err := errors.New("A expressão de cursor para ordenamento solicitada não existe!")
+			return "", 0, err
+		}
+		sortExpression = sortExpression + expression + ", "
+	}
+	sortExpression = strings.TrimSuffix(sortExpression, ", ")
+
+	signal := ">"
+	if order == "desc" {
+		signal = "<"
+	}
+
+	paramExpression := ""
+	nextNumParam := numParam
+	for i := range cursorArgs {
+		nextNumParam := numParam + i
+		paramExpression = paramExpression + fmt.Sprintf("$%d, ", nextNumParam)
+	}
+	paramExpression = strings.TrimSuffix(paramExpression, ", ")
+
+	cursorExpression := fmt.Sprintf("(%s) %s (%s)", sortExpression, signal, paramExpression)
+	return cursorExpression, nextNumParam + 1, nil
+}
+
 func GetFilterExpressions(filter any, mainTable string, numParam int) (string, int, error) {
 	var buffer bytes.Buffer
 

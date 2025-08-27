@@ -15,4 +15,7 @@ func InitLactationArea(app *app.App) {
     app.HandleFunc("GET /lactation/dashboard/best-animals", handler.GetBestAnimals)
     app.HandleFunc("GET /lactation/dashboard/worst-animals", handler.GetWorstAnimals)
     app.HandleFunc("GET /lactation/dashboard/last-entries", handler.GetLastEntries)
+    app.HandleFunc("GET /lactation/dashboard/last-groups", handler.GetLastGroups)
+
+    app.HandleFunc("POST /lactation/groups/page", handler.FindGroupsPage)
 }

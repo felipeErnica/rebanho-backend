@@ -141,3 +141,39 @@ func GetPage[E any](
 	}
 	return &page, err
 }
+
+/*
+Retorna uma página, contendo uma lista de objetos da Consulta SQL,
+o número total de linhas,
+um booleano indicando se há uma próxima página e
+um cursor codificado indicando a próxima página.
+*/
+func GetPageCustomCursor[E any](
+	db *sqlx.DB,
+	query string,
+	sort string,
+	limit int,
+	args ...any,
+) (*entity.Page[E], error) {
+	query = query + fmt.Sprintf(" limit %d", limit)
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+
+	list := []E{}
+	err := db.Select(&list, query, args...)
+	if err != nil {
+		err = errors.New("Erro na lista: " + err.Error())
+		return nil, err
+	}
+
+	cursor, err := CreateCustomCursorKey(sort, list)
+	if err != nil {
+		return nil, err
+	}
+
+	page := entity.Page[E]{
+		List:        &list,
+		NextCursor:  cursor,
+		HasNextPage: len(list) == limit,
+	}
+	return &page, err
+}

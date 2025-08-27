@@ -112,9 +112,10 @@ func (h *TestEntryHandler) GetRankedResults(w http.ResponseWriter, r *http.Reque
 	var result *[]TestAnimal
 	var err error
 
-	if rankBy == "best-results" {
+	switch rankBy {
+	case "best-results":
 		result, err = h.Repository.GetBestResults(userId)
-	} else if rankBy == "worst-results" {
+	case "worst-results":
 		result, err = h.Repository.GetWorstResults(userId)
 	}
 
@@ -127,102 +128,109 @@ func (h *TestEntryHandler) GetRankedResults(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *TestEntryHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
-    sort := r.URL.Query().Get("sort")
-    order := r.URL.Query().Get("order")
-    cursor := r.URL.Query().Get("cursor")
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	cursor := r.URL.Query().Get("cursor")
 
-    filter, ok := handlersUtil.DecodeFilter(w, r, TestEntryFilter{}); if !ok {
-        return
-    }
+	filter, ok := handlersUtil.DecodeFilter(w, r, TestEntryFilter{})
+	if !ok {
+		return
+	}
 
-    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-        return
-    }
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
 
-    result, err := h.Repository.FindEntriesPage(filter, sort, order, cursor, userId)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
+	result, err := h.Repository.FindEntriesPage(filter, sort, order, cursor, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
 
-    handlersUtil.SendEntity(w, result)
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *TestEntryHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
 
-    filter, ok := handlersUtil.DecodeFilter(w, r, TestEntryFilter{}); if !ok {
-        return
-    }
+	filter, ok := handlersUtil.DecodeFilter(w, r, TestEntryFilter{})
+	if !ok {
+		return
+	}
 
-    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-        return
-    }
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
 
-    result, err := h.Repository.GetEntriesFoot(filter, userId)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
+	result, err := h.Repository.GetEntriesFoot(filter, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
 
-    handlersUtil.SendEntity(w, result)
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *TestEntryHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
-    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-        return
-    }
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
 
-    result, err := h.Repository.FindGroups(userId)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
+	result, err := h.Repository.FindGroups(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
 
-    handlersUtil.SendEntity(w, result)
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *TestEntryHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Request) {
-    testDateString := r.PathValue("testDate")
-    testDate, err := time.Parse(time.RFC3339Nano, testDateString)
+	testDateString := r.PathValue("testDate")
+	testDate, err := time.Parse(time.RFC3339Nano, testDateString)
 
-    sort := r.URL.Query().Get("sort")
-    order := r.URL.Query().Get("order")
-    
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
 
-    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-        return
-    }
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
 
-    result, err := h.Repository.FindEntriesByGroup(sort, order, testDate, userId)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
 
-    handlersUtil.SendEntity(w, result)
+	result, err := h.Repository.FindEntriesByGroup(sort, order, testDate, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *TestEntryHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Request) {
-    testDateString := r.PathValue("testDate")
-    testDate, err := time.Parse(time.RFC3339Nano, testDateString)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
+	testDateString := r.PathValue("testDate")
+	testDate, err := time.Parse(time.RFC3339Nano, testDateString)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
 
-    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-        return
-    }
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
 
-    result, err := h.Repository.GetEntriesByGroupFoot(testDate, userId)
-    if err != nil {
-        serverErrors.DatabaseGetError(err, w)
-        return
-    }
+	result, err := h.Repository.GetEntriesByGroupFoot(testDate, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
 
-    handlersUtil.SendEntity(w, result)
+	handlersUtil.SendEntity(w, result)
 }
