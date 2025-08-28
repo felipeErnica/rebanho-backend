@@ -92,17 +92,3 @@ func (h *BirthHandler) TotalBySex(w http.ResponseWriter, r *http.Request) {
 	}
 	handlersUtil.SendEntity(w, result)
 }
-
-func (h *BirthHandler) FindByMotherId(w http.ResponseWriter, r *http.Request) {
-	motherId := r.PathValue("motherId")
-	list, err := h.Repository.FindByMotherId(motherId)
-	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
-		return
-	}
-	handlersUtil.SendList(w, list)
-}
-
-func (h *BirthHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.Delete(w, r, h.Repository)
-}

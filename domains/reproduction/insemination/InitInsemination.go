@@ -26,6 +26,5 @@ func InitInsemination(app *app.App) {
 	app.HandleFunc("GET /reproduction/insemination/groups/entries/foot", handler.GetEntriesByGroupFoot)
 
 	app.HandleFunc("GET /reproduction/insemination/bulls/search", handler.SearchInseminationBulls)
-	app.HandleFunc("GET /reproduction/insemination/bulls/ids/{id}", handler.SearchInseminationBullsById)
     util.LogDomainsInit("Entradas de Inseminação")
 }

@@ -1,8 +1,6 @@
 package animalTable
 
 import (
-	"fmt"
-
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -39,17 +37,18 @@ func (r *AnimalRepository) FindPage(
 	filter AnimalFilter,
 ) (page *entity.Page[Animal], err error) {
 
-	sortMap := map[string]string{
-		"name":                   "coalesce(animals.name, '')",
-		"isr":                    "coalesce(animals.isr, 0)",
-		"average_birth_interval": "coalesce(animals.average_birth_interval, 0)",
-		"average_prod_interval":  "coalesce(animals.average_prod_interval, 0)",
-		"average_prod":           "coalesce(animals.average_prod, 0)",
-		"average_peak":           "coalesce(animals.average_peak, 0)",
-		"death_date":             "coalesce(animals.death_date, '-infinity')",
-		"weaning_date":           "coalesce(animals.weaning_date, '-infinity')",
-		"birth_date":             "coalesce(animals.birth_date, '-infinity')",
-		"animal_order":           "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"name":                   {Field: "coalesce(animals.name, '')", Order: "asc"},
+		"isr":                    {Field: "coalesce(animals.isr, 0)", Order: "asc"},
+		"average_birth_interval": {Field: "coalesce(animals.average_birth_interval, 0)", Order: "asc"},
+		"average_prod_interval":  {Field: "coalesce(animals.average_prod_interval, 0)", Order: "asc"},
+		"average_prod":           {Field: "coalesce(animals.average_prod, 0)", Order: "asc"},
+		"average_peak":           {Field: "coalesce(animals.average_peak, 0)", Order: "asc"},
+		"death_date":             {Field: "coalesce(animals.death_date, '-infinity')", Order: "asc"},
+		"weaning_date":           {Field: "coalesce(animals.weaning_date, '-infinity')", Order: "asc"},
+		"birth_date":             {Field: "coalesce(animals.birth_date, '-infinity')", Order: "asc"},
+		"animal_order":           {Field: "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
 	}
 
 	whereExpression := "where animals.deleted_at is null and animals.user_id = $1"
@@ -69,7 +68,7 @@ func (r *AnimalRepository) FindPage(
 		return nil, err
 	}
 
-	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "animals", cursorArgs, nextParam)
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +115,7 @@ func (r *AnimalRepository) FindByNumber(ringNumber string, userId string) (*[]An
 	return repositoriesUtil.GetList[Animal](r.DB, query, ringNumber, userId)
 }
 
-func (r *AnimalRepository) SearchFather(userId string, input string) (*[]entity.SearchEntity, error) {
+func (r *AnimalRepository) SearchFather(userId string) (*[]entity.SearchEntity, error) {
 	queryInput := `
         select id, concat_ws(' - ', ring_number, name) as label 
             from animals 
@@ -125,106 +124,27 @@ func (r *AnimalRepository) SearchFather(userId string, input string) (*[]entity.
             and animal_type <> 'OFFSPRING'
             and (name is not null)
             and deleted_at is null
-            and concat_ws(' - ', ring_number, name) ilike $2
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
-        limit 20
+        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), coalesce(name, '')
     `
-	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, queryInput, userId, input)
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, queryInput, userId)
 }
 
-func (r *AnimalRepository) SearchFatherById(userId string, idList []string) (*[]entity.SearchEntity, error) {
-	query := `
-        select id, concat_ws(' - ', ring_number, name) as label 
-            from animals 
-        where user_id = $1 
-            and sex = 'M' 
-            and animal_type <> 'OFFSPRING'
-            and (name is not null)
-            and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
-        limit 20
-    `
-	if len(idList) != 0 {
-		queryId := "select id, concat_ws(' - ', ring_number, name) as label from animals"
-		args := []any{userId}
-		args = repositoriesUtil.GetSliceArgs(idList, args)
-		whereExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "id", 2)
-		queryId += " where " + whereExpression
-		query = fmt.Sprintf(`
-            with 
-                animal_base as (%s), 
-                animal_id as (%s)
-                select * from animal_base 
-                union
-                select * from animal_id
-            `, query, queryId)
-		return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, args...)
-	}
-	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
-}
-
-func (r *AnimalRepository) SearchAnimals(userId string, input string) (*[]entity.SearchEntity, error) {
-	query := `
-        select id, concat_ws(' - ', ring_number, name, to_char(birth_date, 'DD/MM/YYYY')) as label 
-            from animals 
-        where user_id = $1 
-            and animal_type <> 'OUTSIDE_ANIMAL'
-            and concat_ws(' - ', ring_number, name) ilike $2
-            and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), birth_date
-        limit 20
-    `
-	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
-}
-
-func (r *AnimalRepository) SearchAnimalsById(userId string, idList []string) (*[]entity.SearchEntity, error) {
+func (r *AnimalRepository) SearchAnimals(userId string) (*[]entity.SearchEntity, error) {
 	query := `
         select id, concat_ws(' - ', ring_number, name, to_char(birth_date, 'DD/MM/YYYY')) as label 
             from animals 
         where user_id = $1 
             and animal_type <> 'OUTSIDE_ANIMAL'
             and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), birth_date
-        limit 20
+        order by 
+			coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), 
+			coalesce(name, ''), 
+			coalesce(birth_date, '-infinity')
     `
-	if len(idList) != 0 {
-		queryId := `
-            select id, concat_ws(' - ', ring_number, name, to_char(birth_date, 'DD/MM/YYYY')) as label 
-            from animals 
-        `
-		idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "id", 2)
-		queryId += " where " + idExpression
-		args := []any{userId}
-		args = repositoriesUtil.GetSliceArgs(idList, args)
-		query = fmt.Sprintf(`
-            with animal_base as (%s),
-            animal_id as (%s)
-            select * from animal_base
-            union
-            select * from animal_id
-        `, query, queryId)
-		return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, args...)
-	}
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) SearchMother(userId string, input string) (*[]entity.SearchEntity, error) {
-	query := `
-        select id, concat_ws(' - ', ring_number, name) as label 
-            from animals 
-        where user_id = $1 
-            and sex = 'F' 
-            and animal_type <> 'OFFSPRING'
-            and (name is not null)
-            and concat_ws(' - ', ring_number, name) ilike $2
-            and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
-        limit 20
-    `
-	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
-}
-
-func (r *AnimalRepository) SearchMotherById(userId string, idList []string) (*[]entity.SearchEntity, error) {
+func (r *AnimalRepository) SearchMother(userId string) (*[]entity.SearchEntity, error) {
 	query := `
         select id, concat_ws(' - ', ring_number, name) as label 
             from animals 
@@ -234,43 +154,24 @@ func (r *AnimalRepository) SearchMotherById(userId string, idList []string) (*[]
             and (name is not null)
             and deleted_at is null
         order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
-        limit 20
     `
-	if len(idList) != 0 {
-		queryId := "select id, concat_ws(' - ', ring_number, name) as label from animals"
-		args := []any{userId}
-		args = repositoriesUtil.GetSliceArgs(idList, args)
-		idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "id", 2)
-		queryId += " where " + idExpression
-		query = fmt.Sprintf(`
-            with animal_base as (%s),
-            animal_id as (%s)
-            select * from animal_base
-            union
-            select * from animal_id
-        `, query, queryId)
-		return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, args...)
-	}
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) SearchBull(userId string, input string) (*[]entity.SearchEntity, error) {
+func (r *AnimalRepository) SearchDairyAnimals(userId string) (*[]entity.SearchEntity, error) {
 	query := `
         select id, concat_ws(' - ', ring_number, name) as label 
-            from animals 
+		from animals 
         where user_id = $1 
-            and sex = 'M' 
-            and animal_type = 'REPRODUCTION_ANIMAL'
-            and (name is not null)
-            and concat_ws(' - ', ring_number, name) ilike $2
+            and sex = 'F' 
+            and animal_type = 'DAIRY_ANIMAL'
             and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
-        limit 20
+        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), name
     `
-	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) SearchBullById(userId string, idList []string) (*[]entity.SearchEntity, error) {
+func (r *AnimalRepository) SearchBull(userId string) (*[]entity.SearchEntity, error) {
 	query := `
         select id, concat_ws(' - ', ring_number, name) as label 
             from animals 
@@ -278,26 +179,9 @@ func (r *AnimalRepository) SearchBullById(userId string, idList []string) (*[]en
             and sex = 'M' 
             and animal_type = 'REPRODUCTION_ANIMAL'
             and (name is not null)
-            and concat_ws(' - ', ring_number, name) ilike $2
             and deleted_at is null
         order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
-        limit 20
     `
-	if len(idList) != 0 {
-		queryId := "select id, concat_ws(' - ', ring_number, name) as label from animals"
-		idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "id", 2)
-		queryId += " where " + idExpression
-        query = fmt.Sprintf(`
-            with animal_base as (%s),
-            animal_id as %s,
-            select * from animal_base
-            union
-            select * from animal_id
-        `, query, queryId)
-		args := []any{userId}
-		args = repositoriesUtil.GetSliceArgs(idList, args)
-		return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, args...)
-	}
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 

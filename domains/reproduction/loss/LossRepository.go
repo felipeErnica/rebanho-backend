@@ -176,14 +176,24 @@ func (r *LossRepository) GetMostLossesAnimals(userId string) (*[]MostLossesAnima
 }
 
 func (r *LossRepository) FindPage(
-    filter LossFilter,
-    cursor string,
-    sort string,
-    order string,
-    userId string,
+	filter LossFilter,
+	cursor string,
+	sort string,
+	order string,
+	userId string,
 ) (*entity.Page[PregnancyLoss], error) {
 
-    query := `
+	sort = repositoriesUtil.AddCommonFields(sort)
+
+	sortMap := map[string]repositoriesUtil.SortField{
+		"loss_date":    {Field: "coalesce(l.loss_date, '-infinity')", Order: "desc"},
+		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"animal_name":  {Field: "a.name", Order: "asc"},
+		"id":           {Field: "l.id", Order: "asc"},
+		"created_at":   {Field: "l.created_at", Order: "asc"},
+	}
+
+	query := `
         select
             l.id,
             l.animal_id,
@@ -195,63 +205,57 @@ func (r *LossRepository) FindPage(
         from losses l join animals a on a.id = l.animal_id
     `
 
-	sortMap := map[string]string{
-		"loss_date": "coalesce(l.loss_date, '-infinity')",
-		"animal_order":    "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)",
-		"animal_name":     "a.name",
+	whereExpression := "where l.user_id = $1 and l.deleted_at is null"
+
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "l", 2)
+	if err != nil {
+		return nil, err
 	}
 
-    whereExpression := "where l.user_id = $1 and l.deleted_at is null"
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
 
-    filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "l", 2)
-    if err != nil {
-        return nil, err
-    }
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
+	if err != nil {
+		return nil, err
+	}
 
-    cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
-    if err != nil {
-        return nil, err
-    }
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
 
-    cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "l", cursorArgs, nextParam)
-    if err != nil {
-        return nil, err
-    }
+	if cursorExpression != "" {
+		whereExpression += " and " + cursorExpression
+	}
 
-    if filterExpression != "" {
-        whereExpression += " and " + filterExpression
-    }
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 
-    if cursorExpression != "" {
-        whereExpression += " and " + cursorExpression
-    }
-    
-    sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
-
-    query = query + whereExpression + " order by " + sortExpression
-    args := []any{userId}
-    args = append(args, cursorArgs...)
-    filterArgs := repositoriesUtil.GetFilterArgs(filter)
-    args = append(args, filterArgs...)
-    return repositoriesUtil.GetPage[PregnancyLoss](r.DB, query, sort, 100, args...)
+	query = query + whereExpression + " order by " + sortExpression
+	args := []any{userId}
+	args = append(args, cursorArgs...)
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	return repositoriesUtil.GetPage[PregnancyLoss](r.DB, query, sort, 100, args...)
 }
 
 func (r *LossRepository) GetPageFoot(filter LossFilter, userId string) (*LossFooter, error) {
-    query := "select count(*) totals from losses l"
-    whereExpression := " where l.user_id = $1 and l.deleted_at is null"
+	query := "select count(*) totals from losses l"
+	whereExpression := " where l.user_id = $1 and l.deleted_at is null"
 
-    filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "l", 2)
-    if err != nil {
-        return nil, err
-    }
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "l", 2)
+	if err != nil {
+		return nil, err
+	}
 
-    if filterExpression != "" {
-        whereExpression += " and " + filterExpression
-    }
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
 
-    query += whereExpression
-    args := []any{userId}
-    filterArgs := repositoriesUtil.GetFilterArgs(filter)
-    args = append(args, filterArgs...)
-    return repositoriesUtil.GetOne[LossFooter](r.DB, query, args...)
+	query += whereExpression
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	return repositoriesUtil.GetOne[LossFooter](r.DB, query, args...)
 }

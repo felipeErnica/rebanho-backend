@@ -23,10 +23,13 @@ func (r *FarmRepository) FindFarmAnimals(
 	cursor string,
 ) (*entity.Page[FarmAnimal], error) {
 
-	sortMap := map[string]string{
-		"ring_order": "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
-		"name":       "coalesce(animals.name, '')",
-		"birth_date": "coalesce(animals.birth_date, '-infinity')",
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"ring_order": {Field: "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"name":       {Field: "coalesce(animals.name, '')", Order: "asc"},
+		"birth_date": {Field: "coalesce(animals.birth_date, '-infinity')", Order: "asc"},
+		"id":         {Field: "animals.id", Order: "asc"},
+		"created_at": {Field: "animals.created_at", Order: "asc"},
 	}
 
 	expression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
@@ -72,7 +75,7 @@ func (r *FarmRepository) FindFarmAnimals(
 		return nil, err
 	}
 
-	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "animals", cursorArgs, nextParam)
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
 	if err != nil {
 		return nil, err
 	}

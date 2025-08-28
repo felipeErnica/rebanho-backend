@@ -2,6 +2,7 @@ package lactation
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/felipeErnica/rebanho-backend/serverErrors"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
@@ -138,6 +139,91 @@ func (h *LactationHandler) FindGroupsPage(w http.ResponseWriter, r *http.Request
 	}
 
 	result, err := h.Repository.FindGroupsPage(filter, order, cursor, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
+	cursor := r.URL.Query().Get("cursor")
+	order := r.URL.Query().Get("order")
+	sort := r.URL.Query().Get("sort")
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, MilkEntryFilter{})
+	if !ok {
+		return
+	}
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindEntriesPage(filter, sort, order, cursor, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetEntriesPageFoot(w http.ResponseWriter, r *http.Request) {
+	filter, ok := handlersUtil.DecodeFilter(w, r, MilkEntryFilter{})
+	if !ok {
+		return
+	}
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetEntriesPageFoot(filter, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetGroupEntries(w http.ResponseWriter, r *http.Request) {
+	entryDateVar := r.URL.Query().Get("entryDate")
+	entryDate, err := time.Parse(time.RFC3339Nano, entryDateVar)
+
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetGroupEntries(userId, entryDate)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetGroupEntriesFoot(w http.ResponseWriter, r *http.Request) {
+	entryDateVar := r.URL.Query().Get("entryDate")
+	entryDate, err := time.Parse(time.RFC3339Nano, entryDateVar)
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetGroupEntriesFoot(userId, entryDate)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

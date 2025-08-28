@@ -9,23 +9,15 @@ import (
 )
 
 type PastureRepository struct {
-	SelectQuery string
-	TableName   string
-	Db          *sqlx.DB
+	Db *sqlx.DB
 }
 
 func NewRepository(db *sqlx.DB) *PastureRepository {
-	selectQuery := `
-        SELECT pastures.*, bull.name as bull_name, farms.name as farm_name
-        FROM pastures
-        LEFT JOIN animals as bull ON bull.id = pastures.animal_id
-        LEFT JOIN farms ON farms.id = pastures.farm_id
-    `
-	return &PastureRepository{selectQuery, "pastures", db}
+	return &PastureRepository{db}
 }
 
-func (r *PastureRepository) SearchPasture(userId string, input string, farmsId []string) (*[]entity.SearchEntity, error) {
-	args := []any{userId, input}
+func (r *PastureRepository) SearchPasture(userId string, farmsId []string) (*[]entity.SearchEntity, error) {
+	args := []any{userId}
 
 	arrayStatement := ""
 	if len(farmsId) != 0 {
@@ -39,44 +31,10 @@ func (r *PastureRepository) SearchPasture(userId string, input string, farmsId [
         from pastures 
         where 
             user_id = $1 
-            and name ilike $2 
             %s
             and deleted_at is null
         order by label
     `, arrayStatement)
-
-	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
-}
-
-func (r *PastureRepository) SearchPastureById(userId string, farmsId []string, idList []string) (*[]entity.SearchEntity, error) {
-	args := []any{userId}
-	query := ` select id, name as label from pastures`
-    orderExpression := " order by label"
-	whereStatement := " where user_id = $1 and deleted_at is null"
-
-    paramIndex := 2
-	if len(farmsId) != 0 {
-		args = repositoriesUtil.GetSliceArgs(farmsId, args)
-        farmExpression, nextParam := repositoriesUtil.GetSliceExpressions(farmsId, "farm_id", paramIndex)
-        paramIndex = nextParam
-		whereStatement += " and " + farmExpression
-	}
-    query += whereStatement + orderExpression
-    
-    if len(idList) != 0 {
-        queryId := "select id, name as label from pastures"
-        args = repositoriesUtil.GetSliceArgs(idList, args)
-        idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "id", paramIndex)
-        queryId += " where " + idExpression
-        query = fmt.Sprintf(`
-            with pasture_base as (%s),
-            pasture_id as (%s)
-            select * from pasture_base
-            union
-            select * from pasture_id
-        `, query, queryId)
-        return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
-    }
 
 	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
 }
@@ -87,11 +45,15 @@ func (r *PastureRepository) FindAnimalsByPasture(
 	sort string,
 	order string,
 ) (*[]PastureAnimal, error) {
-	sortMap := map[string]string{
-		"ring_number": "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
-		"name":        "coalesce(animals.name, '')",
-		"birth_date":  "coalesce(animals.birth_date, '-infinity')",
-		"death_date":  "coalesce(animals.death_date, '-infinity')",
+
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"ring_number": {Field: "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"name":        {Field: "coalesce(animals.name, '')", Order: "asc"},
+		"birth_date":  {Field: "coalesce(animals.birth_date, '-infinity')", Order: "asc"},
+		"death_date":  {Field: "coalesce(animals.death_date, '-infinity')", Order: "asc"},
+		"id":          {Field: "animals.id", Order: "asc"},
+		"created_at":  {Field: "animals.created_at", Order: "asc"},
 	}
 
 	expression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
@@ -121,26 +83,4 @@ func (r *PastureRepository) FindAnimalsByPasture(
 	query = query + orderExpression
 
 	return repositoriesUtil.GetList[PastureAnimal](r.Db, query, pastureId, userId)
-}
-
-func (r *PastureRepository) FindAll(userId string) (*[]Pasture, error) {
-	query := r.SelectQuery + " where pastures.user_id = $1 AND pastures.deleted_at is null"
-	return repositoriesUtil.GetList[Pasture](r.Db, query)
-}
-
-func (r *PastureRepository) FindById(id string) (*Pasture, error) {
-	query := r.SelectQuery + " WHERE pastures.id = $1 AND pastures.deleted_at is null"
-	return repositoriesUtil.GetOne[Pasture](r.Db, query, id)
-}
-
-func (r *PastureRepository) Add(newPasture *PastureSave) (*PastureSave, error) {
-	return repositoriesUtil.Add(r.Db, r.TableName, newPasture)
-}
-
-func (r *PastureRepository) Update(pasture *PastureSave) error {
-	return repositoriesUtil.Update(r.Db, r.TableName, pasture)
-}
-
-func (r *PastureRepository) Delete(id string) error {
-	return repositoriesUtil.Delete(r.Db, r.TableName, id)
 }

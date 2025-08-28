@@ -12,7 +12,7 @@ import (
 
 /*
 Cria um novo cursor com a informação do último objeto da lista.
-Os parâmetros são selecionados com base na coluna de ordenamento e na data de criação
+Os parâmetros são selecionados com base no parâmetro de ordenamento.
 */
 func CreateCursorKey[E any](sort string, list []E) (cursor string, err error) {
 	listSize := len(list)
@@ -28,52 +28,7 @@ func CreateCursorKey[E any](sort string, list []E) (cursor string, err error) {
 	cursorArgs := []string{}
 
 	for _, sortField := range sortFields {
-		arg, err := getValueFromSortField(sortField, entryType, values)
-		if err != nil {
-			return "", err
-		}
-		cursorArgs = append(cursorArgs, arg)
-	}
-
-	createdAt := values.FieldByName("CreatedAt").Interface()
-	id := values.FieldByName("Id").String()
-
-	castedCreatedAt, ok := createdAt.(time.Time); if !ok {
-		err = errors.New("Formato de CreatedAt não é data")
-		return
-	}
-
-	args := []string{castedCreatedAt.Format(time.RFC3339Nano), id}
-	args = append(args, cursorArgs...)
-
-	data := ""
-	for _, arg := range args {
-		data = data + arg + ","
-	}
-	data = strings.TrimSuffix(data, ",")
-
-	cursor = base64.StdEncoding.EncodeToString([]byte(data))
-	return cursor, err
-}
-
-/*
-Cria um novo cursor com a informação do último objeto da lista.
-Os parâmetros são selecionados com base na coluna de ordenamento e na data de criação
-*/
-func CreateCustomCursorKey[E any](sort string, list []E) (cursor string, err error) {
-	listSize := len(list)
-	if listSize == 0 {
-		err = errors.New("A lista está vazia")
-		return
-	}
-
-	sortFields := strings.Split(sort, ",")
-	lastEntry := list[len(list)-1]
-	entryType := reflect.TypeOf(lastEntry)
-	values := reflect.ValueOf(lastEntry)
-	cursorArgs := []string{}
-
-	for _, sortField := range sortFields {
+		sortField = strings.TrimSpace(sortField)
 		arg, err := getValueFromSortField(sortField, entryType, values)
 		if err != nil {
 			return "", err
@@ -90,6 +45,7 @@ func CreateCustomCursorKey[E any](sort string, list []E) (cursor string, err err
 	cursor = base64.StdEncoding.EncodeToString([]byte(data))
 	return cursor, err
 }
+
 func getValueFromSortField(sortField string, entryType reflect.Type, values reflect.Value) (string, error) {
 	var value any
 	isFound := false

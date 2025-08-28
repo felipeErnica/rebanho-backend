@@ -9,19 +9,36 @@ import (
 	"time"
 )
 
+type SortField struct {
+	Field string
+	Order string
+}
+
 // Através de um mapa da campo com expressões SQL, retorna a expressão apropriada ao campo
-func GetSortExpression(expressionMap map[string]string, sort string, order string) (string, error) {
+func GetSortExpression(
+	sortMap map[string]SortField, 
+	sort string, 
+	order string,
+) (string, error) {
 	sortFields := strings.Split(sort, ",")
-	sortExpression := ""
-	for _, field := range sortFields {
-		expression, ok := expressionMap[field]
+	expressions := []string{}
+	for i := range sortFields {
+		key := strings.TrimSpace(sortFields[i])
+		expression, ok := sortMap[key]
 		if !ok {
 			err := errors.New("A expressão de ordenamento solicitada não existe!")
 			return "", err
 		}
-		sortExpression = sortExpression + expression + " " + order + ", "
+
+		ordering := expression.Order
+		if i == 0 {
+			ordering = order
+		}
+
+		expressions = append(expressions, fmt.Sprintf("%s %s", expression.Field, ordering))
 	}
-	sortExpression = strings.TrimSuffix(sortExpression, ", ")
+
+	sortExpression := strings.Join(expressions, ", ")
 	return sortExpression, nil
 }
 
@@ -30,92 +47,63 @@ Através de um mapa de campos relacionados a expressões SQL, retorna a express�
 cursor relacionada ao campo
 */
 func GetCursorExpression(
-	sortMap map[string]string,
+	sortMap map[string]SortField,
 	sort string,
 	order string,
-	tableName string,
-	cursorArgs []any,
+	cursor string,
 	numParam int,
 ) (string, int, error) {
 
-	if len(cursorArgs) == 0 {
+	if cursor == "" {
 		return "", numParam, nil
 	}
 
 	sortFields := strings.Split(sort, ",")
+	conditions := []string{}
 
-	sortExpression := ""
-	for _, field := range sortFields {
-		expression, ok := sortMap[field]
+	for i := range sortFields {
+
+		parts := []string{}
+
+		key := strings.TrimSpace(sortFields[i])
+		expression, ok := sortMap[key]
 		if !ok {
 			err := errors.New("A expressão de cursor para ordenamento solicitada não existe!")
-			return "", 0, err
+			return "", numParam, err
 		}
-		sortExpression = sortExpression + expression + ", "
+
+		ordering := expression.Order
+		if i == 0 {
+			ordering = order
+		}
+
+		signal := ">"
+		if ordering == "desc" {
+			signal = "<"
+		}
+
+		for j := range i {
+			partKey := strings.TrimSpace(sortFields[j])
+			partExpression := sortMap[partKey]
+			parts = append(parts, fmt.Sprintf("%s = $%d", partExpression.Field, j+numParam))
+		}
+
+		parts = append(parts, fmt.Sprintf("%s %s $%d", expression.Field, signal, numParam+i))
+		conditions = append(conditions, fmt.Sprintf("(%s)", strings.Join(parts, " and ")))
 	}
-	sortExpression = strings.TrimSuffix(sortExpression, ", ")
 
-	commonFields := fmt.Sprintf("%[1]s.created_at, %[1]s.id", tableName)
-	fieldsExpression := sortExpression + ", " + commonFields
+	cursorExpression := strings.Join(conditions, " or ")
+	nextNumParam := len(sortFields) + numParam
 
-	signal := ">"
-	if order == "desc" {
-		signal = "<"
-	}
-
-	paramExpression := ""
-	nextNumParam := numParam
-	for i := range cursorArgs {
-		nextNumParam := numParam + i
-		paramExpression = paramExpression + fmt.Sprintf("$%d, ", nextNumParam)
-	}
-	paramExpression = strings.TrimSuffix(paramExpression, ", ")
-
-	cursorExpression := fmt.Sprintf("(%s) %s (%s)", fieldsExpression, signal, paramExpression)
-	return cursorExpression, nextNumParam + 1, nil
+	return cursorExpression, nextNumParam, nil
 }
 
-func GetCustomCursorExpression(
-	sortMap map[string]string,
-	sort string,
-	order string,
-	tableName string,
-	cursorArgs []any,
-	numParam int,
-) (string, int, error) {
-
-	if len(cursorArgs) == 0 {
-		return "", numParam, nil
+func AddCommonFields(sort string) (string) {
+	sort += ",id,created_at"
+	if sort == "" {
+		sort = "created_at,id"
 	}
-
-	sortFields := strings.Split(sort, ",")
-
-	sortExpression := ""
-	for _, field := range sortFields {
-		expression, ok := sortMap[field]
-		if !ok {
-			err := errors.New("A expressão de cursor para ordenamento solicitada não existe!")
-			return "", 0, err
-		}
-		sortExpression = sortExpression + expression + ", "
-	}
-	sortExpression = strings.TrimSuffix(sortExpression, ", ")
-
-	signal := ">"
-	if order == "desc" {
-		signal = "<"
-	}
-
-	paramExpression := ""
-	nextNumParam := numParam
-	for i := range cursorArgs {
-		nextNumParam := numParam + i
-		paramExpression = paramExpression + fmt.Sprintf("$%d, ", nextNumParam)
-	}
-	paramExpression = strings.TrimSuffix(paramExpression, ", ")
-
-	cursorExpression := fmt.Sprintf("(%s) %s (%s)", sortExpression, signal, paramExpression)
-	return cursorExpression, nextNumParam + 1, nil
+	return sort
 }
 
 func GetFilterExpressions(filter any, mainTable string, numParam int) (string, int, error) {
@@ -128,9 +116,9 @@ func GetFilterExpressions(filter any, mainTable string, numParam int) (string, i
 		filterTypes = filterTypes.Elem()
 	}
 
-    if (!isFiltered(filterValues)) {
-        return "", numParam, nil
-    }
+	if !isFiltered(filterValues) {
+		return "", numParam, nil
+	}
 
 	for i := 1; i < filterTypes.NumField(); i++ {
 		field := filterTypes.Field(i)
@@ -153,8 +141,8 @@ func GetFilterExpressions(filter any, mainTable string, numParam int) (string, i
 			}
 		}
 	}
-    filterExpression := buffer.String()
-    filterExpression = strings.TrimSuffix(filterExpression, " and ")
+	filterExpression := buffer.String()
+	filterExpression = strings.TrimSuffix(filterExpression, " and ")
 	return filterExpression, numParam, nil
 }
 
@@ -218,16 +206,16 @@ func buildFilterBool(field string, numParam int) (string, int) {
 
 func GetSliceExpressions(array []string, field string, numParam int) (string, int) {
 
-    if len(array) == 0 {
-        return "", numParam
-    }
+	if len(array) == 0 {
+		return "", numParam
+	}
 
-    params := ""
+	params := ""
 	for range array {
 		params += fmt.Sprintf("$%d, ", numParam)
 		numParam++
 	}
-    params = strings.TrimSuffix(params, ", ")
+	params = strings.TrimSuffix(params, ", ")
 	statement := fmt.Sprintf("%s in (%s)", field, params)
 	return statement, numParam
 }

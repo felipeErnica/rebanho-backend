@@ -1,6 +1,8 @@
 package lactation
 
 import (
+	"time"
+
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -384,7 +386,7 @@ func (r *LactationRepository) FindGroupsPage(
 	userId string,
 ) (*entity.Page[LactationGroup], error) {
 
-	sortMap := map[string]string{"entry_date": "cte.entry_date"}
+	sortMap := map[string]repositoriesUtil.SortField{"entry_date": {Field: "cte.entry_date", Order: "asc"}}
 
 	query := `
 		with cte as (
@@ -409,12 +411,12 @@ func (r *LactationRepository) FindGroupsPage(
 		return nil, err
 	}
 
-	cursorArgs, err := repositoriesUtil.GetCustomCursorArgs(cursor)
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
 	if err != nil {
 		return nil, err
 	}
 
-	cursorExpression, _, err := repositoriesUtil.GetCustomCursorExpression(sortMap, "entry_date", order, "cte", cursorArgs, nextParam)
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, "entry_date", order, cursor, nextParam)
 	if err != nil {
 		return nil, err
 	}
@@ -437,5 +439,130 @@ func (r *LactationRepository) FindGroupsPage(
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
-	return repositoriesUtil.GetPageCustomCursor[LactationGroup](r.DB, query, "entry_date", 100, args...)
+	return repositoriesUtil.GetPage[LactationGroup](r.DB, query, "entry_date", 100, args...)
+}
+
+func (r *LactationRepository) FindEntriesPage(
+	filter MilkEntryFilter,
+	sort string,
+	order string,
+	cursor string,
+	userId string,
+) (*entity.Page[MilkEntry], error) {
+
+	sort = repositoriesUtil.AddCommonFields(sort)
+
+	sortMap := map[string]repositoriesUtil.SortField{
+		"animal_name":  {Field: "a.name", Order: "asc"},
+		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"entry_date":   {Field: "m.entry_date", Order: "desc"},
+		"quantity":     {Field: "m.quantity", Order: "asc"},
+		"id":           {Field: "m.id", Order: "asc"},
+		"created_at":   {Field: "m.created_at", Order: "asc"},
+	}
+
+	query := `
+		select
+			m.id,
+			m.animal_id,
+			concat_ws(' - ', a.ring_number, a.name) animal_name,
+			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+			m.entry_date,
+			m.quantity
+		from milk_entries m
+			join animals a on a.id = m.animal_id
+    `
+
+	whereExpression := "where m.user_id = $1 and m.deleted_at is null"
+
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "m", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
+
+	if cursorExpression != "" {
+		whereExpression += " and " + cursorExpression
+	}
+
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+
+	query += whereExpression + " order by " + sortExpression
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+	return repositoriesUtil.GetPage[MilkEntry](r.DB, query, sort, 100, args...)
+}
+
+func (r *LactationRepository) GetEntriesPageFoot(filter MilkEntryFilter, userId string) (*MilkEntryFoot, error) {
+	query := `
+		select
+			count(*) animals_number,
+			sum(quantity) total_milk,
+			avg(quantity) avg_milk
+		from milk_entries m
+    `
+	whereExpression := "where m.user_id = $1 and m.deleted_at is null"
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "m", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	query = query + whereExpression
+	return repositoriesUtil.GetOne[MilkEntryFoot](r.DB, query, args...)
+}
+
+func (r *LactationRepository) GetGroupEntries(userId string, entryDate time.Time) (*[]MilkEntry, error) {
+
+	query := `
+		select
+			m.id,
+			m.animal_id,
+			concat_ws(' - ', a.ring_number, a.name) animal_name,
+			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+			m.entry_date,
+			m.quantity
+		from milk_entries m
+			join animals a on a.id = m.animal_id
+		where m.user_id = $1 and m.deleted_at is null and m.entry_date = $2
+		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
+    `
+	return repositoriesUtil.GetList[MilkEntry](r.DB, query, userId, entryDate)
+}
+
+func (r *LactationRepository) GetGroupEntriesFoot(userId string, entryDate time.Time) (*MilkEntryFoot, error) {
+	query := `
+		select
+			count(*) animals_number,
+			sum(quantity) total_milk,
+			avg(quantity) avg_milk
+		from milk_entries m
+		where m.user_id = $1 and deleted_at is null and m.entry_date = $2
+    `
+	return repositoriesUtil.GetOne[MilkEntryFoot](r.DB, query, userId, entryDate)
 }

@@ -3,14 +3,30 @@ package lactation
 import "time"
 
 type MilkEntry struct {
-	Id         string     `json:"id" db:"id"`
-	AnimalId   string     `json:"animalId" db:"animal_id"`
-	AnimalName string     `json:"animalName" db:"animal_name"`
-	EntryDate  time.Time  `json:"entryDate" db:"entry_date"`
-	Quantity   float64    `json:"quantity" db:"quantity"`
-	CreatedAt  time.Time  `json:"-" db:"created_at"`
-	DeletedAt  *time.Time `json:"-" db:"deleted_at"`
-	UserId     string     `json:"-" db:"user_id"`
+	Id          string     `json:"id" db:"id"`
+	AnimalId    string     `json:"animalId" db:"animal_id"`
+	AnimalOrder int        `json:"-" db:"animal_order"`
+	AnimalName  string     `json:"animalName" db:"animal_name"`
+	EntryDate   time.Time  `json:"entryDate" db:"entry_date"`
+	Quantity    float64    `json:"quantity" db:"quantity"`
+	CreatedAt   time.Time  `json:"-" db:"created_at"`
+	DeletedAt   *time.Time `json:"-" db:"deleted_at"`
+	UserId      string     `json:"-" db:"user_id"`
+}
+
+type MilkEntryFilter struct {
+	IsFiltered   bool       `json:"isFiltered" db:"is_filtered"`
+	Animals      *[]string  `json:"animals" db:"animal_id"`
+	MinEntryDate *time.Time `json:"minEntryDate" db:"entry_date"`
+	MaxEntryDate *time.Time `json:"maxEntryDate" db:"entry_date"`
+	MinQuantity  *float64   `json:"minQuantity" db:"quantity"`
+	MaxQuantity  *float64   `json:"maxQuantity" db:"quantity"`
+}
+
+type MilkEntryFoot struct {
+	AnimalsNumber int     `json:"animalsNumber" db:"animals_number"`
+	TotalMilk     float64 `json:"totalMilk" db:"total_milk"`
+	AverageMilk   float64 `json:"averageMilk" db:"avg_milk"`
 }
 
 type YearProductionHist struct {

@@ -238,30 +238,12 @@ func (h *InseminationHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *InseminationHandler) SearchInseminationBulls(w http.ResponseWriter, r *http.Request) {
-    input := "%" + r.URL.Query().Get("input") + "%"
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.SearchInseminationBulls(userId, input)
-	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
-		return
-	}
-
-	handlersUtil.SendList(w, result)
-}
-
-func (h *InseminationHandler) SearchInseminationBullsById(w http.ResponseWriter, r *http.Request) {
-    id := r.URL.Query().Get("id")
-    idSlice := handlersUtil.ParseArray(id)
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	result, err := h.Repository.SearchInseminationBullsById(userId, idSlice)
+	result, err := h.Repository.SearchInseminationBulls(userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

@@ -13,25 +13,12 @@ type PastureEntryHandler struct {
 
 func (h *PastureEntryHandler) SearchPastureAnimals(w http.ResponseWriter, r *http.Request) {
 	pastureId := r.PathValue("pastureId")
-	input := "%" + r.URL.Query().Get("input") + "%"
-	id := r.URL.Query().Get("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	if id != "" {
-		idList := handlersUtil.ParseArray(id)
-		result, err := h.Repository.SearchPastureAnimalsById(pastureId, userId, idList)
-		if err != nil {
-			serverErrors.DatabaseGetError(err, w)
-			return
-		}
-		handlersUtil.SendList(w, result)
-        return
-	}
-
-	result, err := h.Repository.SearchPastureAnimals(pastureId, userId, input)
+	result, err := h.Repository.SearchPastureAnimals(pastureId, userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

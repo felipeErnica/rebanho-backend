@@ -13,7 +13,5 @@ func InitBirth(app *app.App) {
 	app.HandleFunc("GET /reproduction/births/dashboard/best-intervals", handler.GetBestIntervals)
 	app.HandleFunc("GET /reproduction/births/dashboard/birth-stats", handler.GetBirthStats)
 	app.HandleFunc("GET /reproduction/births/dashboard/total-sex", handler.TotalBySex)
-	app.HandleFunc("GET /reproduction/births/mother/{motherId}", handler.FindByMotherId)
-	app.HandleFunc("DELETE /reproduction/births/delete/{id}", handler.Delete)
 	util.LogDomainsInit("Nascimentos")
 }

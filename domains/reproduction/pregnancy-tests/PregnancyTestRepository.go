@@ -145,7 +145,7 @@ func (r *TestEntryRepository) GetPregnancyTestHist(userId string) (*[]PregnancyT
         from cte
         order by test_date
     `
-    return repositoriesUtil.GetList[PregnancyTestHist](r.DB, query, userId)
+	return repositoriesUtil.GetList[PregnancyTestHist](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) GetLastEntries(userId string) (*[]TestEntry, error) {
@@ -167,7 +167,7 @@ func (r *TestEntryRepository) GetLastEntries(userId string) (*[]TestEntry, error
         where t.test_date = m.max_date and t.user_id = $1 and t.deleted_at is null
         order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
     `
-    return repositoriesUtil.GetList[TestEntry](r.DB, query, userId)
+	return repositoriesUtil.GetList[TestEntry](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) GetLastGroups(userId string) (*[]TestGroups, error) {
@@ -201,7 +201,7 @@ func (r *TestEntryRepository) GetLastGroups(userId string) (*[]TestGroups, error
         from grouped_stats g
         order by g.test_date desc
     `
-    return repositoriesUtil.GetList[TestGroups](r.DB, query, userId)
+	return repositoriesUtil.GetList[TestGroups](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) GetNextBirths(userId string) (*[]NextBirths, error) {
@@ -219,11 +219,11 @@ func (r *TestEntryRepository) GetNextBirths(userId string) (*[]NextBirths, error
         group by 1
         order by 1
     `
-    return repositoriesUtil.GetList[NextBirths](r.DB, query, userId)
+	return repositoriesUtil.GetList[NextBirths](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, error) {
-    query := `
+	query := `
         with grouped_animals as (
             select 
                 animal_id,
@@ -276,11 +276,11 @@ func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, erro
         ) desc
         limit 10
     `
-    return repositoriesUtil.GetList[TestAnimal](r.DB, query, userId)
+	return repositoriesUtil.GetList[TestAnimal](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, error) {
-    query := `
+	query := `
         with grouped_animals as (
             select 
                 animal_id,
@@ -334,25 +334,28 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
         ) desc
         limit 10
     `
-    return repositoriesUtil.GetList[TestAnimal](r.DB, query, userId)
+	return repositoriesUtil.GetList[TestAnimal](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) FindEntriesPage(
-    filter TestEntryFilter,
-    sort string,
-    order string,
-    cursor string,
-    userId string,
+	filter TestEntryFilter,
+	sort string,
+	order string,
+	cursor string,
+	userId string,
 ) (*entity.Page[TestEntry], error) {
 
-    sortMap := map[string]string{
-        "animal_order": "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)",
-        "test_date": "coalesce(t.test_date, '-infinity')",
-        "birth_forecast": "coalesce(t.birth_forecast, '-infinity')",
-        "name": "coalesce(a.name, '')",
-    }
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"animal_order":   {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"test_date":      {Field: "coalesce(t.test_date, '-infinity')", Order: "desc"},
+		"birth_forecast": {Field: "coalesce(t.birth_forecast, '-infinity')", Order: "desc"},
+		"name":           {Field: "coalesce(a.name, '')", Order: "asc"},
+		"id":             {Field: "t.id", Order: "asc"},
+		"created_at":     {Field: "t.created_at", Order: "asc"},
+	}
 
-    query := `
+	query := `
         select
             t.id,
             t.test_date,
@@ -368,65 +371,65 @@ func (r *TestEntryRepository) FindEntriesPage(
             t.created_at
         from birth_tests t left join animals a on a.id = t.animal_id
     `
-    whereExpression := "where t.user_id = $1 and t.deleted_at is null"
-    filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
-    if err != nil {
-        return nil, err
-    }
+	whereExpression := "where t.user_id = $1 and t.deleted_at is null"
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
+	if err != nil {
+		return nil, err
+	}
 
-    if filterExpression != "" {
-        whereExpression += " and " + filterExpression 
-    }
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
 
-    cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
-    if err != nil {
-        return nil, err
-    }
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
 
-    cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "t", cursorArgs, nextParam)
-    if err != nil {
-        return nil, err
-    }
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
+	if err != nil {
+		return nil, err
+	}
 
-    if cursorExpression != "" {
-        whereExpression += " and " + cursorExpression
-    }
+	if cursorExpression != "" {
+		whereExpression += " and " + cursorExpression
+	}
 
-    sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
-    if err != nil {
-        return nil, err
-    }
-    sortExpression = " order by " + sortExpression
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+	sortExpression = " order by " + sortExpression
 
-    query += whereExpression + sortExpression
-    args := []any{userId}
-    filterArgs := repositoriesUtil.GetFilterArgs(filter)
-    args = append(args, filterArgs...)
-    args = append(args, cursorArgs...)
-    return repositoriesUtil.GetPage[TestEntry](r.DB, query, sort, 100, args...)
+	query += whereExpression + sortExpression
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+	return repositoriesUtil.GetPage[TestEntry](r.DB, query, sort, 100, args...)
 }
 
 func (r *TestEntryRepository) GetEntriesFoot(filter TestEntryFilter, userId string) (*TestEntryFoot, error) {
-    countQuery := `
+	countQuery := `
         select 
             count(*) totals,
             count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
             count(*) filter (where birth_status = 'SUCCESS') birth_success
         from birth_tests t
     `
-    whereExpression := "where deleted_at is null and user_id = $1"
-    filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
-    if err != nil {
-        return nil, err
-    }
+	whereExpression := "where deleted_at is null and user_id = $1"
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
+	if err != nil {
+		return nil, err
+	}
 
-    if filterExpression != "" {
-        whereExpression += " and " + filterExpression
-    }
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
 
-    countQuery += whereExpression
+	countQuery += whereExpression
 
-    query := fmt.Sprintf(`
+	query := fmt.Sprintf(`
         with count_query as (%s)
         select 
             totals,
@@ -435,10 +438,10 @@ func (r *TestEntryRepository) GetEntriesFoot(filter TestEntryFilter, userId stri
         from count_query
     `, countQuery)
 
-    args := []any{userId}
-    filterArgs := repositoriesUtil.GetFilterArgs(filter)
-    args = append(args, filterArgs...)
-    return repositoriesUtil.GetOne[TestEntryFoot](r.DB, query, args...)
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	return repositoriesUtil.GetOne[TestEntryFoot](r.DB, query, args...)
 }
 
 func (r *TestEntryRepository) FindGroups(userId string) (*[]TestGroups, error) {
@@ -471,16 +474,23 @@ func (r *TestEntryRepository) FindGroups(userId string) (*[]TestGroups, error) {
         from grouped_stats g
         order by g.test_date desc
     `
-    return repositoriesUtil.GetList[TestGroups](r.DB, query, userId)
+	return repositoriesUtil.GetList[TestGroups](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) FindEntriesByGroup(
-    sort string,
-    order string,
-    testDate time.Time, 
-    userId string,
+	sort string,
+	order string,
+	testDate time.Time,
+	userId string,
 ) (*[]TestEntry, error) {
-    query := `
+
+	sortMap := map[string]repositoriesUtil.SortField{
+		"animal_order":   {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "desc"},
+		"birth_forecast": {Field: "coalesce(t.birth_forecast, '-infinity')", Order: "desc"},
+		"name":           {Field: "coalesce(a.name, '')", Order: "asc"},
+	}
+
+	query := `
         select
             t.id,
             t.test_date,
@@ -497,23 +507,17 @@ func (r *TestEntryRepository) FindEntriesByGroup(
         from birth_tests t left join animals a on a.id = t.animal_id
         where t.test_date = $1 and t.user_id = $2 and t.deleted_at is null
     `
-    sortMap := map[string]string{
-        "animal_order": "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)",
-        "birth_forecast": "coalesce(t.birth_forecast, '-infinity')",
-        "name": "coalesce(a.name, '')",
-    }
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
 
-    sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
-    if err != nil {
-        return nil, err
-    }
-
-    query = query + " order by " + sortExpression
-    return repositoriesUtil.GetList[TestEntry](r.DB, query, testDate, userId)
+	query = query + " order by " + sortExpression
+	return repositoriesUtil.GetList[TestEntry](r.DB, query, testDate, userId)
 }
 
 func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId string) (*TestEntryFoot, error) {
-    query := `
+	query := `
         with count_query as (
             select 
                 count(*) totals,
@@ -528,6 +532,5 @@ func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId s
             (pregnancy_success::float / totals::float)*100 pregnancy_rate
         from count_query
     `
-    return repositoriesUtil.GetOne[TestEntryFoot](r.DB, query, testDate, userId)
+	return repositoriesUtil.GetOne[TestEntryFoot](r.DB, query, testDate, userId)
 }
-

@@ -10,22 +10,11 @@ import (
 )
 
 type BirthRepository struct {
-	SelectQuery string
-	TableName   string
-	DB          *sqlx.DB
+	DB *sqlx.DB
 }
 
 func NewRepository(db *sqlx.DB) *BirthRepository {
-	selectQuery := `
-        SELECT birth.*, 
-            animals.name as animal_name, animals.number as animal_number, animals.order as animal_order,
-            calf.birth_date as calf_birth_date, calf.sex as calf_sex, father.name as calf_father
-        FROM birth_entries as birth 
-            LEFT JOIN animals ON animals.id = birth.animal_id
-            LEFT JOIN animals as calf ON calf.id = birth.calf_id
-            LEFT JOIN animals as father ON father.id = calf.father_id
-    `
-	return &BirthRepository{selectQuery, "birth", db}
+	return &BirthRepository{db}
 }
 
 func (r *BirthRepository) GetBestIntervals(userId string) (*[]IntervalAnimal, error) {
@@ -459,10 +448,13 @@ func (r *BirthRepository) FindPage(
 	cursor string,
 ) (*entity.Page[BirthEntry], error) {
 
-	sortMap := map[string]string{
-		"calf_birth_date": "c.birth_date",
-		"mother_order":    "coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0)",
-		"mother_name":     "m.name",
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"calf_birth_date": {Field: "c.birth_date", Order: "asc"},
+		"mother_order":    {Field: "coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"mother_name":     {Field: "m.name", Order: "asc"},
+		"id":              {Field: "m.id", Order: "asc"},
+		"created_at":      {Field: "m.created_at", Order: "asc"},
 	}
 
 	query := `
@@ -499,7 +491,7 @@ func (r *BirthRepository) FindPage(
 	}
 
 	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "b", 2)
-	cursorExpression, nextParam, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "b", cursorArgs, nextParam)
+	cursorExpression, nextParam, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
 	if err != nil {
 		return nil, err
 	}
@@ -532,27 +524,18 @@ func (r *BirthRepository) FindPageFooter(userId string, filter BirthEntryFilter)
             left join animals f on f.id = c.father_id
     `
 	whereExpression := "where b.user_id = $1 and b.deleted_at is null "
-    filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "b", 2)
-    if err != nil {
-        return nil, err
-    }
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "b", 2)
+	if err != nil {
+		return nil, err
+	}
 
-    if filterExpression != "" {
-        whereExpression += " and " + filterExpression
-    }
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
 
-    args:= []any{userId}
-    filterArgs := repositoriesUtil.GetFilterArgs(filter)
-    args = append(args, filterArgs...)
-    query += whereExpression
-    return repositoriesUtil.GetOne[BirthFooter](r.DB, query, args...)
-}
-
-func (r *BirthRepository) FindByMotherId(motherId string) (*[]BirthEntry, error) {
-	query := r.SelectQuery + " WHERE birth.animal_id = $1 AND birth.deleted_at is null"
-	return repositoriesUtil.GetList[BirthEntry](r.DB, query, motherId)
-}
-
-func (r *BirthRepository) Delete(id string) error {
-	return repositoriesUtil.Delete(r.DB, r.TableName, id)
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	query += whereExpression
+	return repositoriesUtil.GetOne[BirthFooter](r.DB, query, args...)
 }

@@ -89,19 +89,79 @@ func (h *AnimalHandler) FindByMotherId(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AnimalHandler) SearchFather(w http.ResponseWriter, r *http.Request) {
-    handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchFatherById, h.Repository.SearchFather)
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+
+	result, err := h.Repository.SearchFather(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *AnimalHandler) SearchAnimal(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchAnimalsById, h.Repository.SearchAnimals)
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+
+	result, err := h.Repository.SearchAnimals(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *AnimalHandler) SearchMother(w http.ResponseWriter, r *http.Request) {
-    handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchMotherById, h.Repository.SearchMother)
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+
+	result, err := h.Repository.SearchMother(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *AnimalHandler) SearchBull(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchBullById, h.Repository.SearchBull)
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+
+	result, err := h.Repository.SearchBull(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *AnimalHandler) SearchDairyAnimal(w http.ResponseWriter, r *http.Request) {
+
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+
+	result, err := h.Repository.SearchDairyAnimals(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
 }
 
 func (h *AnimalHandler) Add(w http.ResponseWriter, r *http.Request) {

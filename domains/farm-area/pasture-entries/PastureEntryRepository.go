@@ -1,8 +1,6 @@
 package pastureEntries
 
 import (
-	"fmt"
-
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -26,56 +24,24 @@ func NewRepository(db *sqlx.DB) *PastureEntryRepository {
 	return &PastureEntryRepository{selectQuery, "pastures_entries", db}
 }
 
-func (r *PastureEntryRepository) SearchPastureAnimals(pastureId string, userId string, input string) (*[]entity.SearchEntity, error) {
+func (r *PastureEntryRepository) SearchPastureAnimals(pastureId string, userId string) (*[]entity.SearchEntity, error) {
 	query := `
         select
             animals.id,
             concat_ws(' - ', animals.ring_number, animals.name, to_char(animals.birth_date, 'dd/mm/yyyy')) as label
         from animals
             left join pastures on pastures.id = animals.pasture_id
-        where animals.deleted_at is null 
-            and animals.pasture_id <> $1
-            and animals.user_id = $2
-            and concat_ws(' - ', animals.ring_number, animals.name, to_char(animals.birth_date, 'dd/mm/yyyy')) ilike $3
-            and animals.animal_type <> 'OUTSIDE_ANIMAL'
-        order by coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0), animals.birth_date
-        limit 20
-    `
-	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, pastureId, userId, input)
-}
-
-func (r *PastureEntryRepository) SearchPastureAnimalsById(pastureId string, userId string, idList []string) (*[]entity.SearchEntity, error) {
-	query := `
-        select
-            animals.id,
-            concat_ws(' - ', animals.ring_number, animals.name, to_char(animals.birth_date, 'dd/mm/yyyy')) as label
-        from animals
-            left join pastures on pastures.id = animals.pasture_id
-        where animals.deleted_at is null 
+        where 
+			animals.deleted_at is null 
             and animals.pasture_id <> $1
             and animals.user_id = $2
             and animals.animal_type <> 'OUTSIDE_ANIMAL'
-        order by coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0), animals.birth_date
+        order by 
+			coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0), 
+			coalesce(animals.name, ''),
+			coalesce(animals.birth_date, '-infinity')
         limit 20
     `
-    if len(idList) != 0 {
-        queryById := `
-            select id, concat_ws(' - ', ring_number, name, to_char(birth_date, 'dd/mm/yyyy')) as label
-            from animals
-        `
-        idExpression, _ := repositoriesUtil.GetSliceExpressions(idList, "animals.id", 3)
-        queryById += " where " + idExpression
-        args := []any{pastureId, userId}
-        args = repositoriesUtil.GetSliceArgs(idList, args)
-        query = fmt.Sprintf(`
-            with animal_base as (%s),
-            animal_id as (%s)
-            select * from animal_base
-            union
-            select * from animal_id
-        `, query, queryById)
-        return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
-    }
 	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, pastureId, userId)
 }
 
@@ -88,11 +54,14 @@ func (r *PastureEntryRepository) FindByPasture(
 	order string,
 ) (*entity.Page[PastureEntry], error) {
 
-	sortMap := map[string]string{
-		"animal_order":      "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)",
-		"animal_name":       "coalesce(animals.name, '')",
-		"animal_birth_date": "coalesce(animals.birth_date, '-infinity')",
-		"entry_date":        "coalesce(pasture_entries.entry_date, '-infinity')",
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"animal_order":      {Field: "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"animal_name":       {Field: "coalesce(animals.name, '')", Order: "asc"},
+		"animal_birth_date": {Field: "coalesce(animals.birth_date, '-infinity')", Order: "asc"},
+		"entry_date":        {Field: "coalesce(pasture_entries.entry_date, '-infinity')", Order: "asc"},
+		"id":                {Field: "pasture_entries.id", Order: "asc"},
+		"created_at":        {Field: "pasture_entries.created_at", Order: "asc"},
 	}
 
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
@@ -137,7 +106,7 @@ func (r *PastureEntryRepository) FindByPasture(
 		whereExpression = whereExpression + " and " + filterExpression
 	}
 
-	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "pasture_entries", cursorArgs, nextParam)
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +126,7 @@ func (r *PastureEntryRepository) FindByPasture(
 	return repositoriesUtil.GetPage[PastureEntry](r.Db, query, sort, 200, args...)
 }
 
-func (r *PastureEntryRepository) FindByPastureTotal (
+func (r *PastureEntryRepository) FindByPastureTotal(
 	pastureId string,
 	userId string,
 	filter PastureEntryFilter,

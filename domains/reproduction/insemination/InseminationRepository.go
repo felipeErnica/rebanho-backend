@@ -281,10 +281,13 @@ func (r *InseminationRepository) FindEntriesPage(
 	cursor string,
 ) (*entity.Page[InseminationEntry], error) {
 
-	sortMap := map[string]string{
-		"animal_order":      "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)",
-		"name":              "a.name",
-		"insemination_date": "coalesce(i.insemination_date, '-infinity')",
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"animal_order":      {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"name":              {Field: "a.name", Order: "asc"},
+		"insemination_date": {Field: "coalesce(i.insemination_date, '-infinity')", Order: "asc"},
+		"id":                {Field: "i.id", Order: "asc"},
+		"created_at":        {Field: "i.created_at", Order: "asc"},
 	}
 
 	query := `
@@ -316,7 +319,7 @@ func (r *InseminationRepository) FindEntriesPage(
 		return nil, err
 	}
 
-	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, "i", cursorArgs, nextParam)
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
 	if err != nil {
 		return nil, err
 	}
@@ -360,9 +363,9 @@ func (r *InseminationRepository) FindEntriesByGroup(userId string, bullId string
 }
 
 func (r *InseminationRepository) GetEntriesByGroupFoot(
-    userId string, 
-    bullId string, 
-    inseminationDate time.Time,
+	userId string,
+	bullId string,
+	inseminationDate time.Time,
 ) (*InseminationFooter, error) {
 	query := `
         with counting as (
@@ -455,7 +458,7 @@ func (r *InseminationRepository) GetGroupsFoot(userId string) (*InseminationFoot
 }
 
 func (r *InseminationRepository) GetEntriesFoot(userId string, filter InseminationEntryFilter) (*InseminationFooter, error) {
-    totalQuery := `
+	totalQuery := `
         select
             count(*) totals,
             count(*) filter (where status = 'SUCCESS') birth_success,
@@ -463,14 +466,14 @@ func (r *InseminationRepository) GetEntriesFoot(userId string, filter Inseminati
         from insemination_entries
         where user_id = $1 and deleted_at is null
     `
-    filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "insemination_entries", 2)
-    if err != nil {
-        return nil, err
-    }
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "insemination_entries", 2)
+	if err != nil {
+		return nil, err
+	}
 
-    if filterExpression != "" {
-        totalQuery += " and " + filterExpression
-    }
+	if filterExpression != "" {
+		totalQuery += " and " + filterExpression
+	}
 
 	query := fmt.Sprintf(`
         with total_stats as (%s)
@@ -480,48 +483,20 @@ func (r *InseminationRepository) GetEntriesFoot(userId string, filter Inseminati
             (pregnancy_success::float / totals::float)*100 average_pregnancy_rate
             from total_stats
     `, totalQuery)
-    
-    args := []any{userId}
-    filterArgs := repositoriesUtil.GetFilterArgs(filter)
-    args = append(args, filterArgs...)
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
 
 	return repositoriesUtil.GetOne[InseminationFooter](r.DB, query, args...)
 }
 
-func (r *InseminationRepository) SearchInseminationBulls(userId string, input string) (*[]entity.SearchEntity, error) {
+func (r *InseminationRepository) SearchInseminationBulls(userId string) (*[]entity.SearchEntity, error) {
 	query := `
         select distinct a.id, a.name label
         from animals a join insemination_entries i on i.bull_id = a.id
         where i.user_id = $1 and i.deleted_at is null and a.name ilike $2
         order by a.name
-        limit 100
     `
-	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId, input)
-}
-
-func (r *InseminationRepository) SearchInseminationBullsById(userId string, id []string) (*[]entity.SearchEntity, error) {
-	query := `
-        select distinct a.id, a.name label
-        from animals a join insemination_entries i on i.bull_id = a.id
-        where i.user_id = $1 and i.deleted_at is null
-        order by a.name
-        limit 100
-    `
-
-	if len(id) != 0 {
-		idQuery := "select id, name label from animals"
-		idExpression, _ := repositoriesUtil.GetSliceExpressions(id, "a.id", 2)
-		idQuery += " where " + idExpression
-
-		mainQuery := fmt.Sprintf(`
-            with cte as (%s),
-            tbl_id as %s
-            select * from cte, tbl_id
-        `, query, idQuery)
-
-		args := []any{userId}
-		args = repositoriesUtil.GetSliceArgs(id, args)
-		return repositoriesUtil.GetList[entity.SearchEntity](r.DB, mainQuery, args...)
-	}
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
