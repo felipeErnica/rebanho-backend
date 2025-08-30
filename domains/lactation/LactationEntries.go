@@ -29,6 +29,56 @@ type MilkEntryFoot struct {
 	AverageMilk   float64 `json:"averageMilk" db:"avg_milk"`
 }
 
+type LactationHist struct {
+	Id                string     `json:"id" db:"id"`
+	AnimalId          string     `json:"animalId" db:"animal_id"`
+	AnimalName        string     `json:"animalName" db:"animal_name"`
+	AnimalOrder       int        `json:"-" db:"animal_order"`
+	CalfId            *string    `json:"calfId" db:"calf_id"`
+	CalfBirthDate     *time.Time `json:"-" db:"calf_birth_date"`
+	CalfInfo          *string    `json:"calfInfo" db:"calf_info"`
+	StartDate         time.Time  `json:"startDate" db:"start_date"`
+	EndDate           *time.Time `json:"endDate" db:"end_date"`
+	LacPeriod         float64    `json:"lacPeriod" db:"lac_period"`
+	AverageProduction float64    `json:"averageProduction" db:"avg_production"`
+	TotalProduction   float64    `json:"totalProduction" db:"total_production"`
+	LacInterval       *int       `json:"lacInterval" db:"lac_interval"`
+	Peak              float64    `json:"peak" db:"peak"`
+	CreatedAt         time.Time  `json:"-" db:"created_at"`
+	DeletedAt         *time.Time `json:"-" db:"deleted_at"`
+	UserId            string     `json:"-" db:"user_id"`
+}
+
+type LactationHistFilter struct {
+	IsFiltered           bool       `json:"isFiltered"`
+	Animals              *[]string  `json:"animals" db:"animal_id"`
+	MinCalfBirthDate     *time.Time `json:"minCalfBirthDate" db:"calf_birth_date"`
+	MaxCalfBirthDate     *time.Time `json:"maxCalfBirthDate" db:"calf_birth_date"`
+	MinStartDate         *time.Time `json:"minStartDate" db:"start_date"`
+	MaxStartDate         *time.Time `json:"maxStartDate" db:"start_date"`
+	MinEndDate           *time.Time `json:"minEndDate" db:"end_date"`
+	MaxEndDate           *time.Time `json:"maxEndDate" db:"end_date"`
+	MinLacPeriod         *float64   `json:"minLacPeriod" db:"lac_period"`
+	MaxLacPeriod         *float64   `json:"maxLacPeriod" db:"lac_period"`
+	MinAverageProduction *float64   `json:"minAverageProduction" db:"avg_production"`
+	MaxAverageProduction *float64   `json:"maxAverageProduction" db:"avg_production"`
+	MinTotalProduction   *float64   `json:"minTotalProduction" db:"total_production"`
+	MaxTotalProduction   *float64   `json:"maxTotalProduction" db:"total_production"`
+	MinLacInterval       *int       `json:"minLacInterval" db:"lac_interval"`
+	MaxLacInterval       *int       `json:"maxLacInterval" db:"lac_interval"`
+	MinPeak              *float64   `json:"minPeak" db:"peak"`
+	MaxPeak              *float64   `json:"maxPeak" db:"peak"`
+}
+
+type LactationHistFoot struct {
+	TotalLacs         int     `json:"totalLacs" db:"total_lacs"`
+	AveragePeriod     float64 `json:"averagePeriod" db:"avg_lac_period"`
+	AverageProduction float64 `json:"averageProduction" db:"avg_production"`
+	AverageTotal      float64 `json:"averageTotal" db:"avg_total_production"`
+	AverageInterval   float64 `json:"averageInterval" db:"avg_lac_interval"`
+	AveragePeak       float64 `json:"averagePeak" db:"avg_peak"`
+}
+
 type YearProductionHist struct {
 	EntryDate time.Time `json:"entryDate" db:"entry_date"`
 	TotalMilk float64   `json:"totalMilk" db:"total_milk"`
@@ -83,4 +133,24 @@ type AnimalsRating struct {
 	TotalRate    float64 `json:"totalRate" db:"total_rate"`
 	ProdRate     float64 `json:"prodRate" db:"prod_rate"`
 	IntervalRate float64 `json:"intervalRate" db:"interval_rate"`
+	ZLac         float64 `json:"-" db:"z_lac"`
+	ZTotal       float64 `json:"-" db:"z_total"`
+	ZInterval    float64 `json:"-" db:"z_interval"`
+}
+
+type ParentsRating struct {
+	ParentName   string  `json:"parentName" db:"parent_name"`
+	AvgTotal     float64 `json:"avgTotal" db:"avg_total"`
+	AvgPeriod    float64 `json:"avgPeriod" db:"avg_period"`
+	AvgProd      float64 `json:"avgProd" db:"avg_prod"`
+	AvgInterval  float64 `json:"avgInterval" db:"avg_interval"`
+	AvgLac       float64 `json:"avgLac" db:"avg_lac"`
+	LacRate      float64 `json:"lacRate" db:"lac_rate"`
+	PeriodRate   float64 `json:"periodRate" db:"period_rate"`
+	TotalRate    float64 `json:"totalRate" db:"total_rate"`
+	ProdRate     float64 `json:"prodRate" db:"prod_rate"`
+	IntervalRate float64 `json:"intervalRate" db:"interval_rate"`
+	ZLac         float64 `json:"-" db:"z_lac"`
+	ZTotal       float64 `json:"-" db:"z_total"`
+	ZInterval    float64 `json:"-" db:"z_interval"`
 }

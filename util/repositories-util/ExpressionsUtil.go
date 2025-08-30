@@ -68,7 +68,7 @@ func GetCursorExpression(
 		key := strings.TrimSpace(sortFields[i])
 		expression, ok := sortMap[key]
 		if !ok {
-			err := errors.New("A expressão de cursor para ordenamento solicitada não existe!")
+			err := fmt.Errorf("A expressão de ordenamento solicitada (%s) não existe!", key)
 			return "", numParam, err
 		}
 

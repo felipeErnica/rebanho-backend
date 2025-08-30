@@ -96,6 +96,62 @@ func (h *LactationHandler) GetWorstAnimals(w http.ResponseWriter, r *http.Reques
     handlersUtil.SendEntity(w, result)
 }
 
+func (h *LactationHandler) GetBestMothers(w http.ResponseWriter, r *http.Request) {
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+
+    result, err := h.Repository.GetBestMothers(userId)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetWorstMothers(w http.ResponseWriter, r *http.Request) {
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+
+    result, err := h.Repository.GetWorstMothers(userId)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetBestFathers(w http.ResponseWriter, r *http.Request) {
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+
+    result, err := h.Repository.GetBestFathers(userId)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetWorstFathers(w http.ResponseWriter, r *http.Request) {
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+
+    result, err := h.Repository.GetWorstFathers(userId)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendEntity(w, result)
+}
+
 func (h *LactationHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
     userId, ok := handlersUtil.GetUserId(w, r); if !ok {
         return
@@ -224,6 +280,68 @@ func (h *LactationHandler) GetGroupEntriesFoot(w http.ResponseWriter, r *http.Re
 	}
 
 	result, err := h.Repository.GetGroupEntriesFoot(userId, entryDate)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) FindLactationPage(w http.ResponseWriter, r *http.Request) {
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	cursor := r.URL.Query().Get("cursor")
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{}); if !ok {
+		return
+	}
+	
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindLactationPage(filter, sort, order, cursor, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+	
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetLactationPageFoot(w http.ResponseWriter, r *http.Request) {
+	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{}); if !ok {
+		return
+	}
+	
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetLactationPageFoot(filter, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+	
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetLactationEntries(w http.ResponseWriter, r *http.Request) {
+	lacId := r.PathValue("id")
+	result, err := h.Repository.GetLactationEntries(lacId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetLactationEntriesFoot(w http.ResponseWriter, r *http.Request) {
+	lacId := r.PathValue("id")
+	result, err := h.Repository.GetLactationEntriesFoot(lacId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
