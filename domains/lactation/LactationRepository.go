@@ -598,21 +598,31 @@ func (r *LactationRepository) GetBestFathers(userId string) (*[]ParentsRating, e
                 avg(avg_prod) avg_prod,
                 avg(avg_total) avg_total,
                 avg(avg_interval) avg_interval,
-                max(avg_interval) max_interval
+                stddev(avg_interval) dev_interval,
+                stddev(avg_lac) dev_lac,
+                stddev(avg_total) dev_total
             from cte
-        )
-		select
-			cte.*,
-			((cte.avg_lac / s.avg_lac) - 1)*100 lac_rate,
-			((cte.avg_period / s.avg_period) - 1)*100 period_rate,
-			((cte.avg_prod / s.avg_prod) - 1)*100 prod_rate,
-			((cte.avg_total / s.avg_total) - 1)*100 total_rate,
-			((cte.avg_interval / s.avg_interval) - 1)*100 interval_rate
-		from cte, cte_stats s
+        ),
+		cte_scores as (
+			select
+				cte.*,
+				((cte.avg_lac / nullif(s.avg_lac, 0) ) - 1)*100 lac_rate,
+				((cte.avg_period / nullif(s.avg_period, 0)) - 1)*100 period_rate,
+				((cte.avg_prod / nullif(s.avg_prod, 0)) - 1)*100 prod_rate,
+				((cte.avg_total / nullif(s.avg_total, 0)) - 1)*100 total_rate,
+				((cte.avg_interval / nullif(s.avg_interval, 0)) - 1)*100 interval_rate,
+				(cte.avg_lac - s.avg_lac)/ nullif(s.dev_lac, 0) as z_lac,
+				(cte.avg_total - s.avg_total)/ nullif(s.dev_total, 0) as z_total,
+				(cte.avg_interval - s.avg_interval)/ nullif(s.dev_interval, 0) as z_interval
+			from cte, cte_stats s
+		)
+		select *
+		from cte_scores
 		order by (
-			(cte.avg_lac / s.avg_lac)*0.2 +
-			(cte.avg_total / s.avg_total)*0.4 +
-			(1 - (cte.avg_interval / s.avg_interval))*0.4
+			case 
+				when z_total < 0 and -z_interval < 0 then z_total - z_interval 
+				else (z_lac*0.2 - z_interval*0.4 + z_total*0.4)
+			end
 		) desc
 		limit 10
     `
@@ -680,21 +690,31 @@ func (r *LactationRepository) GetWorstFathers(userId string) (*[]ParentsRating, 
                 avg(avg_prod) avg_prod,
                 avg(avg_total) avg_total,
                 avg(avg_interval) avg_interval,
-                max(avg_interval) max_interval
+                stddev(avg_interval) dev_interval,
+                stddev(avg_lac) dev_lac,
+                stddev(avg_total) dev_total
             from cte
-        )
-		select
-			cte.*,
-			((cte.avg_lac / s.avg_lac) - 1)*100 lac_rate,
-			((cte.avg_period / s.avg_period) - 1)*100 period_rate,
-			((cte.avg_prod / s.avg_prod) - 1)*100 prod_rate,
-			((cte.avg_total / s.avg_total) - 1)*100 total_rate,
-			((cte.avg_interval / s.avg_interval) - 1)*100 interval_rate
-		from cte, cte_stats s
+        ),
+		cte_scores as (
+			select
+				cte.*,
+				((cte.avg_lac / nullif(s.avg_lac, 0) ) - 1)*100 lac_rate,
+				((cte.avg_period / nullif(s.avg_period, 0)) - 1)*100 period_rate,
+				((cte.avg_prod / nullif(s.avg_prod, 0)) - 1)*100 prod_rate,
+				((cte.avg_total / nullif(s.avg_total, 0)) - 1)*100 total_rate,
+				((cte.avg_interval / nullif(s.avg_interval, 0)) - 1)*100 interval_rate,
+				(cte.avg_lac - s.avg_lac)/ nullif(s.dev_lac, 0) as z_lac,
+				(cte.avg_total - s.avg_total)/ nullif(s.dev_total, 0) as z_total,
+				(cte.avg_interval - s.avg_interval)/ nullif(s.dev_interval, 0) as z_interval
+			from cte, cte_stats s
+		)
+		select *
+		from cte_scores
 		order by (
-			(cte.avg_lac / s.avg_lac)*0.2 +
-			(1 - (cte.avg_total / s.avg_total))*0.4 +
-			(cte.avg_interval / s.avg_interval)*0.4
+			case 
+				when z_total > 0 and -z_interval > 0 then -z_total + z_interval 
+				else (z_lac*0.2 + z_interval*0.4 - z_total*0.4)
+			end
 		) desc
 		limit 10
     `

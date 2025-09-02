@@ -3,21 +3,21 @@ package birth
 import "time"
 
 type BirthEntry struct {
-	Id            string  `json:"id" db:"id"`
-	MotherId      string  `json:"motherId" db:"mother_id"`
+	Id            string     `json:"id" db:"id"`
+	MotherId      string     `json:"motherId" db:"mother_id"`
 	MotherName    string     `json:"motherName" db:"mother_name" table:"m"`
 	MotherOrder   int        `json:"motherOrder" db:"mother_order" table:"m"`
 	CalfId        string     `json:"calfId" db:"calf_id"`
 	CalfName      string     `json:"calfName" db:"calf_name"`
 	CalfBirthDate time.Time  `json:"calfBirthDate" db:"calf_birth_date"`
 	CalfSex       string     `json:"calfSex" db:"calf_sex"`
-	CalfFatherId  *string `json:"calfFatherId" db:"calf_father_id"`
+	CalfFatherId  *string    `json:"calfFatherId" db:"calf_father_id"`
 	CalfFather    *string    `json:"calfFather" db:"calf_father"`
 	BirthInterval *int       `json:"birthInterval" db:"birth_interval"`
 	Observation   *string    `json:"observation" db:"observation"`
 	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
 	DeletedAt     *time.Time `json:"deletedAt" db:"deleted_at"`
-	UserId        string  `json:"userId" db:"user_id"`
+	UserId        string     `json:"userId" db:"user_id"`
 }
 
 type BirthEntryFilter struct {
@@ -27,15 +27,15 @@ type BirthEntryFilter struct {
 	MaxBirthDate     *time.Time `json:"maxBirthDate" db:"birth_date" table:"c"`
 	Sex              *string    `json:"sex" db:"sex" table:"c"`
 	Fathers          *[]string  `json:"calfFatherId" db:"father_id" table:"c"`
-	MinBirthInterval *int       `json:"maxBirthInterval" db:"birth_interval"`
-	MaxBirthInterval *int       `json:"minBirthInterval" db:"birth_interval"`
+	MinBirthInterval *int       `json:"minBirthInterval" db:"birth_interval" table:"i"`
+	MaxBirthInterval *int       `json:"maxBirthInterval" db:"birth_interval" table:"i"`
 }
 
 type BirthEntrySave struct {
 	Id            string     `json:"id" db:"id"`
 	MotherId      string     `json:"motherId" db:"mother_id"`
 	CalfId        string     `json:"calfId" db:"calf_id"`
-	BirthInterval *int       `json:"birthInterval" db:"birth_interval"`
+	BirthInterval *int       `json:"birthInterval" db:"a_birth_interval"`
 	Observation   *string    `json:"observation" db:"observation"`
 	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
 	DeletedAt     *time.Time `json:"deletedAt" db:"deleted_at"`
@@ -44,7 +44,7 @@ type BirthEntrySave struct {
 
 type BirthFooter struct {
 	Total           int     `json:"total"`
-	IntervalAverage float64 `json:"intervalAverage"`
+	IntervalAverage float64 `json:"intervalAverage" db:"interval_average"`
 }
 
 type TotalBirthsBySex struct {
@@ -60,7 +60,7 @@ type BirthsByDate struct {
 }
 
 type BirthIntervalHist struct {
-	Month           time.Time `json:"month" db:"month"`
+	BirthDate       time.Time `json:"birthDate" db:"birth_date"`
 	IntervalAverage float64   `json:"intervalAverage" db:"interval_average"`
 }
 

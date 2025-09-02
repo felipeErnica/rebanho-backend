@@ -10,8 +10,12 @@ func InitBirth(app *app.App) {
 	handler := BirthHandler{repository}
 	app.HandleFunc("POST /reproduction/births/table/page/footer", handler.FindPageFooter)
 	app.HandleFunc("POST /reproduction/births/table/page", handler.FindPage)
+
 	app.HandleFunc("GET /reproduction/births/dashboard/best-intervals", handler.GetBestIntervals)
-	app.HandleFunc("GET /reproduction/births/dashboard/birth-stats", handler.GetBirthStats)
+	app.HandleFunc("GET /reproduction/births/dashboard/worst-intervals", handler.GetWorstIntervals)
+	app.HandleFunc("GET /reproduction/births/dashboard/interval-stats", handler.GetBirthIntervalHistory)
+	app.HandleFunc("GET /reproduction/births/dashboard/birth-history", handler.GetBirthHistory)
+	app.HandleFunc("GET /reproduction/births/dashboard/death-index", handler.GetDeathIndex)
 	app.HandleFunc("GET /reproduction/births/dashboard/total-sex", handler.TotalBySex)
 	util.LogDomainsInit("Nascimentos")
 }

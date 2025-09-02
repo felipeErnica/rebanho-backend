@@ -65,20 +65,65 @@ func (h *BirthHandler) GetBestIntervals(w http.ResponseWriter, r *http.Request) 
 	handlersUtil.SendList(w, result)
 }
 
-func (h *BirthHandler) GetBirthStats(w http.ResponseWriter, r *http.Request) {
+func (h *BirthHandler) GetWorstIntervals(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.GetBirthsStats(userId)
+	result, err := h.Repository.GetWorstIntervals(userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
 	}
+
+	handlersUtil.SendList(w, result)
+}
+
+func (h *BirthHandler) GetBirthIntervalHistory(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetBirthIntervalHistory(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
 	handlersUtil.SendEntity(w, result)
 }
 
+func (h *BirthHandler) GetDeathIndex(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetDeathIndex(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *BirthHandler) GetBirthHistory(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetBirthHistory(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
 func (h *BirthHandler) TotalBySex(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
