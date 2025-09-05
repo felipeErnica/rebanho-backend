@@ -95,7 +95,7 @@ func GetCursorExpression(
 	cursorExpression := strings.Join(conditions, " or ")
 	nextNumParam := len(sortFields) + numParam
 
-	return cursorExpression, nextNumParam, nil
+	return "(" + cursorExpression + ")", nextNumParam, nil
 }
 
 func AddCommonFields(sort string) (string) {

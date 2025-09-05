@@ -7,6 +7,7 @@ type MilkEntry struct {
 	AnimalId    string     `json:"animalId" db:"animal_id"`
 	AnimalOrder int        `json:"-" db:"animal_order"`
 	AnimalName  string     `json:"animalName" db:"animal_name"`
+	PastureName string     `json:"pastureName" db:"pasture_name"`
 	EntryDate   time.Time  `json:"entryDate" db:"entry_date"`
 	Quantity    float64    `json:"quantity" db:"quantity"`
 	CreatedAt   time.Time  `json:"-" db:"created_at"`
@@ -17,6 +18,7 @@ type MilkEntry struct {
 type MilkEntryFilter struct {
 	IsFiltered   bool       `json:"isFiltered" db:"is_filtered"`
 	Animals      *[]string  `json:"animals" db:"animal_id"`
+	Pastures     *[]string  `json:"pastures" db:"pasture_id" table:"pe"`
 	MinEntryDate *time.Time `json:"minEntryDate" db:"entry_date"`
 	MaxEntryDate *time.Time `json:"maxEntryDate" db:"entry_date"`
 	MinQuantity  *float64   `json:"minQuantity" db:"quantity"`

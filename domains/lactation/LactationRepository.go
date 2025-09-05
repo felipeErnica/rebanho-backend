@@ -601,21 +601,31 @@ func (r *LactationRepository) GetBestFathers(userId string) (*[]ParentsRating, e
                 avg(avg_prod) avg_prod,
                 avg(avg_total) avg_total,
                 avg(avg_interval) avg_interval,
-                max(avg_interval) max_interval
+                stddev(avg_interval) dev_interval,
+                stddev(avg_lac) dev_lac,
+                stddev(avg_total) dev_total
             from cte
-        )
-		select
-			cte.*,
-			((cte.avg_lac / s.avg_lac) - 1)*100 lac_rate,
-			((cte.avg_period / s.avg_period) - 1)*100 period_rate,
-			((cte.avg_prod / s.avg_prod) - 1)*100 prod_rate,
-			((cte.avg_total / s.avg_total) - 1)*100 total_rate,
-			((cte.avg_interval / s.avg_interval) - 1)*100 interval_rate
-		from cte, cte_stats s
+        ),
+		cte_scores as (
+			select
+				cte.*,
+				((cte.avg_lac / nullif(s.avg_lac, 0) ) - 1)*100 lac_rate,
+				((cte.avg_period / nullif(s.avg_period, 0)) - 1)*100 period_rate,
+				((cte.avg_prod / nullif(s.avg_prod, 0)) - 1)*100 prod_rate,
+				((cte.avg_total / nullif(s.avg_total, 0)) - 1)*100 total_rate,
+				((cte.avg_interval / nullif(s.avg_interval, 0)) - 1)*100 interval_rate,
+				(cte.avg_lac - s.avg_lac)/ nullif(s.dev_lac, 0) as z_lac,
+				(cte.avg_total - s.avg_total)/ nullif(s.dev_total, 0) as z_total,
+				(cte.avg_interval - s.avg_interval)/ nullif(s.dev_interval, 0) as z_interval
+			from cte, cte_stats s
+		)
+		select *
+		from cte_scores
 		order by (
-			(cte.avg_lac / s.avg_lac)*0.2 +
-			(cte.avg_total / s.avg_total)*0.4 +
-			(1 - (cte.avg_interval / s.avg_interval))*0.4
+			case 
+				when z_total < 0 and -z_interval < 0 then z_total - z_interval 
+				else (z_lac*0.2 - z_interval*0.4 + z_total*0.4)
+			end
 		) desc
 		limit 10
     `
@@ -683,21 +693,31 @@ func (r *LactationRepository) GetWorstFathers(userId string) (*[]ParentsRating, 
                 avg(avg_prod) avg_prod,
                 avg(avg_total) avg_total,
                 avg(avg_interval) avg_interval,
-                max(avg_interval) max_interval
+                stddev(avg_interval) dev_interval,
+                stddev(avg_lac) dev_lac,
+                stddev(avg_total) dev_total
             from cte
-        )
-		select
-			cte.*,
-			((cte.avg_lac / s.avg_lac) - 1)*100 lac_rate,
-			((cte.avg_period / s.avg_period) - 1)*100 period_rate,
-			((cte.avg_prod / s.avg_prod) - 1)*100 prod_rate,
-			((cte.avg_total / s.avg_total) - 1)*100 total_rate,
-			((cte.avg_interval / s.avg_interval) - 1)*100 interval_rate
-		from cte, cte_stats s
+        ),
+		cte_scores as (
+			select
+				cte.*,
+				((cte.avg_lac / nullif(s.avg_lac, 0) ) - 1)*100 lac_rate,
+				((cte.avg_period / nullif(s.avg_period, 0)) - 1)*100 period_rate,
+				((cte.avg_prod / nullif(s.avg_prod, 0)) - 1)*100 prod_rate,
+				((cte.avg_total / nullif(s.avg_total, 0)) - 1)*100 total_rate,
+				((cte.avg_interval / nullif(s.avg_interval, 0)) - 1)*100 interval_rate,
+				(cte.avg_lac - s.avg_lac)/ nullif(s.dev_lac, 0) as z_lac,
+				(cte.avg_total - s.avg_total)/ nullif(s.dev_total, 0) as z_total,
+				(cte.avg_interval - s.avg_interval)/ nullif(s.dev_interval, 0) as z_interval
+			from cte, cte_stats s
+		)
+		select *
+		from cte_scores
 		order by (
-			(cte.avg_lac / s.avg_lac)*0.2 +
-			(1 - (cte.avg_total / s.avg_total))*0.4 +
-			(cte.avg_interval / s.avg_interval)*0.4
+			case 
+				when z_total > 0 and -z_interval > 0 then -z_total + z_interval 
+				else (z_lac*0.2 + z_interval*0.4 - z_total*0.4)
+			end
 		) desc
 		limit 10
     `
@@ -713,10 +733,16 @@ func (r *LactationRepository) GetLastEntries(userId string) (*[]MilkEntry, error
 		)
 		select 
 			concat_ws(' - ', a.ring_number, a.name) animal_name,
+			p.name pasture_name,
 			m.entry_date,
 			m.quantity
 		from max_tbl, milk_entries m 
 			join animals a on a.id = m.animal_id
+			join pasture_entries pe on 
+				pe.animal_id = m.animal_id
+				and pe.entry_date <= m.entry_date
+				and m.entry_date <= coalesce(pe.exit_date, now())
+			join pastures p on p.id = pe.pasture_id
 		where 
 			m.user_id = $1 
 			and m.deleted_at is null 
@@ -838,10 +864,16 @@ func (r *LactationRepository) FindEntriesPage(
 			m.animal_id,
 			concat_ws(' - ', a.ring_number, a.name) animal_name,
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+			p.name pasture_name,
 			m.entry_date,
 			m.quantity
 		from milk_entries m
 			join animals a on a.id = m.animal_id
+			join pasture_entries pe on
+				pe.animal_id = m.animal_id
+				and pe.entry_date <= m.entry_date
+				and m.entry_date <= coalesce(pe.exit_date, now())
+			join pastures p on p.id = pe.pasture_id
     `
 
 	whereExpression := "where m.user_id = $1 and m.deleted_at is null"
@@ -869,12 +901,14 @@ func (r *LactationRepository) FindEntriesPage(
 		whereExpression += " and " + cursorExpression
 	}
 
+	query = query + whereExpression
+
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
 		return nil, err
 	}
 
-	query += whereExpression + " order by " + sortExpression
+	query += " order by " + sortExpression
 	args := []any{userId}
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
@@ -916,10 +950,16 @@ func (r *LactationRepository) GetGroupEntries(userId string, entryDate time.Time
 			m.animal_id,
 			concat_ws(' - ', a.ring_number, a.name) animal_name,
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+			p.name pasture_name,
 			m.entry_date,
 			m.quantity
 		from milk_entries m
 			join animals a on a.id = m.animal_id
+			join pasture_entries pe on
+				pe.animal_id = m.animal_id
+				and pe.entry_date <= m.entry_date
+				and m.entry_date <= coalesce(pe.exit_date, now())
+			join pastures p on p.id = pe.pasture_id
 		where m.user_id = $1 and m.deleted_at is null and m.entry_date = $2
 		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
     `
@@ -1111,6 +1151,7 @@ func (r *LactationRepository) GetLactationEntries(lacId string) (*[]MilkEntry, e
 			m.animal_id,
 			concat_ws(' - ', a.ring_number, a.name) animal_name,
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+			p.name pasture_name,
 			m.entry_date,
 			m.quantity
 		from milk_entries m
@@ -1120,6 +1161,11 @@ func (r *LactationRepository) GetLactationEntries(lacId string) (*[]MilkEntry, e
 				and m.entry_date >= l.start_date
 				and m.entry_date <=	coalesce(l.end_date, now())
 				and m.animal_id = l.animal_id
+			join pasture_entries pe on
+				pe.animal_id = m.animal_id
+				and pe.entry_date <= m.entry_date
+				and m.entry_date <= coalesce(pe.exit_date, now())
+			join pastures p on p.id = pe.pasture_id
 		where m.deleted_at is null
 		order by m.entry_date
     `
