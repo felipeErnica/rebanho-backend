@@ -20,14 +20,17 @@ func NewRepository(db *sqlx.DB) *LactationRepository {
 
 func (r *LactationRepository) GetYearlyMilk(userId string) (*CardContainer, error) {
 	query := `
-        select
-            date_trunc('year', l.entry_date) entry_date,
-            sum(l.quantity) total_milk
-        from milk_entries l
-        where l.user_id = $1 and l.deleted_at is null
-        group by 1
-        order by 1
-        limit 10
+        with cte as (
+			select
+				date_trunc('year', l.entry_date) entry_date,
+				sum(l.quantity) total_milk
+			from milk_entries l
+			where l.user_id = $1 and l.deleted_at is null
+			group by 1
+			order by 1 desc
+			limit 10
+		)
+		select * from cte order by entry_date
     `
 	result, err := repositoriesUtil.GetList[YearProductionHist](r.DB, query, userId)
 	if err != nil {
