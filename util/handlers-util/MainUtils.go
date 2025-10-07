@@ -20,7 +20,7 @@ e retorna um erro caso o formato esteja incorreto.
 func DecodeEntity[E any](w http.ResponseWriter, r *http.Request, entity *E) bool {
 	err := json.NewDecoder(r.Body).Decode(&entity)
 	if err != nil {
-		err = errors.New(fmt.Sprintf("Falha na decodificação da entidade: %s", err.Error()))
+		err = fmt.Errorf("Falha na decodificação da entidade: %s", err.Error())
 		serverErrors.JsonServerError(err, w)
 		return false
 	}
@@ -73,7 +73,7 @@ utiliza um filtro vazio do mesmo tipo do filtro a ser retornado.
 func DecodeFilter[F any](w http.ResponseWriter, r *http.Request, filter F) (F, bool) {
 	err := json.NewDecoder(r.Body).Decode(&filter)
 	if err != nil {
-		err = errors.New(fmt.Sprintf("Falha na decodificação do filtro: %s", err.Error()))
+		err = fmt.Errorf("Falha na decodificação do filtro: %s", err.Error())
 		serverErrors.JsonServerError(err, w)
 		return filter, false
 	}

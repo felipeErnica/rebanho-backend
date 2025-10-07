@@ -26,7 +26,7 @@ func GetSortExpression(
 		key := strings.TrimSpace(sortFields[i])
 		expression, ok := sortMap[key]
 		if !ok {
-			err := errors.New("A expressão de ordenamento solicitada não existe!")
+			err := fmt.Errorf("A expressão de ordenamento (%s) solicitada não existe!", key)
 			return "", err
 		}
 
@@ -43,8 +43,8 @@ func GetSortExpression(
 }
 
 /*
-Através de um mapa de campos relacionados a expressões SQL, retorna a expressão de ordenamento do
-cursor relacionada ao campo
+Através de um mapa de campos relacionados a expressões SQL, 
+retorna a expressão de ordenamento do cursor relacionada ao campo.
 */
 func GetCursorExpression(
 	sortMap map[string]SortField,

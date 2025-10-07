@@ -8,7 +8,8 @@ import (
 	farmArea "github.com/felipeErnica/rebanho-backend/domains/farm-area"
 	"github.com/felipeErnica/rebanho-backend/domains/lactation"
 	"github.com/felipeErnica/rebanho-backend/domains/reproduction"
-	slaughterArea "github.com/felipeErnica/rebanho-backend/domains/slaughter-area"
+	"github.com/felipeErnica/rebanho-backend/domains/slaughter"
+	"github.com/felipeErnica/rebanho-backend/domains/weight"
 )
 
 func InitDomains(app *app.App) {
@@ -18,5 +19,6 @@ func InitDomains(app *app.App) {
     go farmArea.InitFarmArea(app)
 	go lactation.InitLactationArea(app)
     go reproduction.InitReproduction(app)
-    go slaughterArea.InitSlaughterArea(app)
+	go weight.InitWeight(app)
+    go slaughter.InitSlaughter(app)
 }
