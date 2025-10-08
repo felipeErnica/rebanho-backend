@@ -12,12 +12,12 @@ type WeightHandler struct {
 	Repository *WeightRepository
 }
 
-func (h *WeightHandler) GetYearWeightGain(w http.ResponseWriter, r *http.Request) {
+func (h *WeightHandler) GetWeightGainHist(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
 		return
 	}
 
-	result, err := h.Repository.GetYearWeightGain(userId)
+	result, err := h.Repository.GetWeightGainHist(userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
@@ -26,12 +26,12 @@ func (h *WeightHandler) GetYearWeightGain(w http.ResponseWriter, r *http.Request
 	handlersUtil.SendEntity(w, result)
 }
 
-func (h *WeightHandler) GetYearWeight(w http.ResponseWriter, r *http.Request) {
+func (h *WeightHandler) GetWeightHist(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
 		return
 	}
 
-	result, err := h.Repository.GetYearWeight(userId)
+	result, err := h.Repository.GetWeightHist(userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

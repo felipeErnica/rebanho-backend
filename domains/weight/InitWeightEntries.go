@@ -9,8 +9,8 @@ func InitWeight(app *app.App) {
 	repository := NewRepository(app.DBconn)
 	handler := WeightHandler{repository}
 
-	app.HandleFunc("GET /weight/dashboard/year-gain", handler.GetYearWeightGain)
-	app.HandleFunc("GET /weight/dashboard/year-weight", handler.GetYearWeight)
+	app.HandleFunc("GET /weight/dashboard/gain-hist", handler.GetWeightGainHist)
+	app.HandleFunc("GET /weight/dashboard/weight-hist", handler.GetWeightHist)
 	app.HandleFunc("GET /weight/dashboard/last-gain", handler.GetLastWeightGain)
 	app.HandleFunc("GET /weight/dashboard/last-weight", handler.GetLastWeight)
 	app.HandleFunc("GET /weight/dashboard/last-entries", handler.GetLastEntries)
