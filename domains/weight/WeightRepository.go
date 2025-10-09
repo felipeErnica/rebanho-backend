@@ -1,6 +1,7 @@
 package weight
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
@@ -236,9 +237,14 @@ func (r *WeightRepository) GetBestFathers(userId string) (*[]AnimalRating, error
 		with gain_tbl as (
 			select 
 				w.animal_id,
-				(w.weight - 38)/extract(days from w.entry_date - a.birth_date) weight_gain
+				coalesce(
+					(w.weight - coalesce(lag(w.weight) over win, 38)) / 
+					extract(days from w.entry_date - coalesce(lag(w.entry_date) over win, a.birth_date)), 
+					0
+				) as weight_gain
 			from weight_entries w join animals a on a.id = w.animal_id
 			where w.user_id = $1 and w.deleted_at is null
+			window win as (partition by w.animal_id order by w.entry_date)
 		),
 		animal_tbl as (
 			select 
@@ -258,32 +264,17 @@ func (r *WeightRepository) GetBestFathers(userId string) (*[]AnimalRating, error
 			group by 1
 		),
 		stats as (
-			select 
-				avg(avg_gain) gn_avg_gain,
-				avg(children_number) avg_children,
-				stddev(avg_gain) dev_gain,
-				stddev(children_number) dev_children
-			from father_tbl
-		),
-		z_score as (
-			select
-				t.*,
-				(t.children_number - s.avg_children) / s.dev_children z_children,
-				(t.avg_gain - s.gn_avg_gain) / s.dev_gain z_gain
-			from father_tbl t, stats s
+			select avg(weight_gain) gn_avg_gain
+			from gain_tbl
 		)
 		select 
 			concat_ws(' - ', m.ring_number, m.name) animal_name,
 			t.avg_gain,
 			((t.avg_gain / s.gn_avg_gain) - 1) * 100 gain_trend,
 			t.children_number
-		from stats s, z_score t join animals m on m.id = t.mother_id
-		order by (
-			case
-				when z_children < 0 then z_gain*0.3 + z_children*0.7 
-				else z_gain + z_children
-			end 
-		) desc
+		from stats s, father_tbl t join animals m on m.id = t.mother_id
+		where t.children_number >= 10
+		order by t.avg_gain desc
 		limit 10
 	`
 	return repositoriesUtil.GetList[AnimalRating](r.DB, query, userId)
@@ -294,9 +285,14 @@ func (r *WeightRepository) GetBestMothers(userId string) (*[]AnimalRating, error
 		with gain_tbl as (
 			select 
 				w.animal_id,
-				(w.weight - 38)/extract(days from w.entry_date - a.birth_date) weight_gain
+				coalesce(
+					(w.weight - coalesce(lag(w.weight) over win, 38)) / 
+					extract(days from w.entry_date - coalesce(lag(w.entry_date) over win, a.birth_date)), 
+					0
+				) as weight_gain
 			from weight_entries w join animals a on a.id = w.animal_id
 			where w.user_id = $1 and w.deleted_at is null
+			window win as (partition by w.animal_id order by w.entry_date)
 		),
 		animal_tbl as (
 			select 
@@ -316,32 +312,17 @@ func (r *WeightRepository) GetBestMothers(userId string) (*[]AnimalRating, error
 			group by 1
 		),
 		stats as (
-			select 
-				avg(avg_gain) gn_avg_gain,
-				avg(children_number) avg_children,
-				stddev(avg_gain) dev_gain,
-				stddev(children_number) dev_children
-			from mother_tbl
-		),
-		z_score as (
-			select
-				t.*,
-				(t.children_number - s.avg_children) / s.dev_children z_children,
-				(t.avg_gain - s.gn_avg_gain) / s.dev_gain z_gain
-			from mother_tbl t, stats s
+			select avg(weight_gain) gn_avg_gain
+			from gain_tbl
 		)
 		select 
 			concat_ws(' - ', m.ring_number, m.name) animal_name,
 			t.avg_gain,
 			((t.avg_gain / s.gn_avg_gain) - 1) * 100 gain_trend,
 			t.children_number
-		from stats s, z_score t join animals m on m.id = t.mother_id
-		order by (
-			case
-				when z_children < 0 then z_gain*0.3 + z_children*0.7 
-				else z_gain + z_children
-			end 
-		) desc
+		from stats s, mother_tbl t join animals m on m.id = t.mother_id
+		where t.children_number >= 5
+		order by t.avg_gain desc
 		limit 10
 	`
 	return repositoriesUtil.GetList[AnimalRating](r.DB, query, userId)
@@ -360,7 +341,7 @@ func (r *WeightRepository) FindEntriesPage(
 		"entry_date":   {Field: "w.entry_date", Order: "desc"},
 		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
 		"animal_name":  {Field: "a.name", Order: "asc"},
-		"birth_date":   {Field: "coalesce(a.birth_date, '-infinite')", Order: "asc"},
+		"birth_date":   {Field: "coalesce(a.birth_date, '-infinity')", Order: "asc"},
 		"id":           {Field: "w.id", Order: "asc"},
 		"created_at":   {Field: "w.created_at", Order: "asc"},
 	}
@@ -437,6 +418,45 @@ func (r *WeightRepository) FindEntriesPage(
 	windowExpression := " window win as (partition by w.animal_id order by w.entry_date)"
 	query += whereExpression + windowExpression + orderExpression
 	return repositoriesUtil.GetPage[WeightEntry](r.DB, query, sort, 200, args...)
+}
+
+func (r *WeightRepository) GetEntriesPageFoot(filter WeightFilter, userId string) (*WeightFoot, error) {
+	query := `
+		select
+			w.animal_id,
+			w.weight,
+			coalesce(
+				(w.weight - coalesce(lag(w.weight) over win, 38)) /
+				nullif(extract(days from w.entry_date - coalesce(lag(w.entry_date) over win, a.birth_date)), 0),
+				0
+			) weight_gain
+		from weight_entries w join animals a on a.id = w.animal_id
+	`
+	whereExpression := " where w.user_id = $1 and w.deleted_at is null"
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "w", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	windowExpression := " window win as (partition by w.animal_id order by w.entry_date)"
+	query += whereExpression + windowExpression
+	query = fmt.Sprintf(`
+		with cte as (%s)
+		select
+			coalesce(count(animal_id), 0) animals_num,
+			coalesce(avg(weight), 0) avg_weight,
+			coalesce(avg(weight_gain), 0) avg_gain
+		from cte
+	`, query)
+
+	return repositoriesUtil.GetOne[WeightFoot](r.DB, query, args...)
 }
 
 func (r *WeightRepository) FindGroups(userId string) (*[]WeightGroup, error) {
@@ -516,4 +536,28 @@ func (r *WeightRepository) FindEntriesByDate(entryDate time.Time, userId string)
 		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
 	`
 	return repositoriesUtil.GetList[WeightEntry](r.DB, query, entryDate, userId)
+}
+
+func (r *WeightRepository) GetEntriesByDateFoot(entryDate time.Time, userId string) (*WeightFoot, error) {
+	query := `
+		with cte as (
+			select
+				w.animal_id,
+				w.weight,
+				coalesce(
+					(w.weight - coalesce(lag(w.weight) over win, 38)) /
+					nullif(extract(days from w.entry_date - coalesce(lag(w.entry_date) over win, a.birth_date)), 0),
+					0
+				) weight_gain
+			from weight_entries join animals a on a.id = w.animal_id
+			where w.entry_date = $1 w.user_id = $2 and w.deleted_at is null
+			window win as (partition by w.animal_id order by w.entry_date)
+		) 
+		select 
+			count(animal_id) animals_num,
+			avg(weight) avg_weight,
+			avg(weight_gain) avg_gain
+		from cte
+	`
+	return repositoriesUtil.GetOne[WeightFoot](r.DB, query, entryDate, userId)
 }

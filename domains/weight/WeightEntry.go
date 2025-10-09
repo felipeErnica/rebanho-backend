@@ -24,6 +24,12 @@ type WeightFilter struct {
 	MaxEntryDate *time.Time `json:"maxEntryDate" db:"entry_date"`
 }
 
+type WeightFoot struct {
+	AnimalsNumber int     `json:"animalsNumber" db:"animals_num"`
+	AverageWeight float64 `json:"averageWeight" db:"avg_weight"`
+	AverageGain   float64 `json:"averageGain" db:"avg_gain"`
+}
+
 type WeightGroup struct {
 	EntryDate       time.Time `json:"entryDate" db:"entry_date"`
 	AnimalsNumber   int       `json:"animalsNumber" db:"animals_number"`

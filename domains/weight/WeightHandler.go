@@ -145,6 +145,24 @@ func (h *WeightHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) 
 	handlersUtil.SendEntity(w, result)
 }
 
+func (h *WeightHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, WeightFilter{}); if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetEntriesPageFoot(filter, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
 
 func (h *WeightHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
@@ -173,6 +191,27 @@ func (h *WeightHandler) FindEntriesByDate(w http.ResponseWriter, r *http.Request
 	}
 
 	result, err := h.Repository.FindEntriesByDate(entryDate, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *WeightHandler) GetEntriesByDateFoot(w http.ResponseWriter, r *http.Request) {
+	entryDateStr := r.PathValue("entryDate")
+	entryDate, err := time.Parse(time.RFC3339Nano, entryDateStr)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetEntriesByDateFoot(entryDate, userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
