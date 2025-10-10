@@ -9,7 +9,7 @@ func InitSlaughter(app *app.App) {
 	repository := NewRepository(app.DBconn)
 	handler := SlaughterHandler{repository}
 	
-	app.HandleFunc("GET /slaughter/dashboard/last-avg-weight", handler.GetLastAverageWeight)
+	app.HandleFunc("GET /slaughter/dashboard/last-weight", handler.GetLastAverageWeight)
 	app.HandleFunc("GET /slaughter/dashboard/last-performance", handler.GetLastPerformance)
 	app.HandleFunc("GET /slaughter/dashboard/slaughter-graph", handler.GetSlaughterGraph)
 	app.HandleFunc("GET /slaughter/dashboard/best-fathers", handler.GetBestFathers)

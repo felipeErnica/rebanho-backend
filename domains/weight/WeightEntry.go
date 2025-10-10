@@ -6,6 +6,8 @@ type WeightEntry struct {
 	Id              string     `json:"id" db:"id"`
 	AnimalId        string     `json:"animalId" db:"animal_id"`
 	AnimalName      string     `json:"animalName" db:"animal_name"`
+	FatherName      *string    `json:"fatherName" db:"father_name"`
+	MotherName      *string    `json:"motherName" db:"mother_name"`
 	AnimalOrder     int        `json:"-" db:"animal_order"`
 	AnimalBirthDate *time.Time `json:"-" db:"birth_date"`
 	EntryDate       time.Time  `json:"entryDate" db:"entry_date"`
@@ -20,6 +22,8 @@ type WeightEntry struct {
 type WeightFilter struct {
 	IsFiltered   bool       `json:"isFiltered"`
 	Animals      *[]string  `json:"animals" db:"animal_id"`
+	Fathers      *[]string  `json:"fathers" db:"father_id" table:"a"`
+	Mothers      *[]string  `json:"mothers" db:"mother_id" table:"a"`
 	MinEntryDate *time.Time `json:"minEntryDate" db:"entry_date"`
 	MaxEntryDate *time.Time `json:"maxEntryDate" db:"entry_date"`
 }

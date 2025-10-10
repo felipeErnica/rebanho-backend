@@ -165,11 +165,12 @@ func (h *WeightHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
 
 
 func (h *WeightHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
+	order := r.URL.Query().Get("order")
 	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
 		return
 	}
 
-	result, err := h.Repository.FindGroups(userId)
+	result, err := h.Repository.FindGroups(userId, order)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
@@ -179,6 +180,8 @@ func (h *WeightHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WeightHandler) FindEntriesByDate(w http.ResponseWriter, r *http.Request) {
+	order := r.URL.Query().Get("order")
+	sort := r.URL.Query().Get("sort")
 	entryDateStr := r.PathValue("entryDate")
 	entryDate, err := time.Parse(time.RFC3339Nano, entryDateStr)
 	if err != nil {
@@ -190,7 +193,7 @@ func (h *WeightHandler) FindEntriesByDate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	result, err := h.Repository.FindEntriesByDate(entryDate, userId)
+	result, err := h.Repository.FindEntriesByDate(entryDate, userId, order, sort)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

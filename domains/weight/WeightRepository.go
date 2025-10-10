@@ -365,11 +365,13 @@ func (r *WeightRepository) FindEntriesPage(
 			w.animal_id,
 			concat_ws(' - ',
 				a.ring_number,
-				coalesce(a.name, to_char(a.birth_date, 'DD/MM/YYYY')),
-				a.sex
+				coalesce(a.name, a.sex),
+				to_char(a.birth_date, 'DD/MM/YYYY')
 			) as animal_name,
 			a.birth_date,
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+			concat_ws(' - ', f.ring_number, f.name) father_name,
+			concat_ws(' - ', m.ring_number, m.name) mother_name,
 			s.weight_gain,
 			s.weight_variation,
 			w.entry_date,
@@ -378,6 +380,8 @@ func (r *WeightRepository) FindEntriesPage(
 		from weight_entries w 
 			join stats s on s.id = w.id
 			join animals a on a.id = w.animal_id
+			join animals m on m.id = a.mother_id
+			join animals f on f.id = a.father_id
 	`
 
 	whereExpression := " where w.user_id = $1 and w.deleted_at is null"
@@ -459,7 +463,7 @@ func (r *WeightRepository) GetEntriesPageFoot(filter WeightFilter, userId string
 	return repositoriesUtil.GetOne[WeightFoot](r.DB, query, args...)
 }
 
-func (r *WeightRepository) FindGroups(userId string) (*[]WeightGroup, error) {
+func (r *WeightRepository) FindGroups(userId string, order string) (*[]WeightGroup, error) {
 	query := `
 		with entries as (
 			select 
@@ -494,10 +498,24 @@ func (r *WeightRepository) FindGroups(userId string) (*[]WeightGroup, error) {
 			, 0) weight_variation
 		from cte c
 	`
+	orderExpression := " order by c.entry_date " + order
+	query += orderExpression
 	return repositoriesUtil.GetList[WeightGroup](r.DB, query, userId)
 }
 
-func (r *WeightRepository) FindEntriesByDate(entryDate time.Time, userId string) (*[]WeightEntry, error) {
+func (r *WeightRepository) FindEntriesByDate(
+	entryDate time.Time,
+	userId string,
+	order string,
+	sort string,
+) (*[]WeightEntry, error) {
+
+	sortMap := map[string]repositoriesUtil.SortField{
+		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"animal_name":  {Field: "a.name", Order: "asc"},
+		"birth_date":   {Field: "coalesce(a.birth_date, '-infinity')", Order: "desc"},
+	}
+
 	query := `
 		with stats as (
 			select
@@ -509,7 +527,7 @@ func (r *WeightRepository) FindEntriesByDate(entryDate time.Time, userId string)
 				) weight_gain,
 				coalesce(w.weight - lag(w.weight) over win, 0) as weight_variation
 			from weight_entries w join animals a on a.id = w.animal_id
-			where w.user_id = $1 and w.deleted_at is null
+			where w.user_id = $2 and w.deleted_at is null
 			window win as (partition by w.animal_id order by w.entry_date)
 		)
 		select 
@@ -522,19 +540,29 @@ func (r *WeightRepository) FindEntriesByDate(entryDate time.Time, userId string)
 				to_char(a.birth_date, 'DD/MM/YYYY')
 			) as animal_name,
 			a.birth_date,
+			concat_ws(' - ', f.ring_number, f.name) father_name,
+			concat_ws(' - ', m.ring_number, m.name) mother_name,
 			w.entry_date,
 			w.weight,
 			s.weight_variation,
 			s.weight_gain
 		from weight_entries w 
 			join animals a on a.id = w.animal_id
+			join animals f on f.id = a.father_id
+			join animals m on m.id = a.mother_id
 			join stats s on s.id = w.id
 		where w.entry_date = $1
 			and w.user_id = $2 
 			and w.deleted_at is null
 		window win as (partition by w.animal_id order by w.entry_date)
-		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
 	`
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+
+	query += " order by " + sortExpression
+
 	return repositoriesUtil.GetList[WeightEntry](r.DB, query, entryDate, userId)
 }
 
@@ -549,8 +577,8 @@ func (r *WeightRepository) GetEntriesByDateFoot(entryDate time.Time, userId stri
 					nullif(extract(days from w.entry_date - coalesce(lag(w.entry_date) over win, a.birth_date)), 0),
 					0
 				) weight_gain
-			from weight_entries join animals a on a.id = w.animal_id
-			where w.entry_date = $1 w.user_id = $2 and w.deleted_at is null
+			from weight_entries w join animals a on a.id = w.animal_id
+			where w.entry_date = $1 and w.user_id = $2 and w.deleted_at is null
 			window win as (partition by w.animal_id order by w.entry_date)
 		) 
 		select 
