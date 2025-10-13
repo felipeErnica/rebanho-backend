@@ -111,13 +111,60 @@ func (r *SlaughterRepository) GetLastAverageWeight(userId string) (*AverageWeigh
 	return card, nil
 }
 
-func (r *SlaughterRepository) GetSlaughterGraphs(userId string) (*[]SlaughterHist, error) {
+func (r *SlaughterRepository) GetLastDeadWeight(userId string) (*AverageWeightCard, error) {
 	query := `
 		with cte as (
 			select 
-				s.entry_date,
+				entry_date,
+				avg(dead_weight) avg_weight
+			from slaughter_entries 
+			where user_id = $1 and deleted_at is null
+			group by 1
+			order by 1 desc
+			limit 10
+		)
+		select * from cte order by entry_date
+	`
+
+	result, err := repositoriesUtil.GetList[AverageWeightHist](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	hist := *result
+	var current, previous, trend float64
+
+	switch lenght := len(hist); lenght {
+	case 0:
+		current = 0
+		previous = 0
+		trend = 0
+	case 1:
+		current = hist[0].AverageWeight
+		previous = 0
+		trend = 0
+	default:
+		current = hist[lenght-1].AverageWeight
+		previous = hist[lenght-2].AverageWeight
+		trend = util.CalculatePercentageTrend(current, previous)
+	}
+
+	card := &AverageWeightCard{
+		Current: current,
+		Trend:   trend,
+		Hist:    hist,
+	}
+
+	return card, nil
+}
+
+func (r *SlaughterRepository) GetWeightHist(userId string) (*[]WeightHist, error) {
+	query := `
+		with cte as (
+			select 
+				date_trunc('month', s.entry_date) entry_date,
 				avg(weight) avg_weight,
-				avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0))*100) performance_rate
+				avg(dead_weight) dead_weight
 			from slaughter_entries s
 			where s.user_id = $1 and s.deleted_at is null
 			group by 1
@@ -126,9 +173,25 @@ func (r *SlaughterRepository) GetSlaughterGraphs(userId string) (*[]SlaughterHis
 		)
 		select * from cte order by 1
 	`
-	return repositoriesUtil.GetList[SlaughterHist](r.DB, query, userId)
+	return repositoriesUtil.GetList[WeightHist](r.DB, query, userId)
 }
 
+func (r *SlaughterRepository) GetRateHist(userId string) (*[]RateHist, error) {
+	query := `
+		with cte as (
+			select 
+				date_trunc('month', s.entry_date) entry_date,
+				avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0))*100) avg_rate
+			from slaughter_entries s
+			where s.user_id = $1 and s.deleted_at is null
+			group by 1
+			order by 1 desc
+			limit 60
+		)
+		select * from cte order by 1
+	`
+	return repositoriesUtil.GetList[RateHist](r.DB, query, userId)
+}
 func (r *SlaughterRepository) GetBestFathers(userId string) (*[]TableRatings, error) {
 	query := `
 		with cte as (
@@ -237,7 +300,7 @@ func (r *SlaughterRepository) GetLastGroups(userId string) (*[]SlaughterGroup, e
 				entry_date,
 				slaughterhouse_id,
 				count(animal_id) animals_number,
-				avg(weight) avg_weight,
+				avg(dead_weight) avg_weight,
 				avg((dead_weight / nullif(weight * (1 - discount_rate), 0))*100) avg_rate
 			from slaughter_entries 
 			where user_id = $1 and deleted_at is null
@@ -253,7 +316,7 @@ func (r *SlaughterRepository) GetLastGroups(userId string) (*[]SlaughterGroup, e
 			c.animals_number
 		from cte c join slaughterhouses s on s.id = c.slaughterhouse_id
 		order by c.entry_date desc
-		limit 10
+		limit 15
 	`
 	return repositoriesUtil.GetList[SlaughterGroup](r.DB, query, userId)
 }
@@ -271,12 +334,16 @@ func (r *SlaughterRepository) GetLastEntries(userId string) (*[]SlaughterEntry, 
 				a.ring_number, 
 				coalesce(a.name, concat_ws(' - ', a.sex, to_char(a.birth_date, 'DD/MM/YYYY')))
 			) animal_name,
+			h.name slaughterhouse,
+			s.entry_date,
 			s.weight,
+			s.discount_rate,
 			(s.weight*(1 - s.discount_rate)) discount_weight,
 			s.dead_weight,
 			(s.dead_weight /(s.weight*(1 - s.discount_rate))) * 100 performance_rate
 		from last_date l, slaughter_entries s
 			join animals a on a.id = s.animal_id
+			join slaughterhouses h on h.id = s.slaughterhouse_id
 		where s.entry_date = l.max_date
 			and s.user_id = $1 
 			and s.deleted_at is null
@@ -295,14 +362,15 @@ func (r *SlaughterRepository) FindEntriesPage(
 
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
-		"entry_date":   {Field: "s.entry_date", Order: "desc"},
-		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
-		"animal_name":  {Field: "coalesce(a.name, '')", Order: "asc"},
-		"birth_date":   {Field: "coalesce(a.birth_date, '-infinite'", Order: "asc"},
-		"weight":       {Field: "s.weight", Order: "asc"},
-		"dead_weight":  {Field: "s.dead_weight", Order: "asc"},
-		"id":           {Field: "s.id", Order: "asc"},
-		"created_at":   {Field: "s.created_at", Order: "asc"},
+		"entry_date":       {Field: "s.entry_date", Order: "desc"},
+		"animal_order":     {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"animal_name":      {Field: "coalesce(a.name, '')", Order: "asc"},
+		"birth_date":       {Field: "coalesce(a.birth_date, '-infinity')", Order: "desc"},
+		"weight":           {Field: "s.weight", Order: "asc"},
+		"dead_weight":      {Field: "s.dead_weight", Order: "asc"},
+		"performance_rate": {Field: "coalesce(s.dead_weight / nullif(s.weight*(1 - s.discount_rate), 0) * 100, 0)", Order: "asc"},
+		"id":               {Field: "s.id", Order: "asc"},
+		"created_at":       {Field: "s.created_at", Order: "asc"},
 	}
 
 	query := `
@@ -310,21 +378,29 @@ func (r *SlaughterRepository) FindEntriesPage(
 			s.id,
 			s.animal_id,
 			s.slaughterhouse_id,
+			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
 			concat_ws(
 				' - ', 
 				a.ring_number, 
-				coalesce(a.name, concat_ws(' - ', a.sex, to_char(a.birth_date, 'DD/MM/YYYY')))
+				coalesce(a.name, a.sex),
+				to_char(a.birth_date, 'DD/MM/YYYY')
 			) animal_name,
+			a.birth_date,
+			concat_ws(' - ', f.ring_number, f.name) father_name,
+			concat_ws(' - ', m.ring_number, m.name) mother_name,
 			h.name slaughterhouse,
 			s.entry_date,
 			s.discount_rate,
 			s.weight,
 			s.weight * (1 - s.discount_rate) discount_weight,
 			s.dead_weight,
-			coalesce(s.dead_weight / nullif(s.weight*(1 - s.discount_rate), 0) * 100, 0) performance_rate
+			coalesce(s.dead_weight / nullif(s.weight*(1 - s.discount_rate), 0) * 100, 0) performance_rate,
+			s.created_at
 		from slaughter_entries s
 			join animals a on a.id = s.animal_id
 			join slaughterhouses h on h.id = s.slaughterhouse_id
+			join animals f on f.id = a.father_id
+			join animals m on m.id = a.mother_id
 	`
 
 	whereExpression := "where s.user_id = $1 and s.deleted_at is null"
@@ -364,6 +440,36 @@ func (r *SlaughterRepository) FindEntriesPage(
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
 	return repositoriesUtil.GetPage[SlaughterEntry](r.DB, query, sort, 200, args...)
+}
+
+func (r *SlaughterRepository) GetEntriesPageFoot(filter SlaughterEntryFilter, userId string) (*SlaughterFoot, error) {
+
+	query := `
+		select 
+			count(s.animal_id) animals_number,
+			avg(s.weight) avg_weight,
+			avg(s.dead_weight) avg_dead_weight,
+			avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0))*100) avg_rate
+		from slaughter_entries s
+	`
+
+	whereExpression := " where s.user_id = $1 and s.deleted_at is null"
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "s", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	query += whereExpression
+
+	return repositoriesUtil.GetOne[SlaughterFoot](r.DB, query, args...)
 }
 
 func (r *SlaughterRepository) FindGroups(userId string) (*[]SlaughterGroup, error) {

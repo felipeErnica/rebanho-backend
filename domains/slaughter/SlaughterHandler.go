@@ -27,6 +27,21 @@ func (h *SlaughterHandler) GetLastAverageWeight(w http.ResponseWriter, r *http.R
 	handlersUtil.SendEntity(w, result)
 }
 
+func (h *SlaughterHandler) GetLastDeadWeight(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetLastDeadWeight(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
 func (h *SlaughterHandler) GetLastPerformance(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
@@ -42,13 +57,28 @@ func (h *SlaughterHandler) GetLastPerformance(w http.ResponseWriter, r *http.Req
 	handlersUtil.SendEntity(w, result)
 }
 
-func (h *SlaughterHandler) GetSlaughterGraph(w http.ResponseWriter, r *http.Request) {
+func (h *SlaughterHandler) GetWeightHist(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.GetSlaughterGraphs(userId)
+	result, err := h.Repository.GetWeightHist(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *SlaughterHandler) GetRateHist(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetRateHist(userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
@@ -148,6 +178,26 @@ func (h *SlaughterHandler) FindEntriesPage(w http.ResponseWriter, r *http.Reques
 	}
 
 	result, err := h.Repository.FindEntriesPage(sort, order, cursor, filter, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *SlaughterHandler) GetEntriesPageFoot(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, SlaughterEntryFilter{})
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetEntriesPageFoot(filter, userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

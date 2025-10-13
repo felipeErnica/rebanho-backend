@@ -6,6 +6,9 @@ type SlaughterEntry struct {
 	Id               string     `json:"id" db:"id"`
 	AnimalId         *string    `json:"animalId" db:"animal_id"`
 	AnimalName       *string    `json:"animalName" db:"animal_name"`
+	FatherName       *string    `json:"fatherName" db:"father_name"`
+	BirthDate        *time.Time `json:"-" db:"birth_date"`
+	MotherName       *string    `json:"motherName" db:"mother_name"`
 	AnimalOrder      *string    `json:"-" db:"animal_order"`
 	EntryDate        *time.Time `json:"entryDate" db:"entry_date"`
 	DiscountRate     *float64   `json:"discountRate" db:"discount_rate"`
@@ -21,20 +24,30 @@ type SlaughterEntry struct {
 }
 
 type SlaughterEntryFilter struct {
-	IsFiltered     bool       `json:"IsFiltered" db:"is_filtered"`
-	AnimalId       *[]string  `json:"animalId" db:"animal_id"`
-	MinAnimalBirth *time.Time `json:"minAnimalBirth" db:"birth_date" table:"animals"`
-	MaxAnimalBirth *time.Time `json:"maxAnimalBirth" db:"birth_date" table:"animals"`
-	MinEntryDate   *time.Time `json:"minEntryDate" db:"entry_date"`
-	MaxEntryDate   *time.Time `json:"maxEntryDate" db:"entry_date"`
-	MinWeight      *float64   `json:"minWeight" db:"weight"`
-	MaxWeight      *float64   `json:"maxWeight" db:"weight"`
-	MinDeadWeight  *float64   `json:"minDeadWeight" db:"dead_weight"`
-	MaxDeadWeight  *float64   `json:"maxDeadWeight" db:"dead_weight"`
+	IsFiltered      bool       `json:"IsFiltered" db:"is_filtered"`
+	Animals         *[]string  `json:"animals" db:"animal_id"`
+	Fathers         *[]string  `json:"fathers" db:"father_id" table:"a"`
+	Mothers         *[]string  `json:"mothers" db:"mother_id" table:"a"`
+	Slaughterhouses *[]string  `json:"slaughterhouses" db:"slaughterhouse_id"`
+	MinAnimalBirth  *time.Time `json:"minAnimalBirth" db:"birth_date" table:"a"`
+	MaxAnimalBirth  *time.Time `json:"maxAnimalBirth" db:"birth_date" table:"a"`
+	MinEntryDate    *time.Time `json:"minEntryDate" db:"entry_date"`
+	MaxEntryDate    *time.Time `json:"maxEntryDate" db:"entry_date"`
+	MinWeight       *float64   `json:"minWeight" db:"weight"`
+	MaxWeight       *float64   `json:"maxWeight" db:"weight"`
+	MinDeadWeight   *float64   `json:"minDeadWeight" db:"dead_weight"`
+	MaxDeadWeight   *float64   `json:"maxDeadWeight" db:"dead_weight"`
+}
+
+type SlaughterFoot struct {
+	AnimalsNumber     int     `json:"animalsNumber" db:"animals_number"`
+	AverageWeight     float64 `json:"averageWeight" db:"avg_weight"`
+	AverageDeadWeight float64 `json:"averageDeadWeight" db:"avg_dead_weight"`
+	AverageRate       float64 `json:"averageRate" db:"avg_rate"`
 }
 
 type SlaughterGroup struct {
-	EntryDate       time.Time `json:"entry_date" db:"entry_date"`
+	EntryDate       time.Time `json:"entryDate" db:"entry_date"`
 	Slaughterhouse  string    `json:"slaughterhouse" db:"slaughterhouse"`
 	AnimalsNumber   int       `json:"animalsNumber" db:"animals_number"`
 	AverageWeight   float64   `json:"averageWeight" db:"avg_weight"`
@@ -65,10 +78,15 @@ type AverageWeightCard struct {
 	Hist    []AverageWeightHist `json:"hist"`
 }
 
-type SlaughterHist struct {
-	EntryDate       time.Time `json:"entryDate" db:"entry_date"`
-	AverageWeight   float64   `json:"averageWeight" db:"avg_weight"`
-	PerformanceRate float64   `json:"performanceRate" db:"performance_rate"`
+type RateHist struct {
+	EntryDate   time.Time `json:"entryDate" db:"entry_date"`
+	AverageRate float64   `json:"averageRate" db:"avg_rate"`
+}
+
+type WeightHist struct {
+	EntryDate  time.Time `json:"entryDate" db:"entry_date"`
+	Weight     float64   `json:"weight" db:"avg_weight"`
+	DeadWeight float64   `json:"deadWeight" db:"dead_weight"`
 }
 
 type TableRatings struct {
