@@ -207,12 +207,13 @@ func (h *SlaughterHandler) GetEntriesPageFoot(w http.ResponseWriter, r *http.Req
 }
 
 func (h *SlaughterHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
+	order := r.URL.Query().Get("order")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.FindGroups(userId)
+	result, err := h.Repository.FindGroups(order, userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
@@ -222,6 +223,8 @@ func (h *SlaughterHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SlaughterHandler) FindEntriesByDate(w http.ResponseWriter, r *http.Request) {
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -234,7 +237,45 @@ func (h *SlaughterHandler) FindEntriesByDate(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	result, err := h.Repository.FindEntriesByDate(entryDate, userId)
+	result, err := h.Repository.FindEntriesByDate(sort, order, entryDate, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *SlaughterHandler) GetEntriesByDateFoot(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entryDateStr := r.PathValue("entryDate")
+	entryDate, err := time.Parse(time.RFC3339Nano, entryDateStr)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+
+	result, err := h.Repository.GetEntriesByDateFoot(entryDate, userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *SlaughterHandler) SearchSlaughterhouses(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchSlaughterhouses(userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

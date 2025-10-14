@@ -12,12 +12,12 @@ type LactationHandler struct {
 	Repository *LactationRepository
 }
 
-func (h *LactationHandler) GetYearlyMilk(w http.ResponseWriter, r *http.Request) {
+func (h *LactationHandler) GetLastMilk(w http.ResponseWriter, r *http.Request) {
     userId, ok := handlersUtil.GetUserId(w, r); if !ok {
         return
     }
 
-    result, err := h.Repository.GetYearlyMilk(userId)
+    result, err := h.Repository.GetLastMilk(userId)
     if err != nil {
         serverErrors.DatabaseGetError(err, w)
         return
@@ -26,12 +26,12 @@ func (h *LactationHandler) GetYearlyMilk(w http.ResponseWriter, r *http.Request)
     handlersUtil.SendEntity(w, result)
 }
 
-func (h *LactationHandler) GetMonthMilk(w http.ResponseWriter, r *http.Request) {
+func (h *LactationHandler) GetLastAverageMilk(w http.ResponseWriter, r *http.Request) {
     userId, ok := handlersUtil.GetUserId(w, r); if !ok {
         return
     }
 
-    result, err := h.Repository.GetMonthMilk(userId)
+    result, err := h.Repository.GetLastAverageMilk(userId)
     if err != nil {
         serverErrors.DatabaseGetError(err, w)
         return
@@ -40,12 +40,12 @@ func (h *LactationHandler) GetMonthMilk(w http.ResponseWriter, r *http.Request) 
     handlersUtil.SendEntity(w, result)
 }
 
-func (h *LactationHandler) GetAnimalsAverage(w http.ResponseWriter, r *http.Request) {
+func (h *LactationHandler) GetLastAnimalsCount(w http.ResponseWriter, r *http.Request) {
     userId, ok := handlersUtil.GetUserId(w, r); if !ok {
         return
     }
 
-    result, err := h.Repository.GetAnimalsAverage(userId)
+    result, err := h.Repository.GetLastAnimalsCount(userId)
     if err != nil {
         serverErrors.DatabaseGetError(err, w)
         return

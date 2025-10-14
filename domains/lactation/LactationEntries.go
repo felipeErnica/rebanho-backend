@@ -81,12 +81,12 @@ type LactationHistFoot struct {
 	AveragePeak       float64 `json:"averagePeak" db:"avg_peak"`
 }
 
-type YearProductionHist struct {
-	EntryDate time.Time `json:"entryDate" db:"entry_date"`
-	TotalMilk float64   `json:"totalMilk" db:"total_milk"`
+type AverageMilkEntry struct {
+	EntryDate   time.Time `json:"entryDate" db:"entry_date"`
+	AverageMilk float64   `json:"averageMilk" db:"avg_milk"`
 }
 
-type MonthMilkHist struct {
+type TotalMilkEntry struct {
 	EntryDate time.Time `json:"entryDate" db:"entry_date"`
 	TotalMilk float64   `json:"totalMilk" db:"total_milk"`
 }

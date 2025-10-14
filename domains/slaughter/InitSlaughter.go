@@ -24,6 +24,9 @@ func InitSlaughter(app *app.App) {
 	app.HandleFunc("POST /slaughter/info/entries/page/foot", handler.GetEntriesPageFoot)
 	app.HandleFunc("GET /slaughter/info/groups", handler.FindGroups)
 	app.HandleFunc("GET /slaughter/info/groups/{entryDate}/entries", handler.FindEntriesByDate)
+	app.HandleFunc("GET /slaughter/info/groups/{entryDate}/entries/foot", handler.GetEntriesByDateFoot)
+
+	app.HandleFunc("GET /slaughter/search/slaughterhouses", handler.SearchSlaughterhouses)
 
 	util.LogDomainsInit("Entradas de Abate")
 }

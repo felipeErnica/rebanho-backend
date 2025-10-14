@@ -47,13 +47,15 @@ type SlaughterFoot struct {
 }
 
 type SlaughterGroup struct {
-	EntryDate       time.Time `json:"entryDate" db:"entry_date"`
-	Slaughterhouse  string    `json:"slaughterhouse" db:"slaughterhouse"`
-	AnimalsNumber   int       `json:"animalsNumber" db:"animals_number"`
-	AverageWeight   float64   `json:"averageWeight" db:"avg_weight"`
-	WeightVariation float64   `json:"weightVariation" db:"weight_variation"`
-	AverageRate     float64   `json:"averageRate" db:"avg_rate"`
-	RateVariation   float64   `json:"rateVariation" db:"rate_variation"`
+	EntryDate           time.Time `json:"entryDate" db:"entry_date"`
+	Slaughterhouse      string    `json:"slaughterhouse" db:"slaughterhouse"`
+	AnimalsNumber       int       `json:"animalsNumber" db:"animals_number"`
+	AverageWeight       float64   `json:"averageWeight" db:"avg_weight"`
+	AverageDeadWeight   float64   `json:"averageDeadWeight" db:"avg_dead_weight"`
+	WeightVariation     float64   `json:"weightVariation" db:"weight_variation"`
+	DeadWeightVariation float64   `json:"deadWeightVariation" db:"dead_weight_variation"`
+	AverageRate         float64   `json:"averageRate" db:"avg_rate"`
+	RateVariation       float64   `json:"rateVariation" db:"rate_variation"`
 }
 
 type PerformanceRateHist struct {

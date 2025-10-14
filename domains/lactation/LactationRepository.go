@@ -18,12 +18,12 @@ func NewRepository(db *sqlx.DB) *LactationRepository {
 	return &LactationRepository{db}
 }
 
-func (r *LactationRepository) GetYearlyMilk(userId string) (*CardContainer, error) {
+func (r *LactationRepository) GetLastMilk(userId string) (*CardContainer, error) {
 	query := `
         with cte as (
 			select
-				date_trunc('year', l.entry_date) entry_date,
-				sum(l.quantity) total_milk
+				l.entry_date,
+				sum(l.quantity) as total_milk
 			from milk_entries l
 			where l.user_id = $1 and l.deleted_at is null
 			group by 1
@@ -32,7 +32,7 @@ func (r *LactationRepository) GetYearlyMilk(userId string) (*CardContainer, erro
 		)
 		select * from cte order by entry_date
     `
-	result, err := repositoriesUtil.GetList[YearProductionHist](r.DB, query, userId)
+	result, err := repositoriesUtil.GetList[TotalMilkEntry](r.DB, query, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -64,29 +64,22 @@ func (r *LactationRepository) GetYearlyMilk(userId string) (*CardContainer, erro
 	return averageMilk, nil
 }
 
-func (r *LactationRepository) GetMonthMilk(userId string) (*CardContainer, error) {
+func (r *LactationRepository) GetLastAverageMilk(userId string) (*CardContainer, error) {
 	query := `
-        with month_sum as (
-            select
-                entry_date,
-                sum(quantity) total_milk
-            from milk_entries 
-            where user_id = $1 and deleted_at is null
-            group by 1
-            order by 1
-        ),
-        cte as (
-            select 
-                date_trunc('month', entry_date) entry_date,
-                sum(total_milk) total_milk
-            from month_sum
-            group by 1
-            order by 1 desc
-            limit 10
-        )
-        select * from cte order by entry_date
+        with cte as (
+			select
+				l.entry_date,
+				avg(l.quantity) as avg_milk
+			from milk_entries l
+			where l.user_id = $1 and l.deleted_at is null
+			group by 1
+			order by 1 desc
+			limit 10
+		)
+		select * from cte order by entry_date
     `
-	result, err := repositoriesUtil.GetList[MonthMilkHist](r.DB, query, userId)
+
+	result, err := repositoriesUtil.GetList[AverageMilkEntry](r.DB, query, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -100,12 +93,12 @@ func (r *LactationRepository) GetMonthMilk(userId string) (*CardContainer, error
 		previous = 0
 		trend = 0
 	case 1:
-		current = averageHist[0].TotalMilk
+		current = averageHist[0].AverageMilk
 		previous = 0
 		trend = 0
 	default:
-		current = averageHist[lenght-1].TotalMilk
-		previous = averageHist[lenght-2].TotalMilk
+		current = averageHist[lenght-1].AverageMilk
+		previous = averageHist[lenght-2].AverageMilk
 		trend = util.CalculatePercentageTrend(current, previous)
 	}
 
@@ -118,21 +111,14 @@ func (r *LactationRepository) GetMonthMilk(userId string) (*CardContainer, error
 	return averageMilk, nil
 }
 
-func (r *LactationRepository) GetAnimalsAverage(userId string) (*CardContainer, error) {
+func (r *LactationRepository) GetLastAnimalsCount(userId string) (*CardContainer, error) {
 	query := `
-        with animals_sum as (
+        with cte as (
             select
                 entry_date,
                 count(*) animals_number
             from milk_entries
             where user_id = $1 and deleted_at is null
-            group by 1
-        ),
-        cte as (
-            select
-                date_trunc('month', entry_date) entry_date,
-                max(animals_number) animals_number
-            from animals_sum
             group by 1
             order by 1 desc
             limit 10
