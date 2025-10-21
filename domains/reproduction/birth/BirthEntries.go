@@ -23,12 +23,12 @@ type BirthEntry struct {
 type BirthEntryFilter struct {
 	IsFiltered       bool       `json:"isFiltered"`
 	Mothers          *[]string  `json:"mothers" db:"mother_id"`
-	MinBirthDate     *time.Time `json:"minBirthDate" db:"birth_date" table:"c" `
-	MaxBirthDate     *time.Time `json:"maxBirthDate" db:"birth_date" table:"c"`
-	Sex              *string    `json:"sex" db:"sex" table:"c"`
-	Fathers          *[]string  `json:"calfFatherId" db:"father_id" table:"c"`
-	MinBirthInterval *int       `json:"minBirthInterval" db:"birth_interval" table:"i"`
-	MaxBirthInterval *int       `json:"maxBirthInterval" db:"birth_interval" table:"i"`
+	MinBirthDate     *time.Time `json:"minBirthDate" db:"calf_birth_date"`
+	MaxBirthDate     *time.Time `json:"maxBirthDate" db:"calf_birth_date"`
+	Sex              *string    `json:"sex" db:"calf_sex"`
+	Fathers          *[]string  `json:"fathers" db:"calf_father_id"`
+	MinBirthInterval *int       `json:"minBirthInterval" db:"birth_interval"`
+	MaxBirthInterval *int       `json:"maxBirthInterval" db:"birth_interval"`
 }
 
 type BirthEntrySave struct {
@@ -53,10 +53,25 @@ type TotalBirthsBySex struct {
 	Females    int       `json:"females" db:"females"`
 }
 
+type BirthsBySex struct {
+	Males   int `json:"males" db:"males"`
+	Females int `json:"females" db:"females"`
+}
+
 type BirthsByDate struct {
 	Date       time.Time `json:"date" db:"date"`
 	BirthTotal int       `json:"birthTotal" db:"birth_total"`
 	DeathTotal int       `json:"deathTotal" db:"death_total"`
+}
+
+type BirthsNumberEntry struct {
+	EntryDate  time.Time `json:"entryDate" db:"entry_date"`
+	BirthTotal float64   `json:"birthTotal" db:"birth_total"`
+}
+
+type DeathsNumberEntry struct {
+	EntryDate   time.Time `json:"entryDate" db:"entry_date"`
+	DeathsTotal float64   `json:"deathsTotal" db:"deaths_total"`
 }
 
 type BirthIntervalHist struct {
@@ -65,7 +80,7 @@ type BirthIntervalHist struct {
 }
 
 type DeathIndexHist struct {
-	Month      time.Time `json:"month" db:"date_month"`
+	EntryDate  time.Time `json:"entryDate" db:"date"`
 	DeathIndex float64   `json:"deathIndex" db:"death_index"`
 }
 
@@ -79,6 +94,7 @@ type IntervalAnimal struct {
 	BirthNumbers    int     `json:"birthNumbers" db:"birth_numbers"`
 	IntervalAverage float64 `json:"intervalAverage" db:"interval_average"`
 	AverageRate     float64 `json:"averageRate" db:"average_rate"`
+	Score           float64 `json:"-" db:"reproductive_score"`
 }
 
 type BirthStats struct {
@@ -116,7 +132,7 @@ type LossStats struct {
 }
 
 type CurrentStats struct {
-	CurrentBirthNumbers int            `json:"currentBirthNumbers"`
-	BirthNumbersTrend   int            `json:"birthNumbersTrend"`
-	BirthHistory        []BirthsByDate `json:"birthHistory" db:"birth_history"`
+	Current float64 `json:"current"`
+	Trend   float64 `json:"trend"`
+	Hist    any     `json:"hist"`
 }

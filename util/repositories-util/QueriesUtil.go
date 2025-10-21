@@ -58,11 +58,11 @@ func generateInsertQuery(object any, tableName string) string {
 	fieldNames := getFieldsNames(object)
 
 	var buffer bytes.Buffer
-    for _, fieldName := range fieldNames {
+	for _, fieldName := range fieldNames {
 		buffer.WriteString(":" + fieldName + ", ")
 	}
 	valuesFields := buffer.String()
-    valuesFields = strings.TrimSuffix(valuesFields, ", ")
+	valuesFields = strings.TrimSuffix(valuesFields, ", ")
 
 	query := fmt.Sprintf("insert into %s values(%s)", tableName, valuesFields)
 	return query
@@ -93,6 +93,22 @@ func GetOne[E any](db *sqlx.DB, query string, args ...any) (*E, error) {
 		return nil, err
 	}
 	return &object, err
+}
+
+/*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/
+func GetPrimitive(db *sqlx.DB, query string, dest any, args ...any) error {
+	t := reflect.TypeOf(dest)
+	if t.Kind() != reflect.Pointer {
+		return errors.New("A variável deve ser um ponteiro")
+	}
+
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	err := db.Get(dest, query, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 /*Retorna uma lista de objetos da Tabela SQL de acordo com os parâmetros informados*/

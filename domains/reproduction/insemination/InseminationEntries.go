@@ -7,16 +7,16 @@ import (
 type InseminationEntry struct {
 	Id               string     `json:"id,omitempty" db:"id"`
 	AnimalId         string     `json:"animalId,omitempty" db:"animal_id"`
-    AnimalOrder      string     `json:"-" db:"animal_order"`
+	AnimalOrder      string     `json:"-" db:"animal_order"`
 	Name             string     `json:"-" db:"name"`
 	AnimalName       string     `json:"animalName" db:"animal_name"`
 	InseminationDate *time.Time `json:"inseminationDate,omitempty" db:"insemination_date"`
+	BullId           string     `json:"bullId,omitempty" db:"bull_id"`
 	BullName         string     `json:"bullName,omitempty" db:"bull_name"`
 	Observation      *string    `json:"observation" db:"observation"`
+	ChildInformation string     `json:"childInformation" db:"child_information"`
 	PregnancyStatus  string     `json:"pregnancyStatus" db:"pregnancy_status"`
-	Status           string     `json:"status" db:"status"`
-	LossId           *string    `json:"lossId" db:"loss_id"`
-	CalfId           *string    `json:"calfId" db:"calf_id"`
+	BirthStatus      string     `json:"birthStatus" db:"birth_status"`
 	CreatedAt        time.Time  `json:"-" db:"created_at"`
 }
 
@@ -27,7 +27,7 @@ type InseminationEntryFilter struct {
 	MinInseminationDate *time.Time `json:"minInseminationDate" db:"insemination_date"`
 	MaxInseminationDate *time.Time `json:"maxInseminationDate" db:"insemination_date"`
 	Bulls               *[]string  `json:"bulls" db:"bull_id"`
-	Status              *string    `json:"status" db:"status"`
+	BirthStatus         *string    `json:"status" db:"birth_status"`
 }
 
 type InseminationGroup struct {
@@ -45,6 +45,11 @@ type InseminationFooter struct {
 	Totals               int     `json:"totals" db:"totals"`
 	AverageBirthRate     float64 `json:"averageBirthRate" db:"average_birth_rate"`
 	AveragePregnancyRate float64 `json:"averagePregnancyRate" db:"average_pregnancy_rate"`
+}
+
+type LastEntry struct {
+	InseminationDate time.Time           `json:"inseminationDate"`
+	Entries          []InseminationEntry `json:"entries"`
 }
 
 type InseminationEntrySave struct {
@@ -71,35 +76,41 @@ type PregnantsNumber struct {
 }
 
 type InseminationHist struct {
-	DateMonth     time.Time `json:"dateMonth" db:"date_month"`
-	Total         int       `json:"total" db:"total"`
-	BirthRate     float64   `json:"birthRate" db:"birth_rate"`
-	PregnancyRate float64   `json:"pregnancyRate" db:"pregnancy_rate"`
+	InseminationDate time.Time `json:"inseminationDate" db:"insemination_date"`
+	Total            int       `json:"total" db:"total"`
+	BirthNumbers     int       `json:"birthNumbers" db:"birth_numbers"`
+	PregnancyNumbers int       `json:"pregnancyNumbers" db:"pregnancy_numbers"`
 }
 
 type BirthRateHist struct {
-	DateMonth     time.Time `json:"dateMonth" db:"date_month"`
-	BirthRate     float64   `json:"birthRate" db:"birth_rate"`
-	PregnancyRate float64   `json:"pregnancyRate" db:"pregnancy_rate"`
+	InseminationDate time.Time `json:"inseminationDate" db:"insemination_date"`
+	BirthRate        float64   `json:"birthRate" db:"birth_rate"`
+	PregnancyRate    float64   `json:"pregnancyRate" db:"pregnancy_rate"`
 }
 
 type PregnancyRateHist struct {
-	DateMonth     time.Time `json:"dateMonth" db:"date_month"`
-	PregnancyRate float64   `json:"pregnancyRate" db:"pregnancy_rate"`
+	InseminationDate time.Time `json:"inseminationDate" db:"insemination_date"`
+	PregnancyRate    float64   `json:"pregnancyRate" db:"pregnancy_rate"`
 }
 
-type PregnancyRateStats struct {
-	Hist    []PregnancyRateHist `json:"hist"`
-	Current float64             `json:"current"`
-	Trend   float64             `json:"trend"`
+type FutureBirths struct {
+	InseminationDate time.Time `json:"birthForecast" db:"birth_forecast"`
+	BirthsNumber     int       `json:"birthsNumber" db:"births_number"`
+}
+
+type AnimalsHist struct {
+	InseminationDate time.Time `json:"inseminationDate" db:"insemination_date"`
+	AnimalsNumber    float64   `json:"animalsNumber" db:"animals_number"`
+}
+
+type CardStats struct {
+	Hist    any     `json:"hist"`
+	Current float64 `json:"current"`
+	Trend   float64 `json:"trend"`
 }
 
 type BirthRateStats struct {
 	Hist    []BirthRateHist `json:"hist"`
 	Current float64         `json:"current"`
 	Trend   float64         `json:"trend"`
-}
-
-type PregnantStats struct {
-	PregnantNumber int `json:"pregnantNumber" db:"pregnant_number"`
 }

@@ -68,6 +68,34 @@ func (h *LactationHandler) GetMilkProduction(w http.ResponseWriter, r *http.Requ
     handlersUtil.SendEntity(w, result)
 }
 
+func (h *LactationHandler) GetYearMilkProduction(w http.ResponseWriter, r *http.Request) {
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+
+    result, err := h.Repository.GetYearMilk(userId)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendEntity(w, result)
+}
+
+func (h *LactationHandler) GetYearAverageMilk(w http.ResponseWriter, r *http.Request) {
+    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+        return
+    }
+
+    result, err := h.Repository.GetYearAverageMilk(userId)
+    if err != nil {
+        serverErrors.DatabaseGetError(err, w)
+        return
+    }
+
+    handlersUtil.SendEntity(w, result)
+}
+
 func (h *LactationHandler) GetBestAnimals(w http.ResponseWriter, r *http.Request) {
     userId, ok := handlersUtil.GetUserId(w, r); if !ok {
         return

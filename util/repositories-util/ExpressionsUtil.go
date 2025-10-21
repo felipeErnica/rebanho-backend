@@ -16,8 +16,8 @@ type SortField struct {
 
 // Através de um mapa da campo com expressões SQL, retorna a expressão apropriada ao campo
 func GetSortExpression(
-	sortMap map[string]SortField, 
-	sort string, 
+	sortMap map[string]SortField,
+	sort string,
 	order string,
 ) (string, error) {
 	sortFields := strings.Split(sort, ",")
@@ -43,7 +43,7 @@ func GetSortExpression(
 }
 
 /*
-Através de um mapa de campos relacionados a expressões SQL, 
+Através de um mapa de campos relacionados a expressões SQL,
 retorna a expressão de ordenamento do cursor relacionada ao campo.
 */
 func GetCursorExpression(
@@ -98,12 +98,15 @@ func GetCursorExpression(
 	return "(" + cursorExpression + ")", nextNumParam, nil
 }
 
-func AddCommonFields(sort string) (string) {
-	sort += ",id,created_at"
-	if sort == "" {
-		sort = "created_at,id"
-	}
-	return sort
+func AddCommonFields(sort string) string {
+	arr := []string{sort, "id", "created_at"}
+	return strings.Join(arr, ",")
+}
+
+func AddNewFields(sort string, fields ...string) string {
+	arr := []string{sort}
+	arr = append(arr, fields...)
+	return strings.Join(arr, ",")
 }
 
 func GetFilterExpressions(filter any, mainTable string, numParam int) (string, int, error) {

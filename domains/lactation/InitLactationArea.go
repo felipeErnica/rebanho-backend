@@ -12,6 +12,8 @@ func InitLactationArea(app *app.App) {
     app.HandleFunc("GET /lactation/dashboard/last-avg-milk", handler.GetLastAverageMilk)
     app.HandleFunc("GET /lactation/dashboard/last-count", handler.GetLastAnimalsCount)
     app.HandleFunc("GET /lactation/dashboard/milk-production", handler.GetMilkProduction)
+    app.HandleFunc("GET /lactation/dashboard/year-milk", handler.GetYearMilkProduction)
+    app.HandleFunc("GET /lactation/dashboard/year-avg-milk", handler.GetYearAverageMilk)
     app.HandleFunc("GET /lactation/dashboard/best-animals", handler.GetBestAnimals)
     app.HandleFunc("GET /lactation/dashboard/worst-animals", handler.GetWorstAnimals)
     app.HandleFunc("GET /lactation/dashboard/best-mothers", handler.GetBestMothers)

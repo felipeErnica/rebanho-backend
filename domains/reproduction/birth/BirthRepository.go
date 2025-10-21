@@ -2,6 +2,7 @@ package birth
 
 import (
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -18,10 +19,16 @@ func (r *BirthRepository) GetBestIntervals(userId string) (*[]IntervalAnimal, er
 	query := `
         with interval_list as (
 			select 
-				b.mother_id,
-				extract(days from c.birth_date - lag(c.birth_date) over (partition by b.mother_id order by c.birth_date)) birth_interval
-			from births b join animals c on c.id = b.calf_id
-			where b.user_id = $1 and b.deleted_at is null
+				a.mother_id,
+				extract(days from a.birth_date - lag(a.birth_date) over win) as birth_interval
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null
+				and a.birth_date is not null
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+			window win as (partition by a.mother_id order by a.birth_date)
 		),
 		average_list as (
             select
@@ -29,41 +36,33 @@ func (r *BirthRepository) GetBestIntervals(userId string) (*[]IntervalAnimal, er
                 count(l.*) birth_numbers,
                 avg(l.birth_interval) interval_average
             from interval_list l
-                left join animals a on a.id = l.mother_id
+                join animals a on 
+					a.id = l.mother_id
+					and a.death_date is null
             group by animal_name
         ),
         birth_stats as (
             select 
-                max(birth_numbers) max_births,
-				avg(interval_average) interval_median
+				avg(interval_average) gn_interval_average,
+				stddev(interval_average) dev_interval
             from average_list
+			where birth_numbers >= 3
         ),
         scores as (
             select 
-                al.*,
-                al.birth_numbers / bs.max_births  birth_score,
-                (375 / al.interval_average) interval_score
-            from average_list al, birth_stats bs
-            where al.interval_average is not null
-        ),
-        best_scored as (
-            select 
-                animal_name,
-                interval_average,
-                birth_numbers,
-                (interval_score*0.6 + birth_score*0.4) reproductive_score,
-                ((interval_average / b.interval_median) - 1) * 100 average_rate
-            from scores, birth_stats b
-            order by reproductive_score desc
-            limit 10
+                a.animal_name,
+                a.interval_average,
+                a.birth_numbers,
+                (a.interval_average - b.gn_interval_average) / nullif(b.dev_interval, 0) as reproductive_score,
+                ((a.interval_average / nullif(b.gn_interval_average, 0)) - 1) * 100 average_rate
+            from average_list a, birth_stats b
+			where a.birth_numbers >= 3
         )
-        select 
-            animal_name,
-            interval_average,
-            birth_numbers,
-            average_rate
-        from best_scored
-        order by interval_average
+        select *
+        from scores
+		where -reproductive_score > 0
+        order by -reproductive_score desc
+		limit 10
     `
 	return repositoriesUtil.GetList[IntervalAnimal](r.DB, query, userId)
 }
@@ -72,10 +71,16 @@ func (r *BirthRepository) GetWorstIntervals(userId string) (*[]IntervalAnimal, e
 	query := `
         with interval_list as (
 			select 
-				b.mother_id,
-				extract(days from c.birth_date - lag(c.birth_date) over (partition by b.mother_id order by c.birth_date)) birth_interval
-			from births b join animals c on c.id = b.calf_id
-			where b.user_id = $1 and b.deleted_at is null
+				a.mother_id,
+				extract(days from a.birth_date - lag(a.birth_date) over win) as birth_interval
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null
+				and a.birth_date is not null
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+			window win as (partition by a.mother_id order by a.birth_date)
 		),
 		average_list as (
             select
@@ -83,41 +88,33 @@ func (r *BirthRepository) GetWorstIntervals(userId string) (*[]IntervalAnimal, e
                 count(l.*) birth_numbers,
                 avg(l.birth_interval) interval_average
             from interval_list l
-                left join animals a on a.id = l.mother_id
+                join animals a on 
+					a.id = l.mother_id
+					and a.death_date is null
             group by animal_name
         ),
         birth_stats as (
             select 
-                max(birth_numbers) max_births,
-				avg(interval_average) interval_median
+				avg(interval_average) gn_interval_average,
+				stddev(interval_average) dev_interval
             from average_list
+			where birth_numbers >= 3
         ),
         scores as (
             select 
-                al.*,
-                (1 - (al.birth_numbers / bs.max_births))  birth_score,
-                (1 - (375 / al.interval_average)) interval_score
-            from average_list al, birth_stats bs
-            where al.interval_average is not null
-        ),
-        best_scored as (
-            select 
-                animal_name,
-                interval_average,
-                birth_numbers,
-                (interval_score*0.6 + birth_score*0.4) reproductive_score,
-                ((interval_average / b.interval_median) - 1) * 100 average_rate
-            from scores, birth_stats b
-            order by reproductive_score desc
-            limit 10
+                a.animal_name,
+                a.interval_average,
+                a.birth_numbers,
+                (a.interval_average - b.gn_interval_average) / nullif(b.dev_interval, 0) as reproductive_score,
+                ((a.interval_average / nullif(b.gn_interval_average, 0)) - 1) * 100 average_rate
+            from average_list a, birth_stats b
+			where a.birth_numbers >= 3
         )
-        select 
-            animal_name,
-            interval_average,
-            birth_numbers,
-            average_rate
-        from best_scored
-        order by interval_average
+        select *
+        from scores
+		where reproductive_score > 0
+        order by reproductive_score desc
+		limit 10
     `
 	return repositoriesUtil.GetList[IntervalAnimal](r.DB, query, userId)
 }
@@ -126,11 +123,16 @@ func (r *BirthRepository) GetBirthIntervalHistory(userId string) (*IntervalStats
 	query := `
 		with year_birth_interval as (
 			select 
-				date_trunc('year', c.birth_date) birth_date,
-				extract(days from c.birth_date - lag(c.birth_date) over (partition by b.mother_id order by c.birth_date)) birth_interval
-			from births b
-				join animals c on c.id = b.calf_id
-			where b.user_id = $1 and b.deleted_at is null
+				date_trunc('year', a.birth_date) birth_date,
+				extract(days from a.birth_date - lag(a.birth_date) over win) birth_interval
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null
+				and a.birth_date is not null
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+			window win as (partition by a.mother_id order by a.birth_date)
 		),
 		cte as (
 			select 
@@ -177,6 +179,161 @@ func (r *BirthRepository) GetBirthIntervalHistory(userId string) (*IntervalStats
 	return &intervalResult, nil
 }
 
+func (r *BirthRepository) GetLastBirthsNumber(userId string) (*CurrentStats, error) {
+	query := `
+		with cte as (
+			select
+				date_trunc('month', a.birth_date) entry_date,
+				count(a.*) birth_total
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null
+				and a.birth_date is not null
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+			group by 1
+			order by 1 desc
+			limit 10
+		)
+		select * from cte order by 1
+    `
+	results, err := repositoriesUtil.GetList[BirthsNumberEntry](r.DB, query, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	hist := *results
+	var current, previous, trend float64
+
+	switch lenght := len(hist); lenght {
+	case 0:
+		current = 0
+		previous = 0
+		trend = 0
+	case 1:
+		current = hist[lenght-1].BirthTotal
+		previous = 0
+		trend = 0
+	default:
+		current = hist[lenght-1].BirthTotal
+		previous = hist[lenght-2].BirthTotal
+		trend = current - previous
+	}
+
+	birthStats := CurrentStats{
+		Hist:    hist,
+		Trend:   trend,
+		Current: current,
+	}
+
+	return &birthStats, nil
+}
+
+func (r *BirthRepository) GetYearBirthsNumber(userId string) (*CurrentStats, error) {
+	query := `
+		with cte as (
+			select
+				date_trunc('year', a.birth_date) entry_date,
+				count(a.*) birth_total
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null
+				and a.birth_date is not null
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+			group by 1
+			order by 1 desc
+			limit 20
+		)
+		select * from cte order by entry_date
+    `
+	results, err := repositoriesUtil.GetList[BirthsNumberEntry](r.DB, query, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	hist := *results
+	var current, previous, trend float64
+
+	switch lenght := len(hist); lenght {
+	case 0:
+		current = 0
+		previous = 0
+		trend = 0
+	case 1:
+		current = hist[lenght-1].BirthTotal
+		previous = 0
+		trend = 0
+	default:
+		current = hist[lenght-1].BirthTotal
+		previous = hist[lenght-2].BirthTotal
+		trend = util.CalculatePercentageTrend(current, previous)
+	}
+
+	birthStats := CurrentStats{
+		Hist:    hist,
+		Trend:   trend,
+		Current: current,
+	}
+
+	return &birthStats, nil
+}
+
+func (r *BirthRepository) GetYearDeathsNumber(userId string) (*CurrentStats, error) {
+	query := `
+		with cte as (
+			select
+				date_trunc('year', a.death_date) entry_date,
+				count(a.*) deaths_total
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null
+                and age(a.death_date, a.birth_date) < interval '1 year'
+			group by 1
+			order by 1 desc
+			limit 20
+		)
+		select * from cte order by entry_date
+    `
+	results, err := repositoriesUtil.GetList[DeathsNumberEntry](r.DB, query, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	hist := *results
+	var current, previous, trend float64
+
+	switch lenght := len(hist); lenght {
+	case 0:
+		current = 0
+		previous = 0
+		trend = 0
+	case 1:
+		current = hist[lenght-1].DeathsTotal
+		previous = 0
+		trend = 0
+	default:
+		current = hist[lenght-1].DeathsTotal
+		previous = hist[lenght-2].DeathsTotal
+		trend = util.CalculatePercentageTrend(current, previous)
+	}
+
+	deathStats := CurrentStats{
+		Hist:    hist,
+		Trend:   trend,
+		Current: current,
+	}
+
+	return &deathStats, nil
+}
+
 func (r *BirthRepository) GetDeathIndex(userId string) (*DeathStats, error) {
 	query := `
         with death_tbl as (
@@ -184,6 +341,7 @@ func (r *BirthRepository) GetDeathIndex(userId string) (*DeathStats, error) {
                 date_trunc('year', a.death_date) date,
                 count(a.*) deaths
             from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
             where
                 a.user_id = $1
                 and a.death_date is not null
@@ -194,20 +352,24 @@ func (r *BirthRepository) GetDeathIndex(userId string) (*DeathStats, error) {
         birth_tbl as (
             select
                 date_trunc('year', a.birth_date) date,
-                count(b.*) births
-            from births b join animals a on a.id = b.calf_id
-            where b.user_id = $1 and b.deleted_at is null
+                count(a.*) births
+            from animals a
+            where 
+				a.user_id = $1 
+				and a.deleted_at is null
+				and a.birth_date is not null
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
             group by 1
         ),
         cte as (
 			select
-				date date_month,
+				date,
 				coalesce((deaths::float / nullif(births, 0)::float)*100, 0) death_index
 			from birth_tbl full join death_tbl using(date)
 			order by 1 desc
 			limit 10
 		)
-		select * from cte order by date_month
+		select * from cte order by date
     `
 	results, err := repositoriesUtil.GetList[DeathIndexHist](r.DB, query, userId)
 
@@ -250,50 +412,103 @@ func (r *BirthRepository) GetBirthHistory(userId string) (*[]BirthsByDate, error
                 count(*) death_total 
 			from animals  
             where 
-                deleted_at is null 
+                user_id = $1
+                and deleted_at is null 
                 and death_date is not null
                 and age(death_date, birth_date) < interval '1 year'
-                and user_id = $1
             group by 1
         ), 
         birth_data as (
             select 
-                date_trunc('month', calf.birth_date) date,
-                count(births.*) as birth_total
-            from births 
-                left join animals as calf on births.calf_id = calf.id
+                date_trunc('month', a.birth_date) date,
+                count(a.*) as birth_total
+            from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
             where 
-                births.user_id = $1
-                and births.deleted_at is null 
+                a.user_id = $1
+                and a.deleted_at is null 
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+				and a.birth_date is not null
             group by 1
-        )
-        select
-            date,
-            coalesce(birth_data.birth_total,0) birth_total,
-            coalesce(death_data.death_total, 0) death_total
-        from birth_data full join death_data using(date)
-        where date >= now() - interval '5 years'
-        order by date
+        ),
+        cte as (
+			select
+				date,
+				coalesce(birth_data.birth_total,0) birth_total,
+				coalesce(death_data.death_total, 0) death_total
+			from birth_data full join death_data using(date)
+			order by date desc
+			limit 60
+		) 
+		select * from cte order by date
     `
 	return repositoriesUtil.GetList[BirthsByDate](r.DB, query, userId)
 }
 
 func (r *BirthRepository) TotalBySex(userId string) (*[]TotalBirthsBySex, error) {
 	query := `
-        select 
-            date_trunc('month', calf.birth_date) birth_month,
-            count(births.id) filter (where calf.sex = 'M') males,
-            count(births.id) filter (where calf.sex = 'F') females
-        from births
-            left join animals calf on births.calf_id = calf.id
-        where 
-            births.user_id = $1 
-            and calf.birth_date >= now() - interval '5 years'
-            and births.deleted_at is null
-        group by birth_month
-        order by birth_month
+        with cte as (
+			select 
+				date_trunc('month', a.birth_date) birth_month,
+				count(a.*) filter (where a.sex = 'M') males,
+				count(a.*) filter (where a.sex = 'F') females
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+				and a.birth_date is not null
+			group by birth_month
+			order by birth_month desc
+			limit 24
+		)
+		select * from cte order by birth_month
     `
 	return repositoriesUtil.GetList[TotalBirthsBySex](r.DB, query, userId)
+}
+
+func (r *BirthRepository) GetYearBySex(userId string) (*[]TotalBirthsBySex, error) {
+	query := `
+		select 
+			date_trunc('year', a.birth_date) birth_month,
+			count(a.*) filter (where a.sex = 'M') males,
+			count(a.*) filter (where a.sex = 'F') females
+		from animals a
+			join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+		where 
+			a.user_id = $1 
+			and a.deleted_at is null
+			and a.birth_date is not null
+			and a.animal_type <> 'OUTSIDE_ANIMAL'
+		group by birth_month
+		order by birth_month desc
+		limit 10
+    `
+	return repositoriesUtil.GetList[TotalBirthsBySex](r.DB, query, userId)
+}
+
+func (r *BirthRepository) GetLastBirths(userId string) (*[]BirthEntry, error) {
+	query := `
+        select 
+            concat_ws(' - ', m.ring_number, m.name) mother_name,
+            a.birth_date as calf_birth_date,
+            a.sex as calf_sex,
+            concat_ws(' - ', f.ring_number, f.name) as calf_father,
+			extract(days from a.birth_date - lag(a.birth_date) over win) as birth_interval
+        from animals a
+            join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+            left join animals f on f.id = a.father_id
+		where 
+			a.user_id = $1 
+			and a.deleted_at is null
+			and a.birth_date is not null
+			and a.animal_type <> 'OUTSIDE_ANIMAL'
+		window win as (partition by a.mother_id order by a.birth_date)
+		order by a.birth_date desc, coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0)
+		limit 15
+    `
+	return repositoriesUtil.GetList[BirthEntry](r.DB, query, userId)
 }
 
 func (r *BirthRepository) FindPage(
@@ -304,46 +519,44 @@ func (r *BirthRepository) FindPage(
 	cursor string,
 ) (*entity.Page[BirthEntry], error) {
 
-	sort = repositoriesUtil.AddCommonFields(sort)
+	sort = repositoriesUtil.AddNewFields(sort, "id")
 	sortMap := map[string]repositoriesUtil.SortField{
-		"calf_birth_date": {Field: "c.birth_date", Order: "asc"},
-		"mother_order":    {Field: "coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
-		"mother_name":     {Field: "m.name", Order: "asc"},
-		"birth_interval":  {Field: "coalesce(i.birth_interval, 0)", Order: "asc"},
-		"id":              {Field: "m.id", Order: "asc"},
-		"created_at":      {Field: "m.created_at", Order: "asc"},
+		"calf_birth_date": {Field: "cte.calf_birth_date", Order: "asc"},
+		"mother_order":    {Field: "cte.mother_order", Order: "asc"},
+		"mother_name":     {Field: "cte.name", Order: "asc"},
+		"birth_interval":  {Field: "coalesce(cte.birth_interval, 0)", Order: "asc"},
+		"id":              {Field: "cte.id", Order: "asc"},
 	}
 
 	query := `
-		with interval_cte as (
-			select
-				b.id,
-				extract(days from c.birth_date - lag(c.birth_date) over (partition by b.mother_id order by c.birth_date)) birth_interval
-			from births b join animals c on c.id = b.calf_id
+		with cte as (
+			select 
+				a.id,
+				a.mother_id,
+				concat_ws(' - ', m.ring_number, m.name) as mother_name,
+				coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0) as mother_order,
+				a.birth_date as calf_birth_date,
+				a.sex as calf_sex,
+				case 
+					when a.name is null then ''
+					else concat_ws(' - ', a.ring_number, a.name)
+				end as calf_name,
+				a.father_id as calf_father_id,
+				concat_ws(' - ', f.ring_number, f.name) calf_father,
+				extract(days from a.birth_date - lag(a.birth_date) over win) as birth_interval
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+				left join animals f on f.id = a.father_id
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null 
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+				and a.birth_date is not null
+				and a.mother_id is not null
+			window win as (partition by a.mother_id order by a.birth_date)
 		)
-        select 
-            b.id,
-            b.mother_id,
-            b.calf_id,
-            concat_ws(' - ', m.ring_number, m.name) mother_name,
-            coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0) mother_order,
-            c.birth_date calf_birth_date,
-            c.sex calf_sex,
-            case 
-                when c.name is null then ''
-                else concat_ws(' - ', c.ring_number, c.name)
-                end as calf_name,
-            c.father_id calf_father_id,
-            concat_ws(' - ', f.ring_number, f.name) calf_father,
-			i.birth_interval,
-            b.observation
-        from births b
-			join interval_cte i on i.id = b.id
-            left join animals m on m.id = b.mother_id
-            left join animals c on c.id = b.calf_id
-            left join animals f on f.id = c.father_id
+		select * from cte
     `
-	whereExpression := "where b.user_id = $1 and b.deleted_at is null "
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
 		return nil, err
@@ -354,18 +567,24 @@ func (r *BirthRepository) FindPage(
 		return nil, err
 	}
 
-	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "b", 2)
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
 	cursorExpression, nextParam, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
 	if err != nil {
 		return nil, err
 	}
 
+	var whereExpression string
+
 	if filterExpression != "" {
-		whereExpression += " and " + filterExpression
+		whereExpression = " where " + filterExpression
 	}
 
 	if cursorExpression != "" {
-		whereExpression += " and " + cursorExpression
+		if whereExpression == "" {
+			whereExpression = " where " + cursorExpression
+		} else {
+			whereExpression += " and " + cursorExpression
+		}
 	}
 
 	args := []any{userId}
@@ -379,29 +598,36 @@ func (r *BirthRepository) FindPage(
 
 func (r *BirthRepository) FindPageFooter(userId string, filter BirthEntryFilter) (*BirthFooter, error) {
 	query := `
-        with interval_cte as (
-			select 
-				b.id,
-				extract(days from c.birth_date - lag(c.birth_date) over (partition by b.mother_id order by c.birth_date)) birth_interval
-			from births b join animals c on c.id = b.calf_id
+		with animal_cte as (
+			select
+				a.mother_id,
+				a.father_id as calf_father_id,
+				a.birth_date as calf_birth_date,
+				a.sex as calf_sex,
+				extract(days from a.birth_date - lag(a.birth_date) over win) as birth_interval
+			from animals a
+				join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			where 
+				a.user_id = $1 
+				and a.deleted_at is null
+				and a.birth_date is not null
+				and a.animal_type <> 'OUTSIDE_ANIMAL'
+			window win as (partition by a.mother_id order by a.birth_date)
 		)
 		select
-			count (*) total,
-			avg(i.birth_interval) interval_average
-		from births b
-			join interval_cte i on i.id = b.id
-            left join animals m on m.id = b.mother_id
-            left join animals c on c.id = b.calf_id
-            left join animals f on f.id = c.father_id
+			count(a.*) as total,
+			avg(a.birth_interval) as interval_average
+		from animal_cte a
     `
-	whereExpression := "where b.user_id = $1 and b.deleted_at is null "
-	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "b", 2)
+	whereExpression := ""
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "a", 2)
 	if err != nil {
 		return nil, err
 	}
 
 	if filterExpression != "" {
-		whereExpression += " and " + filterExpression
+		whereExpression = " where " + filterExpression
 	}
 
 	query += whereExpression

@@ -96,16 +96,16 @@ type AnimalsAverageHist struct {
 	AnimalsNumber float64   `json:"animalsNumber" db:"animals_number"`
 }
 
+type MilkProductionEntry struct {
+	EntryDate     time.Time `json:"entryDate" db:"entry_date"`
+	TotalMilk     float64   `json:"totalMilk" db:"total_milk"`
+	AnimalsNumber float64   `json:"animalsNumber" db:"animals_number"`
+}
+
 type CardContainer struct {
 	Current float64 `json:"current"`
 	Trend   float64 `json:"trend"`
 	Hist    any     `json:"hist"`
-}
-
-type MilkProductionHist struct {
-	EntryDate     time.Time `json:"entryDate" db:"entry_date"`
-	AnimalsNumber float64   `json:"animalsNumber" db:"animals_number"`
-	TotalMilk     float64   `json:"totalMilk" db:"total_milk"`
 }
 
 type LactationGroup struct {
@@ -125,34 +125,31 @@ type LactationGroupFilter struct {
 }
 
 type AnimalsRating struct {
-	AnimalName   string  `json:"animalName" db:"animal_name"`
-	AvgTotal     float64 `json:"avgTotal" db:"avg_total"`
-	AvgPeriod    float64 `json:"avgPeriod" db:"avg_period"`
-	AvgProd      float64 `json:"avgProd" db:"avg_prod"`
-	AvgInterval  float64 `json:"avgInterval" db:"avg_interval"`
-	LacNum       int     `json:"lacNum" db:"lac_num"`
-	PeriodRate   float64 `json:"periodRate" db:"period_rate"`
-	TotalRate    float64 `json:"totalRate" db:"total_rate"`
-	ProdRate     float64 `json:"prodRate" db:"prod_rate"`
-	IntervalRate float64 `json:"intervalRate" db:"interval_rate"`
-	ZLac         float64 `json:"-" db:"z_lac"`
-	ZTotal       float64 `json:"-" db:"z_total"`
-	ZInterval    float64 `json:"-" db:"z_interval"`
+	AnimalName    string  `json:"animalName" db:"animal_name"`
+	AvgTotal      float64 `json:"avgTotal" db:"avg_total"`
+	AvgPeriod     float64 `json:"avgPeriod" db:"avg_period"`
+	AvgProd       float64 `json:"avgProd" db:"avg_prod"`
+	AvgInterval   float64 `json:"avgInterval" db:"avg_interval"`
+	LacNum        int     `json:"lacNum" db:"lac_num"`
+	PeriodRate    float64 `json:"periodRate" db:"period_rate"`
+	TotalRate     float64 `json:"totalRate" db:"total_rate"`
+	ProdRate      float64 `json:"prodRate" db:"prod_rate"`
+	IntervalRate  float64 `json:"intervalRate" db:"interval_rate"`
+	TotalScore    float64 `json:"-" db:"total_score"`
+	IntervalScore float64 `json:"-" db:"interval_score"`
 }
 
 type ParentsRating struct {
-	ParentName   string  `json:"parentName" db:"parent_name"`
-	AvgTotal     float64 `json:"avgTotal" db:"avg_total"`
-	AvgPeriod    float64 `json:"avgPeriod" db:"avg_period"`
-	AvgProd      float64 `json:"avgProd" db:"avg_prod"`
-	AvgInterval  float64 `json:"avgInterval" db:"avg_interval"`
-	AvgLac       float64 `json:"avgLac" db:"avg_lac"`
-	LacRate      float64 `json:"lacRate" db:"lac_rate"`
-	PeriodRate   float64 `json:"periodRate" db:"period_rate"`
-	TotalRate    float64 `json:"totalRate" db:"total_rate"`
-	ProdRate     float64 `json:"prodRate" db:"prod_rate"`
-	IntervalRate float64 `json:"intervalRate" db:"interval_rate"`
-	ZLac         float64 `json:"-" db:"z_lac"`
-	ZTotal       float64 `json:"-" db:"z_total"`
-	ZInterval    float64 `json:"-" db:"z_interval"`
+	ParentName     string  `json:"parentName" db:"parent_name"`
+	ChildrenNumber float64 `json:"childrenNumber" db:"children_number"`
+	AvgTotal       float64 `json:"avgTotal" db:"avg_total"`
+	AvgPeriod      float64 `json:"avgPeriod" db:"avg_period"`
+	AvgProd        float64 `json:"avgProd" db:"avg_prod"`
+	AvgInterval    float64 `json:"avgInterval" db:"avg_interval"`
+	PeriodRate     float64 `json:"periodRate" db:"period_rate"`
+	TotalRate      float64 `json:"totalRate" db:"total_rate"`
+	ProdRate       float64 `json:"prodRate" db:"prod_rate"`
+	IntervalRate   float64 `json:"intervalRate" db:"interval_rate"`
+	TotalScore     float64 `json:"-" db:"total_score"`
+	IntervalScore  float64 `json:"-" db:"interval_score"`
 }

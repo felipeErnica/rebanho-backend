@@ -57,13 +57,28 @@ func (h *InseminationHandler) GetInseminationHist(w http.ResponseWriter, r *http
 	handlersUtil.SendList(w, result)
 }
 
-func (h *InseminationHandler) GetPregnantsNumber(w http.ResponseWriter, r *http.Request) {
+func (h *InseminationHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.GetPregnantNumbers(userId)
+	result, err := h.Repository.GetAnimalsNumber(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
+func (h *InseminationHandler) GetFutureBirths(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetFutureBirths(userId)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
@@ -142,8 +157,7 @@ func (h *InseminationHandler) FindEntriesPage(w http.ResponseWriter, r *http.Req
 }
 
 func (h *InseminationHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Request) {
-	bullId := r.URL.Query().Get("bullId")
-	queryDate := r.URL.Query().Get("inseminationDate")
+	queryDate := r.PathValue("inseminationDate")
 
 	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
@@ -156,7 +170,7 @@ func (h *InseminationHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.
 		return
 	}
 
-	result, err := h.Repository.FindEntriesByGroup(userId, bullId, inseminationDate)
+	result, err := h.Repository.FindEntriesByGroup(userId, inseminationDate)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return
@@ -181,8 +195,7 @@ func (h *InseminationHandler) FindGroups(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *InseminationHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Request) {
-	bullId := r.URL.Query().Get("bullId")
-	queryDate := r.URL.Query().Get("inseminationDate")
+	queryDate := r.PathValue("inseminationDate")
 
 	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
@@ -195,22 +208,7 @@ func (h *InseminationHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *ht
 		return
 	}
 
-	result, err := h.Repository.GetEntriesByGroupFoot(userId, bullId, inseminationDate)
-	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
-		return
-	}
-
-	handlersUtil.SendEntity(w, result)
-}
-
-func (h *InseminationHandler) GetGroupsFoot(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	result, err := h.Repository.GetGroupsFoot(userId)
+	result, err := h.Repository.GetEntriesByGroupFoot(userId, inseminationDate)
 	if err != nil {
 		serverErrors.DatabaseGetError(err, w)
 		return

@@ -20,23 +20,36 @@ func NewEntryRepository(db *sqlx.DB) *InseminationRepository {
 
 func (r *InseminationRepository) GetBirthRateStats(userId string) (*BirthRateStats, error) {
 	query := `
-        with totals as (
-            select distinct
-                date_trunc('month', insemination_date) date_month,
-                count(*) over (order by date_trunc('month', insemination_date)) total,
-                count(*) filter (where status = 'SUCCESS') over (order by date_trunc('month', insemination_date)) birth_success
-            from insemination_entries 
-            where 
-                age(insemination_date) > interval '11 months'
-                and user_id = $1
-                and deleted_at is null
-            order by 1
+		with insemination_births as (
+			select
+				i.insemination_date,
+				case
+					when exists (
+						select 1 from animals a
+						where a.mother_id = i.animal_id
+						  and a.birth_date > i.insemination_date
+						  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as birth_status
+			from insemination_entries i
+			where i.user_id = $1 and i.deleted_at is null
+		),	
+        totals as (
+            select 
+                insemination_date,
+                count(*) as total,
+                count(*) filter (where birth_status = 'SUCCESS') birth_success
+            from insemination_births
+			group by 1
+            order by 1 desc
             limit 10
         )
         select 
-            date_month,
-            (birth_success::float/total::float)*100 birth_rate
+            insemination_date,
+			(birth_success::float / nullif(total, 0)::float) * 100 as birth_rate
         from totals
+		order by 1
     `
 	result, err := repositoriesUtil.GetList[BirthRateHist](r.DB, query, userId)
 	if err != nil {
@@ -70,26 +83,47 @@ func (r *InseminationRepository) GetBirthRateStats(userId string) (*BirthRateSta
 	return stats, nil
 }
 
-func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*PregnancyRateStats, error) {
+func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*CardStats, error) {
 	query := `
-        with totals as (
-            select distinct
-                date_trunc('month', insemination_date) date_month,
-                count(*) over (order by date_trunc('month', insemination_date)) total,
-                count(*) filter (where pregnancy_status = 'SUCCESS') over (order by date_trunc('month', insemination_date)) pregnancy_success
-            from insemination_entries 
-            where 
-                age(insemination_date) > interval '11 months'
-                and user_id = $1
-                and deleted_at is null
-            order by 1
-            limit 10
-        )
-        select 
-            date_month,
-            (pregnancy_success::float/total::float)*100 pregnancy_rate
-        from totals
+		with insemination_status as (
+			select
+				i.insemination_date,
+				case
+					when exists (
+						select 1 from animals a
+						where a.mother_id = i.animal_id
+						  and a.birth_date > i.insemination_date
+						  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					when exists (
+						select 1 from birth_tests t
+						where t.animal_id = i.animal_id
+						  and t.test_date > i.insemination_date
+						  and age(t.test_date, i.insemination_date) <= interval '340 days'
+						  and t.pregnancy_status = 'SUCCESS'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as pregnancy_status
+			from insemination_entries i
+			where i.user_id = $1 and i.deleted_at is null 
+		),
+		cte as (
+			select
+				t.insemination_date,
+				count(t.*) as total,
+				count(t.*) filter (where t.pregnancy_status = 'SUCCESS') as pregnancy_success
+			from insemination_status t
+			group by 1
+			order by 1 desc
+			limit 10
+		)
+		select 
+			insemination_date,
+			(pregnancy_success::float / nullif(total, 0)) * 100 as pregnancy_rate
+		from cte
+		order by 1
     `
+
 	result, err := repositoriesUtil.GetList[PregnancyRateHist](r.DB, query, userId)
 	if err != nil {
 		return nil, err
@@ -113,7 +147,56 @@ func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*Pregnanc
 		trend = util.CalculatePercentageTrend(currentRate, previousRate)
 	}
 
-	stats := &PregnancyRateStats{
+	stats := &CardStats{
+		Hist:    pregnancyRates,
+		Current: currentRate,
+		Trend:   trend,
+	}
+
+	return stats, nil
+}
+
+func (r *InseminationRepository) GetAnimalsNumber(userId string) (*CardStats, error) {
+	query := `
+		with cte as (
+			select
+				insemination_date,
+				count(*) as animals_number
+			from insemination_entries
+			where user_id = $1 and deleted_at is null
+			group by 1
+			order by 1 desc
+			limit 10
+		)
+		select *
+		from cte
+		order by 1
+    `
+
+	result, err := repositoriesUtil.GetList[AnimalsHist](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	pregnancyRates := *result
+	var currentRate, previousRate, trend float64
+
+	switch lenght := len(pregnancyRates); lenght {
+	case 0:
+		currentRate = 0
+		previousRate = 0
+		trend = 0
+	case 1:
+		currentRate = pregnancyRates[lenght-1].AnimalsNumber
+		previousRate = 0
+		trend = 0
+	default:
+		currentRate = pregnancyRates[lenght-1].AnimalsNumber
+		previousRate = pregnancyRates[lenght-2].AnimalsNumber
+		trend = util.CalculatePercentageTrend(currentRate, previousRate)
+	}
+
+	stats := &CardStats{
 		Hist:    pregnancyRates,
 		Current: currentRate,
 		Trend:   trend,
@@ -124,34 +207,89 @@ func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*Pregnanc
 
 func (r *InseminationRepository) GetInseminationStats(userId string) (*[]InseminationHist, error) {
 	query := `
-        with totals as (
+        with cte as (
+			select 
+				i.insemination_date,
+				case
+					when exists (
+						select 1 from animals a
+						where a.mother_id = i.animal_id
+						  and a.birth_date > i.insemination_date
+						  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					when exists (
+						select 1 from birth_tests t
+						where t.animal_id = i.animal_id
+						  and t.test_date > i.insemination_date
+						  and age(t.test_date, i.insemination_date) <= interval '340 days'
+						  and t.pregnancy_status = 'SUCCESS'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as pregnancy_status,
+				case
+					when exists (
+						select 1 from animals a
+						where a.mother_id = i.animal_id
+						  and a.birth_date > i.insemination_date
+						  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as birth_status
+			from insemination_entries i
+			where i.user_id = $1 and i.deleted_at is null
+		),
+        totals as (
             select
-                date_trunc('month', insemination_date) date_month,
+                insemination_date,
                 count(*) total,
-                count(*) filter (where status = 'SUCCESS') birth_success,
-                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
-            from insemination_entries 
-            where 
-                age(insemination_date) > interval '11 months'
-                and user_id = $1
-                and deleted_at is null
+                count(*) filter (where birth_status = 'SUCCESS') birth_numbers,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_numbers
+            from cte
             group by 1
-            order by 1
-            limit 60
+            order by 1 desc
+            limit 30
         )
-        select 
-            date_month,
-            total,
-            (birth_success::float/total::float)*100 birth_rate,
-            (pregnancy_success::float/total::float)*100 pregnancy_rate
-        from totals
+        select * from totals order by insemination_date
     `
 	return repositoriesUtil.GetList[InseminationHist](r.DB, query, userId)
 }
 
+func (r *InseminationRepository) GetFutureBirths(userId string) (*[]FutureBirths, error) {
+	query := `
+		with upcoming_births as (
+			select
+				t.birth_forecast,
+				i.animal_id
+			from insemination_entries i
+			join birth_tests t
+				on t.animal_id = i.animal_id
+				and t.test_date > i.insemination_date
+				and age(t.test_date, i.insemination_date) <= interval '340 days'
+				and t.pregnancy_status = 'SUCCESS'
+			where i.user_id = $1
+			  and i.deleted_at is null
+			  and not exists (
+				  select 1
+				  from animals a
+				  where a.mother_id = i.animal_id
+					and a.birth_date > i.insemination_date
+					and age(a.birth_date, i.insemination_date) <= interval '340 days'
+			  )
+			  and t.birth_forecast >= now()  
+		)
+		select
+			date_trunc('month', birth_forecast) as birth_forecast,
+			count(*) as births_number
+		from upcoming_births
+		group by 1
+		order by 1;
+	`
+	return repositoriesUtil.GetList[FutureBirths](r.DB, query, userId)
+}
+
 func (r *InseminationRepository) GetPregnantNumbers(userId string) (*PregnantsNumber, error) {
 	query := `
-        select count(*) filter (where pregnancy_status = 'SUCCESS' and status = 'STAND_BY') pregnants_number
+        select count(*) filter (where pregnancy_status = 'SUCCESS' and birth_status = 'STAND_BY') pregnants_number
         from insemination_entries 
         where user_id = $1 and  deleted_at is null
     `
@@ -160,117 +298,217 @@ func (r *InseminationRepository) GetPregnantNumbers(userId string) (*PregnantsNu
 
 func (r *InseminationRepository) GetBestBull(userId string) (*[]InseminationBulls, error) {
 	query := `
-        with totals as (
+		with status as (
+			select
+				concat_ws(' - ', b.ring_number, b.name) bull_name,
+				case
+					when exists (
+						select 1 from animals a
+						where a.mother_id = i.animal_id
+						  and a.birth_date > i.insemination_date
+						  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					when exists (
+						select 1 from birth_tests t
+						where t.animal_id = i.animal_id
+						  and t.test_date > i.insemination_date
+						  and age(t.test_date, i.insemination_date) <= interval '340 days'
+						  and t.pregnancy_status = 'SUCCESS'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as pregnancy_status,
+				case
+					when exists (
+						select 1 from animals a
+						where a.mother_id = i.animal_id
+						  and a.birth_date > i.insemination_date
+						  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as birth_status
+			from insemination_entries i
+                left join animals b on i.bull_id = b.id 
+			where i.user_id = $1 and i.deleted_at is null
+		),
+        totals as (
             select
-                bull.name bull_name,
-                count(*) total,
-                count(*) filter (where status = 'SUCCESS') birth_success,
-                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
-            from insemination_entries i
-                left join animals bull on i.bull_id = bull.id 
-            where 
-                age(i.insemination_date) > interval '11 months'
-                and i.user_id = $1 and i.deleted_at is null
+                s.bull_name,
+                count(s.*) total,
+                count(s.*) filter (where s.birth_status = 'SUCCESS') birth_success,
+                count(s.*) filter (where s.pregnancy_status = 'SUCCESS') pregnancy_success
+            from status s
             group by 1
         ),
-        cte as (
+        rates as (
             select 
                 bull_name,
                 total,
-                (birth_success::float/total::float)*100 birth_rate,
-                (pregnancy_success::float/total::float)*100 pregnancy_rate
+                (birth_success::float / nullif(total, 0)::float) * 100 birth_rate,
+                (pregnancy_success::float / nullif(total, 0)::float) * 100 pregnancy_rate
             from totals
-        ),
-        average as (
-            select 
-                avg(birth_rate) birth_rate,
-                avg(pregnancy_rate) pregnancy_rate
-            from cte
-        ) 
+        )
         select
-            cte.*,
-            ((cte.birth_rate / avg.birth_rate) - 1)*100 birth_comparison_rate,
-            ((cte.birth_rate / avg.pregnancy_rate) - 1)*100 pregnancy_comparison_rate
-        from cte, average avg
-        order by cte.birth_rate desc
+			bull_name,
+			total,
+			birth_rate,
+			pregnancy_rate,
+			(birth_rate / nullif(avg(birth_rate) over (), 0) - 1) * 100 as birth_comparison_rate,
+			(pregnancy_rate / nullif(avg(pregnancy_rate) over (), 0) - 1) * 100 as pregnancy_comparison_rate
+		from rates
+		order by birth_rate desc;
     `
 	return repositoriesUtil.GetList[InseminationBulls](r.DB, query, userId)
 }
 
 func (r *InseminationRepository) GetLastGroups(userId string) (*[]InseminationGroup, error) {
 	query := `
-        with totals_entries as (
-            select
-                count(*) totals,
-                count(*) filter (where status = 'SUCCESS') birth_success,
-                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
-            from insemination_entries
-            where user_id = $1 and deleted_at is null
-        ),
-        general_average as (
-            select 
-                (birth_success::float / totals::float)*100 average_birth_rate,
-                (pregnancy_success::float / totals::float)*100 average_pregnancy_rate 
-            from totals_entries
-        ),
-        totals_group as (
-            select 
-                insemination_date,
-                bull_id,
-                count(*) cow_number,
-                count(*) filter (where status = 'SUCCESS') birth_success,
-                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
-            from insemination_entries i
-            where user_id = $1 and deleted_at is null
-            group by insemination_date, bull_id
-        ),
-        stats as (
-            select
-                insemination_date,
-                bull_id,
-                cow_number,
-                (birth_success::float / cow_number::float)*100 birth_rate,
-                (pregnancy_success::float / cow_number::float)*100 pregnancy_rate
-            from totals_group
-        )
-        select 
-            b.name bull_name,
-            s.bull_id,
-            s.insemination_date,
-            s.cow_number,
-            s.birth_rate,
-            s.pregnancy_rate,
-            ((s.birth_rate / avg.average_birth_rate) - 1)*100 birth_comparison_rate,
-            ((s.pregnancy_rate / avg.average_pregnancy_rate) - 1)*100 pregnancy_comparison_rate
-        from general_average avg, stats s
-            left join animals b on b.id = s.bull_id
-        order by s.insemination_date desc
-        limit 10
+		with insemination_data as (
+			select
+				i.insemination_date,
+				case
+					when exists (
+						select 1 from animals a
+						where a.mother_id = i.animal_id
+						  and a.birth_date > i.insemination_date
+						  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					when exists (
+						select 1 from birth_tests t
+						where t.animal_id = i.animal_id
+						  and t.test_date > i.insemination_date
+						  and age(t.test_date, i.insemination_date) <= interval '340 days'
+						  and t.pregnancy_status = 'SUCCESS'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as pregnancy_status,
+				case
+					when exists (
+						select 1 from animals a
+						where a.mother_id = i.animal_id
+						  and a.birth_date > i.insemination_date
+						  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as birth_status
+			from insemination_entries i
+			where i.user_id = $1 and i.deleted_at is null
+		),
+		daily_stats as (
+			select
+				insemination_date,
+				count(*) as cow_number,
+				count(*) filter (where birth_status = 'SUCCESS') as birth_success,
+				count(*) filter (where pregnancy_status = 'SUCCESS') as pregnancy_success
+			from insemination_data
+			group by insemination_date
+		),
+		rates as (
+			select
+				insemination_date,
+				cow_number,
+				(birth_success::float * 100 / nullif(cow_number, 0)) as birth_rate,
+				(pregnancy_success::float * 100 / nullif(cow_number, 0)) as pregnancy_rate
+			from daily_stats
+		)
+		select
+			insemination_date,
+			cow_number,
+			birth_rate,
+			pregnancy_rate,
+			coalesce(
+				(birth_rate / nullif(lag(birth_rate) over win, 0) - 1) * 100,
+				0
+			) as birth_comparison_rate,
+			coalesce(
+				(pregnancy_rate / nullif(lag(pregnancy_rate) over win, 0) - 1) * 100,
+				0
+			) as pregnancy_comparison_rate
+		from rates
+		window win as (order by insemination_date)
+		order by insemination_date desc
+		limit 5;
     `
 	return repositoriesUtil.GetList[InseminationGroup](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetLastEntries(userId string) (*[]InseminationEntry, error) {
+func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, error) {
+
+	lastDateQuery := `
+		select max(insemination_date) max_date
+		from insemination_entries 
+		where deleted_at is null and user_id = $1
+	`
+
+	var lastDate time.Time
+	err := repositoriesUtil.GetPrimitive(r.DB, lastDateQuery, &lastDate, userId); if err != nil {
+		return nil, err
+	}
+
 	query := `
-        with last_date as (
-            select max(insemination_date) max_date
-            from insemination_entries 
-            where deleted_at is null and user_id = $1
-        )
-        select 
-            concat_ws(' - ', a.ring_number, a.name) animal_name,
-            i.insemination_date,
-            b.name bull_name,
-            i.pregnancy_status,
-            i.status,
-            i.observation
-        from last_date l, insemination_entries i
-            left join animals a on a.id = i.animal_id
-            left join animals b on b.id = i.bull_id
-        where i.user_id = $1 and i.deleted_at is null and i.insemination_date = l.max_date
-        order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
+		select 
+			i.id,
+			i.insemination_date,
+			i.bull_id,
+			concat_ws(' - ', a.ring_number, a.name) as animal_name,
+			b.name as bull_name,
+			case
+				when exists (
+					select 1 from animals a
+					where a.mother_id = i.animal_id
+					  and a.birth_date > i.insemination_date
+					  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+				) then 'SUCCESS'
+				when exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+					  and t.pregnancy_status = 'SUCCESS'
+				) then 'SUCCESS'
+				when not exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+				) and age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as pregnancy_status,
+			case
+				when exists (
+					select 1 from animals a
+					where a.mother_id = i.animal_id
+					  and a.birth_date > i.insemination_date
+					  and age(a.birth_date, i.insemination_date) <= interval '340 days'
+				) then 'SUCCESS'
+				when exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+					  and t.pregnancy_status = 'FAILED'
+				) then 'FAILED'
+				when age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as birth_status
+		from insemination_entries i
+			left join animals a on a.id = i.animal_id
+			left join animals b on b.id = i.bull_id
+		where i.user_id = $1 
+			and i.insemination_date = $2
+			and i.deleted_at is null
+		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0);
     `
-	return repositoriesUtil.GetList[InseminationEntry](r.DB, query, userId)
+	result, err := repositoriesUtil.GetList[InseminationEntry](r.DB, query, userId, lastDate)
+	if err != nil {
+		return nil, err
+	}
+	
+	lastEntry := &LastEntry{
+		InseminationDate: lastDate,
+		Entries: *result,
+	}
+
+	return lastEntry, nil
 }
 
 func (r *InseminationRepository) FindEntriesPage(
@@ -295,17 +533,52 @@ func (r *InseminationRepository) FindEntriesPage(
             i.id,
             coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
             concat_ws(' - ', a.ring_number, a.name) animal_name,
-            a.name,
             i.insemination_date,
-            b.name bull_name,
+			i.bull_id,
+            b.name as bull_name,
+			case
+				when c.birth_date is not null then 'SUCCESS'
+				when exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+					  and t.pregnancy_status = 'SUCCESS'
+				) then 'SUCCESS'
+				when not exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+				) and age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as pregnancy_status,
+			case
+				when c.birth_date is not null then 'SUCCESS'
+				when exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+					  and t.pregnancy_status = 'FAILED'
+				) then 'FAILED'
+				when age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as birth_status,
+			case 
+				when c.birth_date is null then 'Sem Cria'
+				else concat_ws(' - ', c.ring_number, coalesce(c.name, c.sex), to_char(c.birth_date, 'DD/MM/YYYY'))
+			end as child_information,
             i.observation,
-            i.pregnancy_status,
-            i.status,
-            i.created_at
+			i.created_at
         from insemination_entries i
             left join animals a on a.id = i.animal_id
             left join animals b on b.id = i.bull_id
-    `
+			left join animals c on 
+				c.mother_id = i.animal_id
+				and i.insemination_date < c.birth_date
+				and age(c.birth_date, i.insemination_date) <= interval '340 days'
+	`
 	whereExpression := "where i.user_id = $1 and i.deleted_at is null"
 	orderExpression := " order by "
 
@@ -346,143 +619,246 @@ func (r *InseminationRepository) FindEntriesPage(
 	return repositoriesUtil.GetPage[InseminationEntry](r.DB, query, sort, 100, args...)
 }
 
-func (r *InseminationRepository) FindEntriesByGroup(userId string, bullId string, inseminationDate time.Time) (*[]InseminationEntry, error) {
+func (r *InseminationRepository) FindEntriesByGroup(userId string, date time.Time) (*[]InseminationEntry, error) {
+
 	query := `
         select 
             i.id,
+			concat_ws(' - ', b.ring_number, b.name) as bull_name,
             concat_ws(' - ', a.ring_number, a.name) animal_name,
-            i.observation,
-            i.pregnancy_status,
-            i.status
+			case
+				when c.birth_date is not null then 'SUCCESS'
+				when exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+					  and t.pregnancy_status = 'SUCCESS'
+				) then 'SUCCESS'
+				when not exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+				) and age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as pregnancy_status,
+			case
+				when c.birth_date is not null then 'SUCCESS'
+				when exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+					  and t.pregnancy_status = 'FAILED'
+				) then 'FAILED'
+				when age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as birth_status,
+			case
+				when c.birth_date is null then 'Sem Cria'
+				else concat_ws(' - ', c.ring_number, coalesce(c.name, c.sex), to_char(c.birth_date, 'DD/MM/YYYY'))
+			end as child_information,
+            i.observation
         from insemination_entries i
             left join animals a on a.id = i.animal_id
-        where i.user_id = $1 and i.deleted_at is null and i.bull_id = $2 and i.insemination_date = $3
+            left join animals b on b.id = i.bull_id
+			left join animals c on 
+				c.mother_id = i.animal_id
+				and i.insemination_date < c.birth_date
+				and age(c.birth_date, i.insemination_date) <= interval '340 days'
+		where i.user_id = $1 and i.deleted_at is null and i.insemination_date = $2
         order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
-    `
-	return repositoriesUtil.GetList[InseminationEntry](r.DB, query, userId, bullId, inseminationDate)
+	`
+	return repositoriesUtil.GetList[InseminationEntry](r.DB, query, userId, date)
 }
 
-func (r *InseminationRepository) GetEntriesByGroupFoot(
-	userId string,
-	bullId string,
-	inseminationDate time.Time,
-) (*InseminationFooter, error) {
+func (r *InseminationRepository) GetEntriesByGroupFoot(userId string, date time.Time) (*InseminationFooter, error) {
 	query := `
-        with counting as (
+		with status as (
+			select
+				case
+					when exists (
+						select 1
+						from animals a
+						where a.mother_id = i.animal_id
+							and a.birth_date > i.insemination_date
+							and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					when exists (
+						select 1 from birth_tests t
+						where t.animal_id = i.animal_id
+						  and t.test_date > i.insemination_date
+						  and age(t.test_date, i.insemination_date) <= interval '340 days'
+						  and t.pregnancy_status = 'SUCCESS'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as pregnancy_status,
+				case
+					when exists (
+						select 1
+						from animals a
+						where a.mother_id = i.animal_id
+							and a.birth_date > i.insemination_date
+							and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as birth_status
+			from insemination_entries i
+			where i.user_id = $1 
+				and i.insemination_date = $2
+				and i.deleted_at is null
+		),
+        counting as (
             select 
                 count(*) totals,
-                count(*) filter (where status = 'SUCCESS') birth_success,
+                count(*) filter (where birth_status = 'SUCCESS') birth_success,
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
-            from insemination_entries
-            where user_id = $1 and deleted_at is null and bull_id = $2 and insemination_date = $3
+            from status
         )
         select 
             totals,
-            (birth_success::float / totals::float)*100 average_birth_rate,
-            (pregnancy_success::float / totals::float)*100 average_pregnancy_rate
+            (birth_success::float / nullif(totals, 0)) * 100 average_birth_rate,
+            (pregnancy_success::float / nullif(totals, 0)) * 100 average_pregnancy_rate
         from counting
     `
-	return repositoriesUtil.GetOne[InseminationFooter](r.DB, query, userId, bullId, inseminationDate)
+	return repositoriesUtil.GetOne[InseminationFooter](r.DB, query, userId, date)
 }
 
 func (r *InseminationRepository) FindGroups(userId string) (*[]InseminationGroup, error) {
 	query := `
-        with totals_entries as (
-            select
-                count(*) totals,
-                count(*) filter (where status = 'SUCCESS') birth_success,
-                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
-            from insemination_entries
-            where user_id = $1 and deleted_at is null
-        ),
-        general_average as (
-            select 
-                (birth_success::float / totals::float)*100 average_birth_rate,
-                (pregnancy_success::float / totals::float)*100 average_pregnancy_rate 
-            from totals_entries
-        ),
-        totals_group as (
+		with status as (
+			select
+				i.insemination_date,
+				case
+					when exists (
+						select 1
+						from animals a
+						where a.mother_id = i.animal_id
+							and a.birth_date > i.insemination_date
+							and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					when exists (
+						select 1 from birth_tests t
+						where t.animal_id = i.animal_id
+						  and t.test_date > i.insemination_date
+						  and age(t.test_date, i.insemination_date) <= interval '340 days'
+						  and t.pregnancy_status = 'SUCCESS'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as pregnancy_status,
+				case
+					when exists (
+						select 1
+						from animals a
+						where a.mother_id = i.animal_id
+							and a.birth_date > i.insemination_date
+							and age(a.birth_date, i.insemination_date) <= interval '340 days'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as birth_status
+			from insemination_entries i
+			where i.user_id = $1 and i.deleted_at is null
+		),
+        totals as (
             select 
                 insemination_date,
-                bull_id,
-                count(*) cow_number,
-                count(*) filter (where status = 'SUCCESS') birth_success,
+				count(*) cow_number,
+                count(*) filter (where birth_status = 'SUCCESS') birth_success,
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
-            from insemination_entries i
-            where user_id = $1 and deleted_at is null
-            group by insemination_date, bull_id
+            from status i
+            group by insemination_date
         ),
-        stats as (
+        rates as (
             select
                 insemination_date,
-                bull_id,
                 cow_number,
                 (birth_success::float / cow_number::float)*100 birth_rate,
                 (pregnancy_success::float / cow_number::float)*100 pregnancy_rate
-            from totals_group
+            from totals
         )
         select 
-            b.name bull_name,
-            s.bull_id,
             s.insemination_date,
             s.cow_number,
             s.birth_rate,
             s.pregnancy_rate,
-            ((s.birth_rate / avg.average_birth_rate) - 1)*100 birth_comparison_rate,
-            ((s.pregnancy_rate / avg.average_pregnancy_rate) - 1)*100 pregnancy_comparison_rate
-        from general_average avg, stats s
-            left join animals b on b.id = s.bull_id
+            coalesce(
+				(s.birth_rate / nullif(lag(s.birth_rate) over win, 0)) - 1, 0
+			) * 100 as birth_comparison_rate,
+            coalesce(
+				(s.pregnancy_rate / nullif(lag(s.pregnancy_rate) over win, 0)) - 1, 0
+			) * 100 as pregnancy_comparison_rate
+        from rates s
+		window win as (order by s.insemination_date)
         order by s.insemination_date desc
     `
 	return repositoriesUtil.GetList[InseminationGroup](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetGroupsFoot(userId string) (*InseminationFooter, error) {
-	query := `
-        with total_stats as (
-            select
-                count(*) totals,
-                count(*) filter (where status = 'SUCCESS') successful
-            from insemination_entries
-            where user_id = $1 and deleted_at is null
-        ),
-        general_average as (select (successful::float / totals::float)*100 average_birth_rate from total_stats),
-        grouped_insemination as (
-            select distinct bull_id, insemination_date 
-            from insemination_entries
-            where user_id = $1 and deleted_at is null    
-        )
-        select totals, average_birth_rate from general_average a, (select count(*) totals from grouped_insemination)
-    `
-	return repositoriesUtil.GetOne[InseminationFooter](r.DB, query, userId)
-}
+func (r *InseminationRepository) GetEntriesFoot(
+	userId string,
+	filter InseminationEntryFilter,
+) (*InseminationFooter, error) {
 
-func (r *InseminationRepository) GetEntriesFoot(userId string, filter InseminationEntryFilter) (*InseminationFooter, error) {
-	totalQuery := `
-        select
-            count(*) totals,
-            count(*) filter (where status = 'SUCCESS') birth_success,
-            count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
-        from insemination_entries
-        where user_id = $1 and deleted_at is null
-    `
-	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "insemination_entries", 2)
+	statusQuery := `
+		select
+			case
+				when exists (
+					select 1
+					from animals a
+					where a.mother_id = i.animal_id
+						and a.birth_date > i.insemination_date
+						and age(a.birth_date, i.insemination_date) <= interval '340 days'
+				) then 'SUCCESS'
+				when exists (
+					select 1 from birth_tests t
+					where t.animal_id = i.animal_id
+					  and t.test_date > i.insemination_date
+					  and age(t.test_date, i.insemination_date) <= interval '340 days'
+					  and t.pregnancy_status = 'SUCCESS'
+				) then 'SUCCESS'
+				else 'FAILED'
+			end as pregnancy_status,
+			case
+				when exists (
+					select 1
+					from animals a
+					where a.mother_id = i.animal_id
+						and a.birth_date > i.insemination_date
+						and age(a.birth_date, i.insemination_date) <= interval '340 days'
+				) then 'SUCCESS'
+				else 'FAILED'
+			end as birth_status
+		from insemination_entries i
+	`
+
+	whereExpression := " where i.user_id = $1 and i.deleted_at is null"
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "i", 2)
 	if err != nil {
 		return nil, err
 	}
 
 	if filterExpression != "" {
-		totalQuery += " and " + filterExpression
+		whereExpression += " and " + filterExpression
 	}
 
+	statusQuery += whereExpression
+
 	query := fmt.Sprintf(`
-        with total_stats as (%s)
+		with status as (%s),
+		totals as (
+			select 
+				count(*) totals,
+				count(*) filter (where birth_status = 'SUCCESS') birth_success,
+				count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
+			from status
+		)
         select 
             totals,
-            (birth_success::float / totals::float)*100 average_birth_rate,
-            (pregnancy_success::float / totals::float)*100 average_pregnancy_rate
-            from total_stats
-    `, totalQuery)
+            (birth_success::float / nullif(totals, 0)) * 100 average_birth_rate,
+            (pregnancy_success::float / nullif(totals, 0)) * 100 average_pregnancy_rate
+		from totals
+    `, statusQuery)
 
 	args := []any{userId}
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
@@ -494,8 +870,9 @@ func (r *InseminationRepository) GetEntriesFoot(userId string, filter Inseminati
 func (r *InseminationRepository) SearchInseminationBulls(userId string) (*[]entity.SearchEntity, error) {
 	query := `
         select distinct a.id, a.name label
-        from animals a join insemination_entries i on i.bull_id = a.id
-        where i.user_id = $1 and i.deleted_at is null and a.name ilike $2
+        from animals a 
+			join insemination_entries i on i.bull_id = a.id
+        where i.user_id = $1 and i.deleted_at is null 
         order by a.name
     `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
