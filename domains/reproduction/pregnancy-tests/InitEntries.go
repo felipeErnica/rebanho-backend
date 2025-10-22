@@ -10,6 +10,7 @@ func InitTests(app *app.App) {
 	handler := TestEntryHandler{repository}
 
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/pregnancy-rate", handler.GetPregnancyRates)
+	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/animals-number", handler.GetAnimalsNumber)
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/birth-rate", handler.GetBirthRates)
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/test-hist", handler.GetTestHist)
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/last-entries", handler.GetLastEntries)

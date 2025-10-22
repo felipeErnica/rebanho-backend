@@ -27,6 +27,21 @@ func (h *TestEntryHandler) GetPregnancyRates(w http.ResponseWriter, r *http.Requ
 	handlersUtil.SendEntity(w, result)
 }
 
+func (h *TestEntryHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetAnimalsNumber(userId)
+	if err != nil {
+		serverErrors.DatabaseGetError(err, w)
+		return
+	}
+
+	handlersUtil.SendEntity(w, result)
+}
+
 func (h *TestEntryHandler) GetBirthRates(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
