@@ -24,7 +24,7 @@ func (r *TestEntryRepository) GetPregnancyRate(userId string) (*CardStats, error
                 test_date,
                 count(*) as totals,
                 count(*) filter (where pregnancy_status = 'SUCCESS') as pregnancies
-            from birth_tests
+            from pregnancy_tests
             where deleted_at is null and user_id = $1 
 			group by 1
 			order by test_date desc
@@ -74,7 +74,7 @@ func (r *TestEntryRepository) GetAnimalsNumber(userId string) (*CardStats, error
             select 
                 test_date,
                 count(*) as totals
-            from birth_tests
+            from pregnancy_tests
             where deleted_at is null and user_id = $1 
 			group by 1
 			order by test_date desc
@@ -122,14 +122,16 @@ func (r *TestEntryRepository) GetBirthRate(userId string) (*BirthStats, error) {
             select
                 test_date,
                 count(*) as totals,
-                count(*) filter (where pregnancy_status = 'SUCCESS' and exists (
-					select 1
-					from animals a
-					where a.mother_id = t.animal_id
-						and a.birth_date > t.test_date
-						and age(a.birth_date, t.test_date) <= interval '340 days'
-				)) as births
-            from birth_tests t
+                count(*) filter (where pregnancy_status = 'SUCCESS' 
+					and exists (
+						select 1
+						from animals a
+						where a.mother_id = t.animal_id
+							and a.birth_date > t.test_date
+							and age(a.birth_date, t.test_date) <= interval '340 days'
+					)
+				) as births
+            from pregnancy_tests t
             where user_id = $1 and deleted_at is null
 			group by test_date
 			order by test_date desc
@@ -179,15 +181,17 @@ func (r *TestEntryRepository) GetPregnancyTestHist(userId string) (*[]PregnancyT
             select 
                 test_date,
                 count(*) totals,
-                count(*) filter (where pregnancy_status = 'SUCCESS' and exists (
-					select 1
-					from animals a
-					where a.mother_id = t.animal_id
-						and a.birth_date > t.test_date
-						and age(a.birth_date, t.test_date) <= interval '340 days'
-				)) as births,
+                count(*) filter (where pregnancy_status = 'SUCCESS' 
+					and exists (
+						select 1
+						from animals a
+						where a.mother_id = t.animal_id
+							and a.birth_date > t.test_date
+							and age(a.birth_date, t.test_date) <= interval '340 days'
+					)
+				) as births,
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancies
-            from birth_tests t
+            from pregnancy_tests t
             where user_id = $1 and deleted_at is null 
 			group by 1
 			order by test_date desc
@@ -207,7 +211,7 @@ func (r *TestEntryRepository) GetPregnancyTestHist(userId string) (*[]PregnancyT
 func (r *TestEntryRepository) GetLastEntries(userId string) (*LastEntries, error) {
 	dateQuery := `
 		select max(test_date) max_date
-		from birth_tests 
+		from pregnancy_tests 
 		where user_id = $1 and deleted_at is null
 	`
 
@@ -236,7 +240,7 @@ func (r *TestEntryRepository) GetLastEntries(userId string) (*LastEntries, error
 				else 'FAILED'
 			end as birth_status,
             t.observation
-        from birth_tests t
+        from pregnancy_tests t
             left join animals a on a.id = t.animal_id
         where t.user_id = $1 
 			and t.test_date = $2
@@ -263,14 +267,16 @@ func (r *TestEntryRepository) GetLastGroups(userId string) (*[]TestGroups, error
                 test_date,
                 count(*) animals_number,
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
-                count(*) filter (where pregnancy_status = 'SUCCESS' and exists (
-					select 1 
-					from animals a
-					where a.mother_id = t.animal_id
-						and a.birth_date > t.test_date
-						and age(a.birth_date, t.test_date) <= interval '340 days'
-				)) as birth_success
-            from birth_tests t
+                count(*) filter (where pregnancy_status = 'SUCCESS' 
+					and exists (
+						select 1 
+						from animals a
+						where a.mother_id = t.animal_id
+							and a.birth_date > t.test_date
+							and age(a.birth_date, t.test_date) <= interval '340 days'
+					)
+				) as birth_success
+            from pregnancy_tests t
             where deleted_at is null and user_id = $1 
             group by 1
             limit 6
@@ -306,7 +312,7 @@ func (r *TestEntryRepository) GetNextBirths(userId string) (*[]NextBirths, error
         select 
             date_trunc('month', birth_forecast) birth_forecast,
             count(*) birth_numbers
-        from birth_tests t
+        from pregnancy_tests t
         where 
             deleted_at is null 
             and user_id = $1
@@ -337,10 +343,10 @@ func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, erro
 					select 1
 					from animals a
 					where a.mother_id = bt.animal_id
-					  and a.birth_date < bt.test_date
-					  and bt.test_date - a.birth_date <= interval '340 days'
+					  and a.birth_date > bt.test_date
+					  and age(a.birth_date, bt.test_date) <= interval '340 days'
 				) as has_valid_birth
-			from birth_tests bt
+			from pregnancy_tests bt
 			where bt.deleted_at is null
 			  and bt.user_id = $1
 		),
@@ -413,10 +419,10 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
 					select 1
 					from animals a
 					where a.mother_id = bt.animal_id
-					  and a.birth_date < bt.test_date
-					  and bt.test_date - a.birth_date <= interval '340 days'
+					  and a.birth_date > bt.test_date
+					  and age(a.birth_date, bt.test_date) <= interval '340 days'
 				) as has_valid_birth
-			from birth_tests bt
+			from pregnancy_tests bt
 			where bt.deleted_at is null
 			  and bt.user_id = $1
 		),
@@ -488,7 +494,7 @@ func (r *TestEntryRepository) FindEntriesPage(
 
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
-		"animal_order":   {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"animal_order":   {Field: "t.animal_order", Order: "asc"},
 		"test_date":      {Field: "coalesce(t.test_date, '-infinity')", Order: "desc"},
 		"birth_forecast": {Field: "coalesce(t.birth_forecast, '-infinity')", Order: "desc"},
 		"name":           {Field: "coalesce(a.name, '')", Order: "asc"},
@@ -497,65 +503,49 @@ func (r *TestEntryRepository) FindEntriesPage(
 	}
 
 	query := `
-		with cte as (
+        with cte as (
 			select
-				t.*,
+				t.id,
+				t.test_date,
+				t.animal_id,
+				concat_ws(' - ', a.ring_number, a.name) animal_name,
+				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+				t.birth_forecast,
+				t.pregnancy_status,
 				case
 					when pregnancy_status = 'FAILED' then 'FAILED'
-					when exists (
-						select 1
-						from animals a
-						where a.mother_id = t.animal_id
-							and a.birth_date > t.test_date
-							and a.birth_date - t.test_date <= interval '340 days'
-					) then 'SUCCESS'
+					when child_name is not null then 'SUCCESS'
 					when age(t.test_date) < interval '340 days' then 'STAND_BY'
 					else 'FAILED'
-				end as birth_status
-			from birth_tests t
+				end as birth_status,
+				case 
+					when pregnancy_status = 'FAILED' then 'Sem Cria'
+					when child_name is not null then child_name
+					else 'Sem Cria'
+				end as child_information,
+				t.observation,
+				t.created_at
+			from pregnancy_tests t 
+				left join animals a on a.id = t.animal_id
+				left join lateral (
+					select concat_ws(
+						' - ',
+						a.ring_number,
+						coalesce(a.name, a.sex),
+						to_char(a.birth_date, 'DD/MM/YYYY')
+					) as child_name
+					from animals a
+					where a.mother_id = t.animal_id
+						and a.birth_date > t.test_date
+						and age(a.birth_date, t.test_date) <= interval '340 days'
+					limit 1
+				) c on true
+			where t.user_id = $1 and t.deleted_at is null
 		)
-        select
-            t.id,
-            t.test_date,
-            t.animal_id,
-            concat_ws(' - ', a.ring_number, a.name) animal_name,
-            coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-            t.birth_forecast,
-            t.birth_status,
-            t.pregnancy_status,
-			case
-				when birth_status = 'SUCCESS' then (
-					select
-						concat_ws( 
-							' - ', 
-							c.ring_number, 
-							coalesce(c.name, c.sex), 
-							to_char(c.birth_date, 'DD/MM/YYYY')
-						) 
-					from animals c 
-					where c.mother_id = t.animal_id
-						and c.birth_date > t.test_date
-						and age(c.birth_date, t.test_date) <= interval '340 days'
-				)
-				else 'Sem Cria'
-			end as child_information,
-            t.observation,
-            t.loss_id,
-            t.created_at
-        from cte t 
-			left join animals a on a.id = t.animal_id
+		select *
+		from cte t
     `
-	whereExpression := "where t.user_id = $1 and t.deleted_at is null"
 	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
-	if err != nil {
-		return nil, err
-	}
-
-	if filterExpression != "" {
-		whereExpression += " and " + filterExpression
-	}
-
-	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -565,9 +555,7 @@ func (r *TestEntryRepository) FindEntriesPage(
 		return nil, err
 	}
 
-	if cursorExpression != "" {
-		whereExpression += " and " + cursorExpression
-	}
+	whereExpression := repositoriesUtil.GetWhereExpression(filterExpression, cursorExpression)
 
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
@@ -578,43 +566,59 @@ func (r *TestEntryRepository) FindEntriesPage(
 	query += whereExpression + sortExpression
 	args := []any{userId}
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
 	return repositoriesUtil.GetPage[TestEntry](r.DB, query, sort, 100, args...)
 }
 
 func (r *TestEntryRepository) GetEntriesFoot(filter TestEntryFilter, userId string) (*TestEntryFoot, error) {
+
 	countQuery := `
-        select 
-            count(*) totals,
-            count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
-            count(*) filter (where pregnancy_status = 'SUCCESS' and exists (
-				select 1
-				from animals a
-				where a.mother_id = t.animal_id
-					and a.birth_date > t.test_date
-					and age(a.birth_date, t.test_date) <= interval '340 days'
-			)) as birth_success
-        from birth_tests t
+		with cte as (
+			select 
+				t.*,
+				case
+					when pregnancy_status = 'FAILED' then 'FAILED'
+					when exists (
+						select 1
+						from animals a
+						where a.mother_id = t.animal_id
+							and a.birth_date > t.test_date
+							and age(a.birth_date, t.test_date) <= interval '340 days'
+					) then 'SUCCESS'
+					when age(t.test_date) < interval '340 days' then 'STAND_BY'
+					else 'FAILED'
+				end as birth_status
+			from pregnancy_tests t
+			where t.user_id = $1 and t.deleted_at is null
+		)
+		select 
+			count(*) totals,
+			count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
+			count(*) filter (where birth_status = 'SUCCESS') as birth_success
+		from cte t
     `
-	whereExpression := "where deleted_at is null and user_id = $1"
+
 	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
 	if err != nil {
 		return nil, err
 	}
 
-	if filterExpression != "" {
-		whereExpression += " and " + filterExpression
-	}
-
+	whereExpression := repositoriesUtil.GetWhereExpression(filterExpression)
 	countQuery += whereExpression
 
 	query := fmt.Sprintf(`
         with count_query as (%s)
         select 
             totals,
-            (birth_success::float / nullif(totals, 0)) * 100 birth_rate,
-            (pregnancy_success::float / nullif(totals, 0)) * 100 pregnancy_rate
+            coalesce(birth_success::float / nullif(totals, 0), 0) * 100 birth_rate,
+            coalesce(pregnancy_success::float / nullif(totals, 0), 0) * 100 pregnancy_rate
         from count_query
     `, countQuery)
 
@@ -631,14 +635,16 @@ func (r *TestEntryRepository) FindGroups(userId string) (*[]TestGroups, error) {
                 test_date,
                 count(*) animals_number,
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
-                count(*) filter (where pregnancy_status = 'SUCCESS' and exists (
-					select 1
-					from animals a
-					where a.mother_id = t.animal_id
-						and a.birth_date > t.test_date
-						and age(a.birth_date, t.test_date) <= interval '340 days'
-				)) as birth_success
-            from birth_tests t
+                count(*) filter (where pregnancy_status = 'SUCCESS' 
+					and exists (
+						select 1
+						from animals a
+						where a.mother_id = t.animal_id
+							and a.birth_date > t.test_date
+							and age(a.birth_date, t.test_date) <= interval '340 days'
+					)
+				) as birth_success
+            from pregnancy_tests t
             where deleted_at is null and user_id = $1 
             group by 1
         ),
@@ -685,25 +691,38 @@ func (r *TestEntryRepository) FindEntriesByGroup(
             concat_ws(' - ', a.ring_number, a.name) animal_name,
             coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
             t.birth_forecast,
-            case
+            t.pregnancy_status,
+			case
 				when pregnancy_status = 'FAILED' then 'FAILED'
-				when exists (
-					select 1
-					from animals a
-					where a.mother_id = t.animal_id
-						and a.birth_date > t.test_date
-						and a.birth_date - t.test_date <= interval '340 days'
-				) then 'SUCCESS'
+				when child_name is not null then 'SUCCESS'
 				when age(t.test_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as birth_status,
-            t.pregnancy_status,
+			case 
+				when pregnancy_status = 'FAILED' then 'Sem Cria'
+				when child_name is not null then child_name
+				else 'Sem Cria'
+			end as child_information,
             t.observation,
             t.loss_id,
             t.calf_id,
             t.created_at
-        from birth_tests t left join animals a on a.id = t.animal_id
-        where t.test_date = $1 and t.user_id = $2 and t.deleted_at is null
+        from pregnancy_tests t 
+			left join animals a on a.id = t.animal_id
+			left join lateral (
+				select concat_ws(
+					' - ',
+					a.ring_number,
+					coalesce(a.name, a.sex),
+					to_char(a.birth_date, 'DD/MM/YYYY')
+				) as child_name
+				from animals a
+				where a.mother_id = t.animal_id
+					and a.birth_date > t.test_date
+					and age(a.birth_date, t.test_date) <= interval '340 days'
+				limit 1
+			) c on true
+		where t.user_id = $1 and t.test_date = $2 and t.deleted_at is null
     `
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
@@ -711,7 +730,7 @@ func (r *TestEntryRepository) FindEntriesByGroup(
 	}
 
 	query = query + " order by " + sortExpression
-	return repositoriesUtil.GetList[TestEntry](r.DB, query, testDate, userId)
+	return repositoriesUtil.GetList[TestEntry](r.DB, query, userId, testDate)
 }
 
 func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId string) (*TestEntryFoot, error) {
@@ -720,20 +739,22 @@ func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId s
             select 
                 count(*) totals,
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
-                count(*) filter (where pregnancy_status = 'SUCCESS' and exists (
-					select 1
-					from animals a
-					where a.mother_id = t.animal_id
-						and a.birth_date > t.test_date
-						and a.birth_date - t.test_date <= interval '340 days'
-				)) birth_success
-            from birth_tests t
+                count(*) filter (where pregnancy_status = 'SUCCESS' 
+					and exists (
+						select 1
+						from animals a
+						where a.mother_id = t.animal_id
+							and a.birth_date > t.test_date
+							and age(a.birth_date, t.test_date) <= interval '340 days'
+					)
+				) birth_success
+            from pregnancy_tests t
             where t.test_date = $1 and t.user_id = $2 and t.deleted_at is null
         )
         select 
             totals,
-            (birth_success::float / nullif(totals, 0)) * 100 birth_rate,
-            (pregnancy_success::float / nullif(totals, 0)) * 100 pregnancy_rate
+            coalesce(birth_success::float / nullif(totals, 0), 0) * 100 birth_rate,
+            coalesce(pregnancy_success::float / nullif(totals, 0), 0) * 100 pregnancy_rate
         from count_query
     `
 	return repositoriesUtil.GetOne[TestEntryFoot](r.DB, query, testDate, userId)

@@ -26,7 +26,7 @@ func main() {
 
 	app := app.NewApp()
     app.DBconn = db
-	app.UseGroup(
+	app.CreateMiddlewaresGroup(
 		middlewares.CorsMiddleware,
 		middlewares.AuthenticationMiddleware,
 	)

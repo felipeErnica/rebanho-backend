@@ -109,6 +109,23 @@ func AddNewFields(sort string, fields ...string) string {
 	return strings.Join(arr, ",")
 }
 
+func GetWhereExpression(expressions ...string) string {
+	validExp := []string{}
+	for _, exp := range(expressions) {
+		if exp != "" {
+			validExp = append(validExp, exp)
+		}
+	}
+
+	if len(validExp) == 0 {
+		return ""
+	}
+
+	concatExp := strings.Join(validExp, " and ")
+	whereExpression := " where " + concatExp
+	return whereExpression
+}
+
 func GetFilterExpressions(filter any, mainTable string, numParam int) (string, int, error) {
 	var buffer bytes.Buffer
 

@@ -17,7 +17,7 @@ func NewApp() *App {
 	return &App{mux: http.NewServeMux()}
 }
 
-func (a *App) UseGroup(mids ...middlewares.Middleware) {
+func (a *App) CreateMiddlewaresGroup(mids ...middlewares.Middleware) {
 	a.middlewares = append(a.middlewares, mids...)
 }
 

@@ -279,7 +279,7 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
                 join milk_entries m on 
                     l.animal_id = m.animal_id
                     and l.start_date <= m.entry_date
-                    and l.end_date >= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
                     and m.deleted_at is null
                     and m.user_id = $1
             group by 1
@@ -288,25 +288,30 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
             select
                 l.animal_id,
                 s.avg_prod,
+				l.end_date,
                 extract(days from l.end_date - l.start_date) + 1 period,
                 (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total,
-                extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval
+                extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval
             from lactations l
                 join lac_prod s using (id)
-                join animals a on 
-					a.id = l.animal_id
-					and a.death_date is null
+            where exists (
+				select 1
+				from animals a
+				where a.id = l.animal_id and a.death_date is null
+			) 
         ),
         lac_stats as (
             select
                 concat_ws(' - ', a.ring_number, a.name) animal_name,
                 count(l.*) lac_num,
-                avg(l.period) avg_period,
-                avg(l.avg_prod) avg_prod,
-                avg(l.total) avg_total,
-                avg(l.lac_interval) avg_interval
-            from lac_tbl l join animals a on a.id = l.animal_id
+                avg(l.period) filter (where l.end_date is not null) avg_period,
+                avg(l.avg_prod) filter (where l.end_date is not null) avg_prod,
+                avg(l.total) filter (where l.end_date is not null) avg_total,
+                avg(l.lac_interval) filter (where l.lac_interval is not null) avg_interval
+            from lac_tbl l 
+				join animals a on a.id = l.animal_id
             group by 1
+			having count(l.*) >= 3
         ),
         gn_stats as (
             select
@@ -314,10 +319,9 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
                 avg(avg_prod) gn_avg_prod,
                 avg(avg_total) gn_avg_total,
                 avg(avg_interval) gn_avg_interval,
-				max(avg_total) max_total,
-				max(avg_interval) max_interval
+				stddev(avg_total) dev_total,
+				stddev(avg_interval) dev_interval
             from lac_stats
-			where lac_num >= 3
         ),
 		cte as (
 			select
@@ -326,14 +330,15 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
 				((l.avg_prod / nullif(s.gn_avg_prod, 0)) - 1)*100 as prod_rate,
 				((l.avg_total / nullif(s.gn_avg_total, 0)) - 1)*100 as total_rate,
 				((l.avg_interval / nullif(s.gn_avg_interval, 0)) - 1)*100 as interval_rate,
-				l.avg_total / nullif(s.max_total, 0) as total_score,
-				1 - (l.avg_interval / nullif(s.max_interval, 0)) as interval_score
-			from lac_stats l, gn_stats s
-			where l.lac_num >= 3
+				(l.avg_total - gn_avg_total ) / nullif(s.dev_total, 0) as total_score,
+				(l.avg_interval - gn_avg_interval) / nullif(s.dev_interval, 0) as interval_score
+			from lac_stats l
+				cross join gn_stats s
 		)
 		select cte.*
 		from cte
-		order by (total_score * 0.6 + interval_score * 0.4) desc
+		where (total_score * 0.6 - interval_score * 0.4) > 0
+		order by (total_score * 0.6 - interval_score * 0.4) desc
 		limit 10
     `
 	return repositoriesUtil.GetList[AnimalsRating](r.DB, query, userId)
@@ -349,7 +354,7 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
                 join milk_entries m on 
                     l.animal_id = m.animal_id
                     and l.start_date <= m.entry_date
-                    and l.end_date >= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
                     and m.deleted_at is null
                     and m.user_id = $1
             group by 1
@@ -358,25 +363,30 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
             select
                 l.animal_id,
                 s.avg_prod,
+				l.end_date,
                 extract(days from l.end_date - l.start_date) + 1 period,
                 (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total,
-                extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval
+                extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval
             from lactations l
                 join lac_prod s using (id)
-                join animals a on 
-					a.id = l.animal_id
-					and a.death_date is null
+            where exists (
+				select 1
+				from animals a
+				where a.id = l.animal_id and a.death_date is null
+			)
         ),
         lac_stats as (
             select
                 concat_ws(' - ', a.ring_number, a.name) animal_name,
                 count(l.*) lac_num,
-                avg(l.period) avg_period,
-                avg(l.avg_prod) avg_prod,
-                avg(l.total) avg_total,
-                avg(l.lac_interval) avg_interval
-            from lac_tbl l join animals a on a.id = l.animal_id
+                avg(l.period) filter (where l.end_date is not null) avg_period,
+                avg(l.avg_prod) filter (where l.end_date is not null)avg_prod,
+                avg(l.total) filter (where l.end_date is not null) avg_total,
+                avg(l.lac_interval) filter (where l.lac_interval is not null) avg_interval
+            from lac_tbl l 
+				join animals a on a.id = l.animal_id
             group by 1
+			having count(l.*) >= 3
         ),
         gn_stats as (
             select
@@ -384,10 +394,9 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
                 avg(avg_prod) gn_avg_prod,
                 avg(avg_total) gn_avg_total,
                 avg(avg_interval) gn_avg_interval,
-				max(avg_total) max_total,
-				max(avg_interval) max_interval
+				stddev(avg_total) dev_total,
+				stddev(avg_interval) dev_interval
             from lac_stats
-			where lac_num >= 3
         ),
 		cte as (
 			select
@@ -396,14 +405,15 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
 				((l.avg_prod / nullif(s.gn_avg_prod, 0)) - 1)*100 as prod_rate,
 				((l.avg_total / nullif(s.gn_avg_total, 0)) - 1)*100 as total_rate,
 				((l.avg_interval / nullif(s.gn_avg_interval, 0)) - 1)*100 as interval_rate,
-				1 - (l.avg_total / nullif(s.max_total, 0)) as total_score,
-				l.avg_interval / nullif(s.max_interval, 0) as interval_score
-			from lac_stats l, gn_stats s
-			where l.lac_num >= 3
+				(l.avg_total - gn_avg_total ) / nullif(s.dev_total, 0) as total_score,
+				(l.avg_interval - gn_avg_interval) / nullif(s.dev_interval, 0) as interval_score
+			from lac_stats l
+				cross join gn_stats s
 		)
 		select cte.*
 		from cte
-		order by (total_score * 0.6 + interval_score * 0.4) desc
+		where (-total_score * 0.6 + interval_score * 0.4) > 0
+		order by (-total_score * 0.6 + interval_score * 0.4) desc
 		limit 10
     `
 	return repositoriesUtil.GetList[AnimalsRating](r.DB, query, userId)
@@ -419,7 +429,7 @@ func (r *LactationRepository) GetBestMothers(userId string) (*[]ParentsRating, e
                 join milk_entries m on 
                     l.animal_id = m.animal_id
                     and l.start_date <= m.entry_date
-                    and l.end_date >= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
                     and m.deleted_at is null
                     and m.user_id = $1
             group by 1
@@ -428,28 +438,28 @@ func (r *LactationRepository) GetBestMothers(userId string) (*[]ParentsRating, e
             select
                 l.animal_id,
                 s.avg_prod,
+				l.end_date,
                 extract(days from l.end_date - l.start_date) + 1 period,
                 (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total,
-                extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval
+                extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval
             from lactations l
                 join lac_stats s using (id)
-                join animals a on a.id = l.animal_id
         ),
         cte_animals as (
             select
                	l.animal_id,
                 count(l.*) lac_num,
-                avg(l.period) avg_period,
-                avg(l.avg_prod) avg_prod,
-                avg(l.total) avg_total,
-                avg(l.lac_interval) avg_interval
+                avg(l.period) filter (where l.end_date is not null) avg_period,
+                avg(l.avg_prod) filter (where l.end_date is not null) avg_prod,
+                avg(l.total) filter (where l.end_date is not null) avg_total,
+                avg(l.lac_interval) filter (where l.lac_interval is not null) avg_interval
             from lac_tbl l 
             group by 1
         ),
         mother_stats as (
             select
                 concat_ws(' - ', f.ring_number, f.name) parent_name,
-				count(animal_id) children_number,
+				count(cte.*) children_number,
                 avg(avg_period) avg_period,
                 avg(avg_prod) avg_prod,
                 avg(avg_total) avg_total,
@@ -460,6 +470,7 @@ func (r *LactationRepository) GetBestMothers(userId string) (*[]ParentsRating, e
 					f.id = a.mother_id
 					and f.death_date is null
             group by 1
+			having count(cte.*) >= 3
         ),
         gn_stats as (
             select
@@ -480,8 +491,8 @@ func (r *LactationRepository) GetBestMothers(userId string) (*[]ParentsRating, e
 				((m.avg_interval / nullif(s.avg_interval, 0)) - 1)*100 interval_rate,
 				(m.avg_total - s.avg_total) / nullif(s.dev_total, 0) as total_score,
 				(m.avg_interval - s.avg_interval) / nullif(s.dev_interval, 0) as interval_score
-			from mother_stats m, gn_stats s
-			where m.avg_interval > 0 and m.children_number >= 3
+			from mother_stats m
+				cross join gn_stats s
 		)
 		select *
 		from cte
@@ -502,7 +513,7 @@ func (r *LactationRepository) GetWorstMothers(userId string) (*[]ParentsRating, 
                 join milk_entries m on 
                     l.animal_id = m.animal_id
                     and l.start_date <= m.entry_date
-                    and l.end_date >= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
                     and m.deleted_at is null
                     and m.user_id = $1
             group by 1
@@ -511,28 +522,28 @@ func (r *LactationRepository) GetWorstMothers(userId string) (*[]ParentsRating, 
             select
                 l.animal_id,
                 s.avg_prod,
+				l.end_date,
                 extract(days from l.end_date - l.start_date) + 1 period,
                 (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total,
-                extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval
+                extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval
             from lactations l
                 join lac_stats s using (id)
-                join animals a on a.id = l.animal_id
         ),
         cte_animals as (
             select
                	l.animal_id,
                 count(l.*) lac_num,
-                avg(l.period) avg_period,
-                avg(l.avg_prod) avg_prod,
-                avg(l.total) avg_total,
-                avg(l.lac_interval) avg_interval
+                avg(l.period) filter (where l.end_date is not null) avg_period,
+                avg(l.avg_prod) filter (where l.end_date is not null) avg_prod,
+                avg(l.total) filter (where l.end_date is not null) avg_total,
+                avg(l.lac_interval) filter (where l.lac_interval is not null) avg_interval
             from lac_tbl l 
             group by 1
         ),
         mother_stats as (
             select
                 concat_ws(' - ', f.ring_number, f.name) parent_name,
-				count(animal_id) children_number,
+				count(cte.*) children_number,
                 avg(avg_period) avg_period,
                 avg(avg_prod) avg_prod,
                 avg(avg_total) avg_total,
@@ -543,6 +554,7 @@ func (r *LactationRepository) GetWorstMothers(userId string) (*[]ParentsRating, 
 					f.id = a.mother_id
 					and f.death_date is null
             group by 1
+			having count(cte.*) >= 3
         ),
         gn_stats as (
             select
@@ -563,8 +575,8 @@ func (r *LactationRepository) GetWorstMothers(userId string) (*[]ParentsRating, 
 				((m.avg_interval / nullif(s.avg_interval, 0)) - 1)*100 interval_rate,
 				(m.avg_total - s.avg_total) / nullif(s.dev_total, 0) as total_score,
 				(m.avg_interval - s.avg_interval) / nullif(s.dev_interval, 0) as interval_score
-			from mother_stats m, gn_stats s
-			where m.avg_interval > 0 and m.children_number >= 3
+			from mother_stats m
+				cross join gn_stats s
 		)
 		select *
 		from cte
@@ -585,7 +597,7 @@ func (r *LactationRepository) GetBestFathers(userId string) (*[]ParentsRating, e
                 join milk_entries m on 
                     l.animal_id = m.animal_id
                     and l.start_date <= m.entry_date
-                    and l.end_date >= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
                     and m.deleted_at is null
                     and m.user_id = $1
             group by 1
@@ -594,28 +606,28 @@ func (r *LactationRepository) GetBestFathers(userId string) (*[]ParentsRating, e
             select
                 l.animal_id,
                 s.avg_prod,
+				l.end_date,
                 extract(days from l.end_date - l.start_date) + 1 period,
                 (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total,
-                extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval
+                extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval
             from lactations l
                 join lac_stats s using (id)
-                join animals a on a.id = l.animal_id
         ),
         cte_animals as (
             select
                	l.animal_id,
                 count(l.*) lac_num,
-                avg(l.period) avg_period,
-                avg(l.avg_prod) avg_prod,
-                avg(l.total) avg_total,
-                avg(l.lac_interval) avg_interval
+                avg(l.period) filter (where l.end_date is not null) avg_period,
+                avg(l.avg_prod) filter (where l.end_date is not null) avg_prod,
+                avg(l.total) filter (where l.end_date is not null) avg_total,
+                avg(l.lac_interval) filter (where l.lac_interval is not null) avg_interval
             from lac_tbl l 
             group by 1
         ),
-        father_stats as (
+        mother_stats as (
             select
                 concat_ws(' - ', f.ring_number, f.name) parent_name,
-				count(animal_id) children_number,
+				count(cte.*) children_number,
                 avg(avg_period) avg_period,
                 avg(avg_prod) avg_prod,
                 avg(avg_total) avg_total,
@@ -626,6 +638,7 @@ func (r *LactationRepository) GetBestFathers(userId string) (*[]ParentsRating, e
 					f.id = a.father_id
 					and f.death_date is null
             group by 1
+			having count(cte.*) >= 5
         ),
         gn_stats as (
             select
@@ -639,15 +652,15 @@ func (r *LactationRepository) GetBestFathers(userId string) (*[]ParentsRating, e
         ),
 		cte as (
 			select
-				f.*,
-				((f.avg_period / nullif(s.avg_period, 0)) - 1)*100 period_rate,
-				((f.avg_prod / nullif(s.avg_prod, 0)) - 1)*100 prod_rate,
-				((f.avg_total / nullif(s.avg_total, 0)) - 1)*100 total_rate,
-				((f.avg_interval / nullif(s.avg_interval, 0)) - 1)*100 interval_rate,
-				(f.avg_total - s.avg_total) / nullif(s.dev_total, 0) as total_score,
-				(f.avg_interval - s.avg_interval) / nullif(s.dev_interval, 0) as interval_score
-			from father_stats f, gn_stats s
-			where f.avg_interval > 0 and f.children_number >= 5
+				m.*,
+				((m.avg_period / nullif(s.avg_period, 0)) - 1) * 100 period_rate,
+				((m.avg_prod / nullif(s.avg_prod, 0)) - 1) * 100 prod_rate,
+				((m.avg_total / nullif(s.avg_total, 0)) - 1) * 100 total_rate,
+				((m.avg_interval / nullif(s.avg_interval, 0)) - 1) * 100 interval_rate,
+				(m.avg_total - s.avg_total) / nullif(s.dev_total, 0) as total_score,
+				(m.avg_interval - s.avg_interval) / nullif(s.dev_interval, 0) as interval_score
+			from mother_stats m
+				cross join gn_stats s
 		)
 		select *
 		from cte
@@ -668,7 +681,7 @@ func (r *LactationRepository) GetWorstFathers(userId string) (*[]ParentsRating, 
                 join milk_entries m on 
                     l.animal_id = m.animal_id
                     and l.start_date <= m.entry_date
-                    and l.end_date >= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
                     and m.deleted_at is null
                     and m.user_id = $1
             group by 1
@@ -677,28 +690,28 @@ func (r *LactationRepository) GetWorstFathers(userId string) (*[]ParentsRating, 
             select
                 l.animal_id,
                 s.avg_prod,
+				l.end_date,
                 extract(days from l.end_date - l.start_date) + 1 period,
-                (extract(days from l.end_date - l.start_date) + 1)*s.avg_prod total,
-                extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval
+                (extract(days from l.end_date - l.start_date) + 1) * s.avg_prod total,
+                extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval
             from lactations l
                 join lac_stats s using (id)
-                join animals a on a.id = l.animal_id
         ),
         cte_animals as (
             select
                	l.animal_id,
                 count(l.*) lac_num,
-                avg(l.period) avg_period,
-                avg(l.avg_prod) avg_prod,
-                avg(l.total) avg_total,
-                avg(l.lac_interval) avg_interval
+                avg(l.period) filter (where l.end_date is not null) avg_period,
+                avg(l.avg_prod) filter (where l.end_date is not null) avg_prod,
+                avg(l.total) filter (where l.end_date is not null) avg_total,
+                avg(l.lac_interval) filter (where l.lac_interval is not null) avg_interval
             from lac_tbl l 
             group by 1
         ),
-        father_stats as (
+        mother_stats as (
             select
                 concat_ws(' - ', f.ring_number, f.name) parent_name,
-				count(animal_id) children_number,
+				count(cte.*) children_number,
                 avg(avg_period) avg_period,
                 avg(avg_prod) avg_prod,
                 avg(avg_total) avg_total,
@@ -709,6 +722,7 @@ func (r *LactationRepository) GetWorstFathers(userId string) (*[]ParentsRating, 
 					f.id = a.father_id
 					and f.death_date is null
             group by 1
+			having count(cte.*) >= 5
         ),
         gn_stats as (
             select
@@ -722,15 +736,16 @@ func (r *LactationRepository) GetWorstFathers(userId string) (*[]ParentsRating, 
         ),
 		cte as (
 			select
-				f.*,
-				((f.avg_period / nullif(s.avg_period, 0)) - 1)*100 period_rate,
-				((f.avg_prod / nullif(s.avg_prod, 0)) - 1)*100 prod_rate,
-				((f.avg_total / nullif(s.avg_total, 0)) - 1)*100 total_rate,
-				((f.avg_interval / nullif(s.avg_interval, 0)) - 1)*100 interval_rate,
-				(f.avg_total - s.avg_total) / nullif(s.dev_total, 0) as total_score,
-				(f.avg_interval - s.avg_interval) / nullif(s.dev_interval, 0) as interval_score
-			from father_stats f, gn_stats s
-			where f.avg_interval > 0 and f.children_number >= 5
+				m.*,
+				((m.avg_period / nullif(s.avg_period, 0)) - 1) * 100 period_rate,
+				((m.avg_prod / nullif(s.avg_prod, 0)) - 1) * 100 prod_rate,
+				((m.avg_total / nullif(s.avg_total, 0)) - 1) * 100 total_rate,
+				((m.avg_interval / nullif(s.avg_interval, 0)) - 1) * 100 interval_rate,
+				(m.avg_total - s.avg_total) / nullif(s.dev_total, 0) as total_score,
+				(m.avg_interval - s.avg_interval) / nullif(s.dev_interval, 0) as interval_score
+			from mother_stats m
+				cross join gn_stats s
+			where m.avg_interval > 0 
 		)
 		select *
 		from cte
@@ -753,7 +768,8 @@ func (r *LactationRepository) GetLastEntries(userId string) (*[]MilkEntry, error
 			p.name pasture_name,
 			m.entry_date,
 			m.quantity
-		from max_tbl, milk_entries m 
+		from milk_entries m 
+			cross join max_tbl
 			join animals a on a.id = m.animal_id
 			join pasture_entries pe on 
 				pe.animal_id = m.animal_id
@@ -788,7 +804,7 @@ func (r *LactationRepository) GetLastGroups(userId string) (*[]LactationGroup, e
 			coalesce(((avg_milk / lag(avg_milk) over (order by entry_date)) - 1)*100, 0) avg_rate
 		from cte
 		order by entry_date desc
-		limit 8
+		limit 5
 	`
 	return repositoriesUtil.GetList[LactationGroup](r.DB, query, userId)
 }
@@ -1042,13 +1058,13 @@ func (r *LactationRepository) FindLactationPage(
 				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
 				l.calf_id,
 				c.birth_date calf_birth_date,
-				concat_ws(' - ', to_char(c.birth_date, 'DD/MM/YYYY'), c.sex, cf.name) calf_info,
+				concat_ws(' - ', coalesce(c.name, c.sex), cf.name, to_char(c.birth_date, 'DD/MM/YYYY')) calf_info,
 				l.start_date,
 				l.end_date,
 				s.avg_prod avg_production,
 				extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1 lac_period,
 				(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1)*s.avg_prod total_production,
-				extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval,
 				s.peak,
 				l.created_at
 			from lactations l
@@ -1144,7 +1160,7 @@ func (r *LactationRepository) GetLactationPageFoot(filter LactationHistFilter, u
 				s.avg_prod avg_production,
 				extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1 lac_period,
 				(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1)*s.avg_prod total_production,
-				extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) lac_interval,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval,
 				s.peak
 			from lactations l
 				join lac_stats s using (id)
@@ -1154,11 +1170,11 @@ func (r *LactationRepository) GetLactationPageFoot(filter LactationHistFilter, u
 		lac as (%s)
 		select 
 			count(*) as total_lacs,
-			avg(coalesce(lac_interval, 0)) avg_lac_interval,
-			avg(lac_period) avg_lac_period,
-			avg(total_production) avg_total_production,
-			avg(avg_production) avg_production,
-			avg(peak) avg_peak
+			avg(lac_interval) filter (where lac_interval is not null) avg_lac_interval,
+			avg(lac_period) filter (where end_date is not null) avg_lac_period,
+			avg(total_production) filter (where end_date is not null) avg_total_production,
+			avg(avg_production) filter (where end_date is not null) avg_production,
+			avg(peak) filter (where end_date is not null) avg_peak
 		from lac
 	`, lacQuery)
 

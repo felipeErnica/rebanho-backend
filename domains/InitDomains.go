@@ -13,12 +13,12 @@ import (
 )
 
 func InitDomains(app *app.App) {
-    go animals.InitAnimal(app)
-    go auth.InitAuth(app)
-    go cors.InitCorsOptions(app)
-    go farmArea.InitFarmArea(app)
-	go lactation.InitLactationArea(app)
-    go reproduction.InitReproduction(app)
-	go weight.InitWeight(app)
-    go slaughter.InitSlaughter(app)
+    cors.InitCorsOptions(app)
+    animals.InitAnimal(app)
+    auth.InitAuth(app)
+    farmArea.InitFarmArea(app)
+	lactation.InitLactationArea(app)
+    reproduction.InitReproduction(app)
+	weight.InitWeight(app)
+    slaughter.InitSlaughter(app)
 }
