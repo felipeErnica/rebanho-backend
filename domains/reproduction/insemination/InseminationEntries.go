@@ -27,7 +27,8 @@ type InseminationEntryFilter struct {
 	MinInseminationDate *time.Time `json:"minInseminationDate" db:"insemination_date"`
 	MaxInseminationDate *time.Time `json:"maxInseminationDate" db:"insemination_date"`
 	Bulls               *[]string  `json:"bulls" db:"bull_id"`
-	BirthStatus         *string    `json:"status" db:"birth_status"`
+	BirthStatus         *string    `json:"birthStatus" db:"birth_status"`
+	PregnancyStatus     *string    `json:"pregnancyStatus" db:"pregnancy_status"`
 }
 
 type InseminationGroup struct {
