@@ -5,7 +5,7 @@ import "time"
 type MatingEntry struct {
 	Id               string     `json:"id" db:"id"`
 	AnimalId         string     `json:"animalId" db:"animal_id"`
-	AnimalNumber     string     `json:"animalNumber" db:"animal_number"`
+	AnimalOrder      string     `json:"-" db:"animal_number"`
 	AnimalName       string     `json:"animalName" db:"animal_name"`
 	MatingDate       time.Time  `json:"matingDate" db:"mating_date"`
 	BullId           string     `json:"bullId" db:"bull_id"`
@@ -53,7 +53,7 @@ type PregnancyRateEntry struct {
 
 type AnimalsNumberEntry struct {
 	MatingDate    time.Time `json:"matingDate" db:"mating_date"`
-	AnimalsNumber float64   `json:"animalsNumber" db:"animalsNumber"`
+	AnimalsNumber float64   `json:"animalsNumber" db:"animals_number"`
 }
 
 type MatingHist struct {

@@ -26,6 +26,5 @@ func InitMating(app *app.App) {
 	app.HandleFunc("GET /reproduction/mating/groups/{inseminationDate}/entries/foot", handler.GetEntriesByGroupFoot)
 
 	app.HandleFunc("GET /reproduction/mating/bulls/search", handler.SearchInseminationBulls)
-	util.LogDomainsInit("Entradas de Inseminação")
-	util.LogDomainsInit("Monta Natural - Não concluído")
+	util.LogDomainsInit("Monta Natural")
 }

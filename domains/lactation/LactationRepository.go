@@ -881,9 +881,8 @@ func (r *LactationRepository) FindEntriesPage(
 ) (*entity.Page[MilkEntry], error) {
 
 	sort = repositoriesUtil.AddCommonFields(sort)
-
 	sortMap := map[string]repositoriesUtil.SortField{
-		"animal_name":  {Field: "a.name", Order: "asc"},
+		"sort_name":    {Field: "a.name", Order: "asc"},
 		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
 		"entry_date":   {Field: "m.entry_date", Order: "desc"},
 		"quantity":     {Field: "m.quantity", Order: "asc"},
@@ -899,13 +898,14 @@ func (r *LactationRepository) FindEntriesPage(
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
 			p.name pasture_name,
 			m.entry_date,
-			m.quantity
+			m.quantity,
+			m.created_at
 		from milk_entries m
 			join animals a on a.id = m.animal_id
-			join pasture_entries pe on
+			left join pasture_entries pe on
 				pe.animal_id = m.animal_id
 				and pe.entry_date <= m.entry_date
-				and m.entry_date <= coalesce(pe.exit_date, now())
+				and coalesce(pe.exit_date, now()) >= m.entry_date
 			join pastures p on p.id = pe.pasture_id
     `
 

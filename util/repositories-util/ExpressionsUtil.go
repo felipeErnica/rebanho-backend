@@ -99,7 +99,7 @@ func GetCursorExpression(
 }
 
 func AddCommonFields(sort string) string {
-	arr := []string{sort, "id", "created_at"}
+	arr := []string{sort, "created_at", "id"}
 	return strings.Join(arr, ",")
 }
 

@@ -753,7 +753,7 @@ func (r *InseminationRepository) FindEntriesByGroup(userId string, date time.Tim
         from insemination_entries i
             left join animals a on a.id = i.animal_id
             left join animals b on b.id = i.bull_id
-			lateral join (
+			left join lateral (
 				select
 				concat_ws(
 					' - ', 

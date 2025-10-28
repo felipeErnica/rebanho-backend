@@ -237,9 +237,9 @@ func (r *MatingRepository) GetInseminationStats(userId string) (*[]MatingHist, e
         totals as (
             select
                 mating_date,
-                count(*) total,
-                count(*) filter (where birth_status = 'SUCCESS') birth_numbers,
-                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_numbers
+                count(*) animals_number,
+                count(*) filter (where birth_status = 'SUCCESS') births_number,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancies_number
             from cte
             group by 1
             order by 1 desc
@@ -530,7 +530,7 @@ func (r *MatingRepository) FindEntriesPage(
 				concat_ws(' - ', a.ring_number, a.name) animal_name,
 				i.mating_date,
 				i.bull_id,
-				b.name as bull_name,
+				b.name bull_name,
 				case
 					when c.child_name is not null then 'SUCCESS'
 					when exists (
@@ -749,7 +749,7 @@ func (r *MatingRepository) FindEntriesByGroup(userId string, date time.Time) (*[
         from natural_matings i
             left join animals a on a.id = i.animal_id
             left join animals b on b.id = i.bull_id
-			lateral join (
+			left join lateral (
 				select
 				concat_ws(
 					' - ', 
@@ -816,8 +816,8 @@ func (r *MatingRepository) GetEntriesByGroupFoot(userId string, date time.Time) 
         )
         select 
             totals,
-            (birth_success::float / nullif(totals, 0)) * 100 average_birth_rate,
-            (pregnancy_success::float / nullif(totals, 0)) * 100 average_pregnancy_rate
+            coalesce(birth_success::float / nullif(totals, 0), 0) * 100 average_birth_rate,
+            coalesce(pregnancy_success::float / nullif(totals, 0), 0) * 100 average_pregnancy_rate
         from counting
     `
 	return repositoriesUtil.GetOne[MatingFoot](r.DB, query, userId, date)
