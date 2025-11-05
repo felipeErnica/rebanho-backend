@@ -6,7 +6,8 @@ type MilkEntry struct {
 	Id          string     `json:"id" db:"id"`
 	AnimalId    string     `json:"animalId" db:"animal_id"`
 	AnimalOrder int        `json:"-" db:"animal_order"`
-	AnimalName  string     `json:"animalName" db:"sort_name"`
+	AnimalName  string     `json:"-" db:"animal_name"`
+	AnimalInfo  string     `json:"animalInfo" db:"animal_info"`
 	PastureName string     `json:"pastureName" db:"pasture_name"`
 	EntryDate   time.Time  `json:"entryDate" db:"entry_date"`
 	Quantity    float64    `json:"quantity" db:"quantity"`
@@ -34,6 +35,7 @@ type MilkEntryFoot struct {
 type LactationHist struct {
 	Id                string     `json:"id" db:"id"`
 	AnimalId          string     `json:"animalId" db:"animal_id"`
+	Name              string     `json:"-" db:"name"`
 	AnimalName        string     `json:"animalName" db:"animal_name"`
 	AnimalOrder       int        `json:"-" db:"animal_order"`
 	CalfId            *string    `json:"calfId" db:"calf_id"`

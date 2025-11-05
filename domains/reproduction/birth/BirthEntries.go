@@ -5,8 +5,9 @@ import "time"
 type BirthEntry struct {
 	Id            string     `json:"id" db:"id"`
 	MotherId      string     `json:"motherId" db:"mother_id"`
-	MotherName    string     `json:"motherName" db:"mother_name" table:"m"`
-	MotherOrder   int        `json:"motherOrder" db:"mother_order" table:"m"`
+	MotherName    string     `json:"-" db:"mother_name"`
+	MotherInfo    string     `json:"motherInfo" db:"mother_info"`
+	MotherOrder   int        `json:"motherOrder" db:"mother_order"`
 	CalfId        string     `json:"calfId" db:"calf_id"`
 	CalfName      string     `json:"calfName" db:"calf_name"`
 	CalfBirthDate time.Time  `json:"calfBirthDate" db:"calf_birth_date"`

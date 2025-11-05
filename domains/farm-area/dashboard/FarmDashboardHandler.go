@@ -3,7 +3,7 @@ package dashboard
 import (
 	"net/http"
 
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
 
@@ -18,7 +18,7 @@ func (h *FarmDashboardHandler) FarmInfo(w http.ResponseWriter, r *http.Request) 
     }
     result, err := h.Repository.GetFarmInfo(userId)
     if err != nil {
-        serverErrors.DatabaseGetError(err ,w)
+        apiError.DatabaseGetError(err ,w)
         return
     }
     handlersUtil.SendList(w, result)
@@ -32,7 +32,7 @@ func (h *FarmDashboardHandler) PastureInfo(w http.ResponseWriter, r *http.Reques
     }
     result, err := h.Repository.GetPastureInfo(userId, farmId)
     if err != nil {
-        serverErrors.DatabaseGetError(err ,w)
+        apiError.DatabaseGetError(err ,w)
         return
     }
     handlersUtil.SendList(w, result)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -764,18 +765,19 @@ func (r *LactationRepository) GetLastEntries(userId string) (*[]MilkEntry, error
 			where user_id = $1 and deleted_at is null
 		)
 		select 
-			concat_ws(' - ', a.ring_number, a.name) animal_name,
-			p.name pasture_name,
+			m.id,
+			concat_ws(' - ', a.ring_number, a.name) as animal_info,
+			coalesce(p.name, 'Sem Pasto') as pasture_name,
 			m.entry_date,
 			m.quantity
 		from milk_entries m 
 			cross join max_tbl
 			join animals a on a.id = m.animal_id
-			join pasture_entries pe on 
+			left join pasture_entries pe on 
 				pe.animal_id = m.animal_id
 				and pe.entry_date <= m.entry_date
 				and m.entry_date <= coalesce(pe.exit_date, now())
-			join pastures p on p.id = pe.pasture_id
+			left join pastures p on p.id = pe.pasture_id
 		where 
 			m.user_id = $1 
 			and m.deleted_at is null 
@@ -882,7 +884,7 @@ func (r *LactationRepository) FindEntriesPage(
 
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
-		"sort_name":    {Field: "a.name", Order: "asc"},
+		"animal_name":  {Field: "a.name", Order: "asc"},
 		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
 		"entry_date":   {Field: "m.entry_date", Order: "desc"},
 		"quantity":     {Field: "m.quantity", Order: "asc"},
@@ -894,9 +896,10 @@ func (r *LactationRepository) FindEntriesPage(
 		select
 			m.id,
 			m.animal_id,
-			concat_ws(' - ', a.ring_number, a.name) animal_name,
-			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-			p.name pasture_name,
+			a.name as animal_name,
+			concat_ws(' - ', a.ring_number, a.name) as animal_info,
+			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+			coalesce(p.name, 'Sem Pasto') as pasture_name,
 			m.entry_date,
 			m.quantity,
 			m.created_at
@@ -906,7 +909,7 @@ func (r *LactationRepository) FindEntriesPage(
 				pe.animal_id = m.animal_id
 				and pe.entry_date <= m.entry_date
 				and coalesce(pe.exit_date, now()) >= m.entry_date
-			join pastures p on p.id = pe.pasture_id
+			left join pastures p on p.id = pe.pasture_id
     `
 
 	whereExpression := "where m.user_id = $1 and m.deleted_at is null"
@@ -981,7 +984,7 @@ func (r *LactationRepository) GetGroupEntries(userId string, entryDate time.Time
 		select
 			m.id,
 			m.animal_id,
-			concat_ws(' - ', a.ring_number, a.name) animal_name,
+			concat_ws(' - ', a.ring_number, a.name) animal_info,
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
 			p.name pasture_name,
 			m.entry_date,
@@ -1022,13 +1025,13 @@ func (r *LactationRepository) FindLactationPage(
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
 		"animal_order":     {Field: "cte.animal_order", Order: "asc"},
-		"animal_name":      {Field: "cte.animal_name", Order: "asc"},
+		"name":             {Field: "cte.name", Order: "asc"},
 		"start_date":       {Field: "cte.start_date", Order: "asc"},
 		"end_date":         {Field: "coalesce(cte.end_date, '-infinity')", Order: "asc"},
-		"calf_birth_date":  {Field: "cte.calf_birth_date", Order: "asc"},
-		"avg_production":   {Field: "cte.avg_production", Order: "asc"},
+		"calf_birth_date":  {Field: "coalesce(cte.calf_birth_date, -infinity)", Order: "asc"},
+		"avg_production":   {Field: "coalesce(cte.avg_production, 0)", Order: "asc"},
 		"lac_period":       {Field: "cte.lac_period", Order: "asc"},
-		"total_production": {Field: "cte.total_production", Order: "asc"},
+		"total_production": {Field: "coalesce(cte.total_production, 0)", Order: "asc"},
 		"lac_interval":     {Field: "coalesce(cte.lac_interval, 0)", Order: "asc"},
 		"id":               {Field: "cte.id", Order: "asc"},
 		"created_at":       {Field: "cte.created_at", Order: "asc"},
@@ -1054,17 +1057,18 @@ func (r *LactationRepository) FindLactationPage(
 			select
 				l.id,
 				l.animal_id,
-				concat_ws(' - ', a.ring_number, a.name) animal_name,
-				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+				a.name,
+				concat_ws(' - ', a.ring_number, a.name) as animal_name,
+				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
 				l.calf_id,
 				c.birth_date calf_birth_date,
-				concat_ws(' - ', coalesce(c.name, c.sex), cf.name, to_char(c.birth_date, 'DD/MM/YYYY')) calf_info,
+				concat_ws(' - ', coalesce(c.name, c.sex), cf.name, to_char(c.birth_date, 'DD/MM/YYYY')) as calf_info,
 				l.start_date,
 				l.end_date,
 				s.avg_prod avg_production,
 				extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1 lac_period,
 				(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1)*s.avg_prod total_production,
-				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
 				s.peak,
 				l.created_at
 			from lactations l
@@ -1186,9 +1190,9 @@ func (r *LactationRepository) GetLactationEntries(lacId string) (*[]MilkEntry, e
 		select
 			m.id,
 			m.animal_id,
-			concat_ws(' - ', a.ring_number, a.name) animal_name,
-			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-			p.name pasture_name,
+			concat_ws(' - ', a.ring_number, a.name) as animal_info,
+			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+			coalesce(p.name, 'Sem Pasto') as pasture_name,
 			m.entry_date,
 			m.quantity
 		from milk_entries m
@@ -1198,11 +1202,11 @@ func (r *LactationRepository) GetLactationEntries(lacId string) (*[]MilkEntry, e
 				and m.entry_date >= l.start_date
 				and m.entry_date <=	coalesce(l.end_date, now())
 				and m.animal_id = l.animal_id
-			join pasture_entries pe on
+			left join pasture_entries pe on
 				pe.animal_id = m.animal_id
 				and pe.entry_date <= m.entry_date
 				and m.entry_date <= coalesce(pe.exit_date, now())
-			join pastures p on p.id = pe.pasture_id
+			left join pastures p on p.id = pe.pasture_id
 		where m.deleted_at is null
 		order by m.entry_date
     `
@@ -1224,4 +1228,177 @@ func (r *LactationRepository) GetLactationEntriesFoot(lacId string) (*MilkEntryF
 		where m.deleted_at is null
     `
 	return repositoriesUtil.GetOne[MilkEntryFoot](r.DB, query, lacId)
+}
+
+func (r *LactationRepository) SearchLactatingAnimals(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+		select
+			l.id,
+			format(
+				'%s (Data de Início: %s)',
+				concat_ws(' - ', a.ring_number, a.name), 
+				to_char(l.start_date, 'DD/MM/YYYY')
+			) as label
+		from lactations l
+			join animals a on a.id = l.animal_id
+				and a.death_date is null
+		where l.deleted_at is null
+			and l.end_date is null
+			and l.user_id = $1
+		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
+	`
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *LactationRepository) SearchDryAnimals(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+		select
+			a.id,
+			concat_ws(' - ', a.ring_number, a.name) as label
+		from animals a
+		where a.animal_type = 'DAIRY_ANIMAL'
+			and a.death_date is null
+			and not exists (
+				select 1
+				from lactation l
+				where l.animal_id = a.animal_id
+					and l.end_date is null
+			)
+			and a.deleted_at is null
+			and a.user_id = $1
+		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
+	`
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *LactationRepository) AddLactation(entry *LactationHist) *apiError.APIError {
+
+	validateErr := validateAddLacation(r.DB, *entry) 
+	if validateErr != nil {
+		return  validateErr
+	}
+
+	insertQuery := `
+		insert into lactations (animal_id, calf_id, start_date, user_id)
+		values (
+			:animal_id,
+			(
+				select id
+				from animals a
+				where a.mother_id = :animal_id
+				  and a.birth_date <= :start_date
+				  and a.death_date is not null
+				order by death_date desc
+				limit 1
+			),
+			:start_date,
+			:user_id
+		)
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, insertQuery, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+		
+	return nil
+}
+
+func (r *LactationRepository) AddMilkEntry(entry *MilkEntry, userId string) *apiError.APIError {
+
+	apiErr := ValidateMilkEntry(r.DB, *entry, userId) 
+	if apiErr != nil {
+		return apiErr
+	}
+
+	insertQuery := `
+		insert into milk_entries (animal_id, entry_date, quantity, user_id) 
+		values (:animal_id, :entry_date, :quantity, :user_id)
+	`
+
+	err := repositoriesUtil.Add(r.DB, insertQuery, userId, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+		
+	return nil
+}
+
+func (r *LactationRepository) ReplaceMilkEntry(entry *MilkEntry, userId string) *apiError.APIError {
+	query := `
+		update milk_entries 
+		set quantity = :quantity,
+			created_at = now()
+		where animal_id = :animal_id 
+			and entry_date = :entry_date
+			and user_id = :user_id
+	`
+
+	entry.UserId = userId
+	_, err := r.DB.NamedExec(query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+		
+	return nil
+}
+
+func (r *LactationRepository) UpdateMilkEntry(entry *MilkEntry) (*MilkEntry, *apiError.APIError) {
+
+	apiErr := ValidateMilkEntryUpdate(r.DB, *entry, entry.UserId)
+	if apiErr != nil {
+		return nil, apiErr
+	}
+
+	query := `
+		update milk_entries 
+		set entry_date = :entry_date,
+			quantity = :quantity
+		where id = :id and user_id = :user_id
+	`
+
+	id, err := repositoriesUtil.NamedExecReturningId(r.DB, query, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	returnQuery := `
+		select 
+			m.id,
+			m.animal_id,
+			concat_ws(' - ', a.ring_number, a.name) as animal_info,
+			coalesce(p.name, 'Sem Pasto') as pasture_name,
+			m.entry_date,
+			m.quantity
+		from milk_entries m 
+			join animals a on a.id = m.animal_id
+			left join pasture_entries pe on 
+				pe.animal_id = m.animal_id
+				and pe.entry_date <= m.entry_date
+				and m.entry_date <= coalesce(pe.exit_date, now())
+			left join pastures p on p.id = pe.pasture_id
+		where m.id = $1
+	`
+
+	response, err := repositoriesUtil.GetOne[MilkEntry](r.DB, returnQuery, id)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+		
+	return response, nil
+}
+
+func (r *LactationRepository) DeleteMilkEntry(id string) *apiError.APIError {
+	deleteQuery := `
+		update milk_entries
+		set deleted_at = now()
+		where id = $1
+	`
+
+	err := repositoriesUtil.Exec(r.DB, deleteQuery, id)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+		
+	return nil
 }

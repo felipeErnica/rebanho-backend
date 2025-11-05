@@ -3,7 +3,7 @@ package pastureEntries
 import (
 	"net/http"
 
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
 
@@ -20,7 +20,7 @@ func (h *PastureEntryHandler) SearchPastureAnimals(w http.ResponseWriter, r *htt
 
 	result, err := h.Repository.SearchPastureAnimals(pastureId, userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	handlersUtil.SendList(w, result)
@@ -43,7 +43,7 @@ func (h *PastureEntryHandler) FindByPasture(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.Repository.FindByPasture(pastureId, userId, filter, cursor, sort, order)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *PastureEntryHandler) FindByPastureTotal(w http.ResponseWriter, r *http.
 
 	result, err := h.Repository.FindByPastureTotal(pastureId, userId, filter)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -75,20 +75,8 @@ func (h *PastureEntryHandler) FindByAnimalId(w http.ResponseWriter, r *http.Requ
 	animalId := r.PathValue("animalId")
 	list, err := h.Repository.FindByAnimalId(animalId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	handlersUtil.SendList(w, list)
-}
-
-func (h *PastureEntryHandler) Add(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.Add(w, r, h.Repository)
-}
-
-func (h *PastureEntryHandler) Save(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.Update(w, r, h.Repository)
-}
-
-func (h *PastureEntryHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.Delete(w, r, h.Repository)
 }

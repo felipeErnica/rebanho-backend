@@ -438,7 +438,7 @@ func (r *MatingRepository) GetLastEntries(userId string) (*LastEntry, error) {
 			i.id,
 			i.mating_date,
 			i.bull_id,
-			concat_ws(' - ', a.ring_number, a.name) as animal_name,
+			concat_ws(' - ', a.ring_number, a.name) as animal_info,
 			b.name as bull_name,
 			case
 				when exists (
@@ -516,7 +516,7 @@ func (r *MatingRepository) FindEntriesPage(
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
 		"animal_order": {Field: "i.animal_order", Order: "asc"},
-		"name":         {Field: "i.animal_name", Order: "asc"},
+		"animal_name":  {Field: "i.animal_name", Order: "asc"},
 		"mating_date":  {Field: "coalesce(i.mating_date, '-infinity')", Order: "asc"},
 		"id":           {Field: "i.id", Order: "asc"},
 		"created_at":   {Field: "i.created_at", Order: "asc"},
@@ -527,7 +527,8 @@ func (r *MatingRepository) FindEntriesPage(
 			select 
 				i.id,
 				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-				concat_ws(' - ', a.ring_number, a.name) animal_name,
+				a.name as animal_name,
+				concat_ws(' - ', a.ring_number, a.name) animal_info,
 				i.mating_date,
 				i.bull_id,
 				b.name bull_name,
@@ -708,7 +709,7 @@ func (r *MatingRepository) FindEntriesByGroup(userId string, date time.Time) (*[
         select 
             i.id,
 			concat_ws(' - ', b.ring_number, b.name) as bull_name,
-            concat_ws(' - ', a.ring_number, a.name) animal_name,
+            concat_ws(' - ', a.ring_number, a.name) animal_info,
 			case
 				when c.child_name is not null then 'SUCCESS'
 				when exists (

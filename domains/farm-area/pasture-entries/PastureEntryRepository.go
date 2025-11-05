@@ -162,14 +162,6 @@ func (r *PastureEntryRepository) FindByAnimalId(animalId string) (*[]PastureEntr
 	return repositoriesUtil.GetList[PastureEntry](r.Db, query, animalId)
 }
 
-func (r *PastureEntryRepository) Add(newEntry *PastureEntrySave) (*PastureEntrySave, error) {
-	return repositoriesUtil.Add(r.Db, r.TableName, newEntry)
-}
-
-func (r *PastureEntryRepository) Update(entry *PastureEntrySave) error {
-	return repositoriesUtil.Update(r.Db, r.TableName, entry)
-}
-
 func (r *PastureEntryRepository) Delete(id string) error {
 	return repositoriesUtil.Delete(r.Db, r.TableName, id)
 }

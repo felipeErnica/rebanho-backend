@@ -223,7 +223,7 @@ func (r *TestEntryRepository) GetLastEntries(userId string) (*LastEntries, error
 
 	query := `
         select
-            concat_ws(' - ', a.ring_number, a.name) animal_name,
+            concat_ws(' - ', a.ring_number, a.name) animal_info,
             t.test_date,
             t.birth_forecast,
             t.pregnancy_status,
@@ -494,12 +494,12 @@ func (r *TestEntryRepository) FindEntriesPage(
 
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
-		"animal_order":   {Field: "t.animal_order", Order: "asc"},
-		"test_date":      {Field: "coalesce(t.test_date, '-infinity')", Order: "desc"},
-		"birth_forecast": {Field: "coalesce(t.birth_forecast, '-infinity')", Order: "desc"},
-		"name":           {Field: "coalesce(a.name, '')", Order: "asc"},
-		"id":             {Field: "t.id", Order: "asc"},
-		"created_at":     {Field: "t.created_at", Order: "asc"},
+		"animal_order":   {Field: "cte.animal_order", Order: "asc"},
+		"test_date":      {Field: "cte.test_date", Order: "desc"},
+		"birth_forecast": {Field: "coalesce(cte.birth_forecast, '-infinity')", Order: "desc"},
+		"animal_name":    {Field: "cte.animal_name", Order: "asc"},
+		"id":             {Field: "cte.id", Order: "asc"},
+		"created_at":     {Field: "cte.created_at", Order: "asc"},
 	}
 
 	query := `
@@ -508,7 +508,8 @@ func (r *TestEntryRepository) FindEntriesPage(
 				t.id,
 				t.test_date,
 				t.animal_id,
-				concat_ws(' - ', a.ring_number, a.name) animal_name,
+				a.name as animal_name,
+				concat_ws(' - ', a.ring_number, a.name) animal_info,
 				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
 				t.birth_forecast,
 				t.pregnancy_status,
@@ -543,9 +544,9 @@ func (r *TestEntryRepository) FindEntriesPage(
 			where t.user_id = $1 and t.deleted_at is null
 		)
 		select *
-		from cte t
+		from cte
     `
-	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "t", 2)
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
 	if err != nil {
 		return nil, err
 	}
@@ -680,7 +681,7 @@ func (r *TestEntryRepository) FindEntriesByGroup(
 	sortMap := map[string]repositoriesUtil.SortField{
 		"animal_order":   {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "desc"},
 		"birth_forecast": {Field: "coalesce(t.birth_forecast, '-infinity')", Order: "desc"},
-		"name":           {Field: "coalesce(a.name, '')", Order: "asc"},
+		"animal_name":    {Field: "a.name", Order: "asc"},
 	}
 
 	query := `
@@ -688,8 +689,8 @@ func (r *TestEntryRepository) FindEntriesByGroup(
             t.id,
             t.test_date,
             t.animal_id,
-            concat_ws(' - ', a.ring_number, a.name) animal_name,
-            coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+            concat_ws(' - ', a.ring_number, a.name) as animal_info,
+            coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
             t.birth_forecast,
             t.pregnancy_status,
 			case

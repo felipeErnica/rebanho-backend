@@ -571,8 +571,10 @@ func (r *TransferRepository) GetLastEntries(userId string) (*LastEntry, error) {
 			et.id,
 			et.transfer_date,
 			et.bull_id,
-			concat_ws(' - ', r.ring_number, r.name) as receiver_name,
-			concat_ws(' - ', d.ring_number, d.name) as donor_name,
+			r.name as receiver_name,
+			concat_ws(' - ', r.ring_number, r.name) as receiver_info,
+			d.name as donor_name,
+			concat_ws(' - ', d.ring_number, d.name) as donor_info,
 			b.name as bull_name,
 			case
 				when exists (
@@ -667,8 +669,10 @@ func (r *TransferRepository) FindEntriesPage(
 				et.donor_id,
 				coalesce(regexp_replace(r.ring_number, '[^0-9]', '', 'g')::int, 0) as receiver_order,
 				coalesce(regexp_replace(d.ring_number, '[^0-9]', '', 'g')::int, 0) as donor_order,
-				concat_ws(' - ', r.ring_number, r.name) as receiver_name,
-				concat_ws(' - ', d.ring_number, d.name) as donor_name,
+				r.name as receiver_name,
+				d.name as donor_name,
+				concat_ws(' - ', r.ring_number, r.name) as receiver_info,
+				concat_ws(' - ', d.ring_number, d.name) as donor_info,
 				et.transfer_date,
 				et.bull_id,
 				b.name as bull_name,
@@ -774,7 +778,9 @@ func (r *TransferRepository) GetEntriesFoot(
 	statusQuery := `
 		with cte as  (
 			select
-				et.*,
+				et.animal_id,
+				et.bull_id,
+				et.transfer_date,
 				case
 					when exists (
 						select 1
@@ -851,8 +857,8 @@ func (r *TransferRepository) FindEntriesByGroup(userId string, date time.Time) (
         select 
             et.id,
 			concat_ws(' - ', b.ring_number, b.name) as bull_name,
-            concat_ws(' - ', r.ring_number, r.name) receiver_name,
-            concat_ws(' - ', d.ring_number, d.name) donor_name,
+            concat_ws(' - ', r.ring_number, r.name) receiver_info,
+            concat_ws(' - ', d.ring_number, d.name) donor_info,
 			case
 				when c.child_name is not null then 'SUCCESS'
 				when exists (

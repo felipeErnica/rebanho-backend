@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
 
@@ -20,7 +20,7 @@ func (h *MatingHandler) GetBirthRateStats(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetBirthRateStats(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *MatingHandler) GetPregnancyRateStats(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.GetPregnancyRateStats(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *MatingHandler) GetInseminationHist(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.Repository.GetInseminationStats(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *MatingHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetAnimalsNumber(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *MatingHandler) GetFutureBirths(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.Repository.GetFutureBirths(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (h *MatingHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetLastGroups(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *MatingHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetLastEntries(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h *MatingHandler) GetBestBull(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetBestBull(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -149,7 +149,7 @@ func (h *MatingHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.Repository.FindEntriesPage(userId, filter, sort, order, cursor)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -161,7 +161,7 @@ func (h *MatingHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Reques
 
 	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *MatingHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.FindEntriesByGroup(userId, inseminationDate)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -187,7 +187,7 @@ func (h *MatingHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindGroups(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -199,7 +199,7 @@ func (h *MatingHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Req
 
 	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -210,7 +210,7 @@ func (h *MatingHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.GetEntriesByGroupFoot(userId, inseminationDate)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *MatingHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetEntriesFoot(userId, filter)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -243,7 +243,7 @@ func (h *MatingHandler) SearchInseminationBulls(w http.ResponseWriter, r *http.R
 
 	result, err := h.Repository.SearchMatingBulls(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 

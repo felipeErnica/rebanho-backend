@@ -7,9 +7,11 @@ type EmbryoTransfer struct {
 	ReceiverId       string     `json:"receiverId" db:"receiver_id"`
 	ReceiverOrder    int        `json:"receiverOrder" db:"receiver_order"`
 	ReceiverName     string     `json:"receiverName" db:"receiver_name"`
+	ReceiverInfo     string     `json:"-" db:"receiver_info"`
 	DonorId          string     `json:"donorId" db:"donor_id"`
 	DonorOrder       int        `json:"donorOrder" db:"donor_order"`
 	DonorName        string     `json:"donorName" db:"donor_name"`
+	DonorInfo        string     `json:"donorInfo" db:"donor_info"`
 	BullId           string     `json:"bullId" db:"bull_id"`
 	BullName         string     `json:"bullName" db:"bull_name"`
 	TransferDate     time.Time  `json:"transferDate" db:"transfer_date"`

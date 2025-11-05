@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	authConfig "github.com/felipeErnica/rebanho-backend/config/auth-config"
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/util"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 	"golang.org/x/crypto/bcrypt"
@@ -16,8 +16,7 @@ type UserHandler struct {
 }
 
 func (h *UserHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
-    userRequest := User{}
-    if !handlersUtil.DecodeEntity(w, r, &userRequest) {
+	userRequest, ok := handlersUtil.DecodeEntity(w, r, &User{}); if !ok {
         return
     }
 
@@ -46,7 +45,7 @@ func (h *UserHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
 
 	jsonToken, err := json.Marshal(authToken)
 	if err != nil {
-		serverErrors.JsonServerError(err, w)
+		apiError.JsonServerError(err, w)
 		return
 	}
 
@@ -56,8 +55,7 @@ func (h *UserHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
-    newUser := User{}
-    if !handlersUtil.DecodeEntity(w, r, &newUser) {
+	newUser, ok := handlersUtil.DecodeEntity(w, r, &User{}); if !ok {
         return
     }
 
@@ -70,5 +68,5 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newUser.Password = string(hashedPassword)
-    handlersUtil.Add(w, r, h.Repository)
+    // handlersUtil.Add(w, r, h.Repository)
 }

@@ -30,11 +30,3 @@ func (r *UserRepository) ValidateUser(user User) (*User, error) {
 	query := r.SelectQuery + "users.name = $1 and users.password = $2 and users.deleted_at is null"
 	return repositoriesUtil.GetOne[User](r.Db, query, user.Name, user.Password)
 }
-
-func (r *UserRepository) Add(user *User) (*User, error) {
-    return repositoriesUtil.Add(r.Db, r.TableName, user)
-}
-
-func (r *UserRepository) Update(user *User) error {
-    return repositoriesUtil.Update(r.Db, r.TableName, user)
-}

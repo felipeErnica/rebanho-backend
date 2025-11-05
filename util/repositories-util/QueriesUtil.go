@@ -1,7 +1,6 @@
 package repositoriesUtil
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -21,67 +20,84 @@ func Delete(db *sqlx.DB, tableName string, id string) error {
 	return err
 }
 
-/*Salva e atualiza um objeto da Tabela SQL*/
-func Update[E any](db *sqlx.DB, tableName string, object *E) error {
-	query := generateUpdateQuery(object, tableName)
+/*Executa uma consulta SQL, utilizando um objeto como parâmetro*/
+func Add[E any](db *sqlx.DB, query string, userId string, object *E) error {
+	t := reflect.ValueOf(object).Elem()
+	userField := t.FieldByName("UserId")
+	userField.SetString(userId)
+
 	_, err := db.NamedExec(query, object)
 	return err
 }
 
-/*Gera uma consulta de SQL do tipo UPDATE com base no objeto fornecido*/
-func generateUpdateQuery(object any, tableName string) string {
-	fieldNames := getFieldsNames(object)
-	var buffer bytes.Buffer
-	for _, fieldName := range fieldNames {
-		if fieldName != "id" {
-			statement := fmt.Sprintf("%[1]s = :%[1]s, ", fieldName)
-			buffer.WriteString(statement)
+/*Adiciona um objeto a Tabela SQL e retorna o id*/
+func AddReturningId[E any](db *sqlx.DB, query string, userId string, object *E) (string, error) {
+
+	query += " returning id"
+
+	t := reflect.ValueOf(object).Elem()
+	userField := t.FieldByName("UserId")
+	userField.SetString(userId)
+
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	rows, err := db.NamedQuery(query, object)
+	if err != nil {
+		return "", err
+	}
+
+	id := ""
+	if rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			return id, err
 		}
 	}
-	valuesFields := buffer.String()
-	valuesFields = strings.TrimSuffix(valuesFields, ", ")
 
-	query := fmt.Sprintf("update %s set %s where id = :id", tableName, valuesFields)
-	return query
+	return id, err
 }
 
-/*Adiciona um objeto a Tabela SQL*/
-func Add[E any](db *sqlx.DB, tableName string, object *E) (*E, error) {
-	query := generateInsertQuery(object, tableName)
-	fmt.Println(query)
-	_, err := db.NamedExec(query, object)
-	return object, err
+/*
+Executa um comando SQL,
+usando um objeto mapeado como parâmetro
+e retorna o id alterado
+*/
+func NamedExecReturningId[E any](db *sqlx.DB, query string, obj *E) (string, error) {
+	query += " returning id"
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	row, err := db.NamedQuery(query, obj)
+	if err != nil {
+		return "", err
+	}
+
+	id := ""
+	if row.Next() {
+		err := row.Scan(&id)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return id, nil
 }
 
-/*Gera uma consulta de SQL do tipo INSERT com base no objeto fornecido*/
-func generateInsertQuery(object any, tableName string) string {
-	fieldNames := getFieldsNames(object)
-
-	var buffer bytes.Buffer
-	for _, fieldName := range fieldNames {
-		buffer.WriteString(":" + fieldName + ", ")
+/*Executa um comando SQL, usando um objeto mapeado como parâmetro*/
+func NamedExec[E any](db *sqlx.DB, query string, obj *E) error {
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	_, err := db.NamedExec(query, obj)
+	if err != nil {
+		return err
 	}
-	valuesFields := buffer.String()
-	valuesFields = strings.TrimSuffix(valuesFields, ", ")
-
-	query := fmt.Sprintf("insert into %s values(%s)", tableName, valuesFields)
-	return query
+	return nil
 }
 
-/*Obtém os nomes do campo da tabela SQL relacionada ao tipo*/
-func getFieldsNames(object any) []string {
-	objectTypes := reflect.TypeOf(object)
-	if objectTypes.Kind() == reflect.Pointer {
-		objectTypes = objectTypes.Elem()
+/*Executa um comando SQL*/
+func Exec(db *sqlx.DB, query string, args ...any) error {
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	_, err := db.Exec(query, args...)
+	if err != nil {
+		return err
 	}
-
-	fieldNames := []string{}
-
-	for i := range objectTypes.NumField() {
-		field := objectTypes.Field(i)
-		fieldNames = append(fieldNames, field.Tag.Get("db"))
-	}
-	return fieldNames
+	return nil
 }
 
 /*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/

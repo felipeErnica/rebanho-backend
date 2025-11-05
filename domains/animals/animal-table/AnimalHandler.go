@@ -2,7 +2,7 @@ package animalTable
 
 import (
 	"net/http"
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
 
@@ -27,7 +27,7 @@ func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindPage(userId, cursor, sort, order, filter)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -46,7 +46,7 @@ func (h *AnimalHandler) FindByName(w http.ResponseWriter, r *http.Request) {
 	}
 	animals, err := h.Repository.FindByName(name, userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	handlersUtil.SendList(w, animals)
@@ -60,7 +60,7 @@ func (h *AnimalHandler) FindByNumber(w http.ResponseWriter, r *http.Request) {
 	}
 	animals, err := h.Repository.FindByNumber(number, userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	handlersUtil.SendList(w, animals)
@@ -70,7 +70,7 @@ func (h *AnimalHandler) FindByFatherId(w http.ResponseWriter, r *http.Request) {
 	fatherId := r.PathValue("fatherId")
 	animals, err := h.Repository.FindByFatherId(fatherId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (h *AnimalHandler) FindByMotherId(w http.ResponseWriter, r *http.Request) {
 	motherId := r.PathValue("motherId")
 	animals, err := h.Repository.FindByMotherId(motherId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (h *AnimalHandler) SearchFather(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.SearchFather(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *AnimalHandler) SearchAnimal(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.SearchAnimals(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (h *AnimalHandler) SearchMother(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.SearchMother(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *AnimalHandler) SearchBull(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.SearchBull(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -157,21 +157,9 @@ func (h *AnimalHandler) SearchDairyAnimal(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.SearchDairyAnimals(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
 	handlersUtil.SendEntity(w, result)
-}
-
-func (h *AnimalHandler) Add(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.Add(w, r, h.Repository)
-}
-
-func (h *AnimalHandler) Update(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.Update(w, r, h.Repository)
-}
-
-func (h *AnimalHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.Delete(w, r, h.Repository)
 }

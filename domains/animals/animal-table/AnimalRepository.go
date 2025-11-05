@@ -185,14 +185,6 @@ func (r *AnimalRepository) SearchBull(userId string) (*[]entity.SearchEntity, er
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) Add(create *AnimalSave) (*AnimalSave, error) {
-	return repositoriesUtil.Add(r.DB, r.TableName, create)
-}
-
-func (r *AnimalRepository) Update(animal *AnimalSave) error {
-	return repositoriesUtil.Update(r.DB, r.TableName, animal)
-}
-
 func (r *AnimalRepository) Delete(id string) error {
 	return repositoriesUtil.Delete(r.DB, r.TableName, id)
 }

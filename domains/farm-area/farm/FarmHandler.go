@@ -3,7 +3,7 @@ package farm
 import (
 	"net/http"
 
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
 
@@ -29,7 +29,7 @@ func (h *FarmHandler) FindFarmAnimals(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindFarmAnimals(farmId, userId, filter, sort, order, cursor)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	handlersUtil.SendEntity(w, result)
@@ -49,7 +49,7 @@ func (h *FarmHandler) FindFarmAnimalsTotal(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.FindFarmAnimalsTotal(farmId, userId, filter)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	handlersUtil.SendEntity(w, result)
@@ -57,8 +57,4 @@ func (h *FarmHandler) FindFarmAnimalsTotal(w http.ResponseWriter, r *http.Reques
 
 func (h *FarmHandler) SearchFarm(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchFarmById, h.Repository.SearchFarm)
-}
-
-func (h *FarmHandler) Add(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.Add(w, r, h.Repository)
 }

@@ -432,7 +432,8 @@ func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, erro
 	`
 
 	var lastDate time.Time
-	err := repositoriesUtil.GetPrimitive(r.DB, lastDateQuery, &lastDate, userId); if err != nil {
+	err := repositoriesUtil.GetPrimitive(r.DB, lastDateQuery, &lastDate, userId)
+	if err != nil {
 		return nil, err
 	}
 
@@ -441,7 +442,7 @@ func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, erro
 			i.id,
 			i.insemination_date,
 			i.bull_id,
-			concat_ws(' - ', a.ring_number, a.name) as animal_name,
+			concat_ws(' - ', a.ring_number, a.name) as animal_info,
 			b.name as bull_name,
 			case
 				when exists (
@@ -499,10 +500,10 @@ func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, erro
 	if err != nil {
 		return nil, err
 	}
-	
+
 	lastEntry := &LastEntry{
 		InseminationDate: lastDate,
-		Entries: *result,
+		Entries:          *result,
 	}
 
 	return lastEntry, nil
@@ -518,19 +519,20 @@ func (r *InseminationRepository) FindEntriesPage(
 
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
-		"animal_order":      {Field: "i.animal_order", Order: "asc"},
-		"name":              {Field: "i.animal_name", Order: "asc"},
-		"insemination_date": {Field: "coalesce(i.insemination_date, '-infinity')", Order: "asc"},
-		"id":                {Field: "i.id", Order: "asc"},
-		"created_at":        {Field: "i.created_at", Order: "asc"},
+		"animal_order":      {Field: "cte.animal_order", Order: "asc"},
+		"animal_name":       {Field: "cte.animal_name", Order: "asc"},
+		"insemination_date": {Field: "coalesce(cte.insemination_date, '-infinity')", Order: "asc"},
+		"id":                {Field: "cte.id", Order: "asc"},
+		"created_at":        {Field: "cte.created_at", Order: "asc"},
 	}
 
 	query := `
         with cte as (
 			select 
 				i.id,
+				a.name as animal_name,
 				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-				concat_ws(' - ', a.ring_number, a.name) animal_name,
+				concat_ws(' - ', a.ring_number, a.name) animal_info,
 				i.insemination_date,
 				i.bull_id,
 				b.name as bull_name,
@@ -592,11 +594,11 @@ func (r *InseminationRepository) FindEntriesPage(
 				) c on true
 			where i.user_id = $1 and i.deleted_at is null
 		)
-		select * from cte i
+		select * from cte
 	`
 	orderExpression := " order by "
 
-	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "i", 2)
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
 	if err != nil {
 		return nil, err
 	}
@@ -610,7 +612,6 @@ func (r *InseminationRepository) FindEntriesPage(
 	if err != nil {
 		return nil, err
 	}
-
 
 	whereExpression := repositoriesUtil.GetWhereExpression(filterExpression, cursorExpression)
 

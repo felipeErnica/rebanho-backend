@@ -5,7 +5,8 @@ import "time"
 type WeightEntry struct {
 	Id              string     `json:"id" db:"id"`
 	AnimalId        string     `json:"animalId" db:"animal_id"`
-	AnimalName      string     `json:"animalName" db:"animal_name"`
+	AnimalName      string     `json:"-" db:"animal_name"`
+	AnimalInfo      string     `json:"animalInfo" db:"animal_info"`
 	FatherName      *string    `json:"fatherName" db:"father_name"`
 	MotherName      *string    `json:"motherName" db:"mother_name"`
 	AnimalOrder     int        `json:"-" db:"animal_order"`

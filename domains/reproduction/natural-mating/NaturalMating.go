@@ -6,7 +6,8 @@ type MatingEntry struct {
 	Id               string     `json:"id" db:"id"`
 	AnimalId         string     `json:"animalId" db:"animal_id"`
 	AnimalOrder      string     `json:"-" db:"animal_number"`
-	AnimalName       string     `json:"animalName" db:"animal_name"`
+	AnimalName       string     `json:"-" db:"animal_name"`
+	AnimalInfo       string     `json:"animalInfo" db:"animal_info"`
 	MatingDate       time.Time  `json:"matingDate" db:"mating_date"`
 	BullId           string     `json:"bullId" db:"bull_id"`
 	BullName         string     `json:"bullName" db:"bull_name"`

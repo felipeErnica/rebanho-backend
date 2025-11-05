@@ -491,7 +491,7 @@ func (r *BirthRepository) GetYearBySex(userId string) (*[]TotalBirthsBySex, erro
 func (r *BirthRepository) GetLastBirths(userId string) (*[]BirthEntry, error) {
 	query := `
         select 
-            concat_ws(' - ', m.ring_number, m.name) mother_name,
+            concat_ws(' - ', m.ring_number, m.name) mother_info,
             a.birth_date as calf_birth_date,
             a.sex as calf_sex,
             concat_ws(' - ', f.ring_number, f.name) as calf_father,
@@ -523,7 +523,7 @@ func (r *BirthRepository) FindPage(
 	sortMap := map[string]repositoriesUtil.SortField{
 		"calf_birth_date": {Field: "cte.calf_birth_date", Order: "asc"},
 		"mother_order":    {Field: "cte.mother_order", Order: "asc"},
-		"mother_name":     {Field: "cte.name", Order: "asc"},
+		"mother_name":     {Field: "cte.mother_name", Order: "asc"},
 		"birth_interval":  {Field: "coalesce(cte.birth_interval, 0)", Order: "asc"},
 		"id":              {Field: "cte.id", Order: "asc"},
 	}
@@ -533,7 +533,8 @@ func (r *BirthRepository) FindPage(
 			select 
 				a.id,
 				a.mother_id,
-				concat_ws(' - ', m.ring_number, m.name) as mother_name,
+				m.name as mother_name,
+				concat_ws(' - ', m.ring_number, m.name) as mother_info,
 				coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0) as mother_order,
 				a.birth_date as calf_birth_date,
 				a.sex as calf_sex,

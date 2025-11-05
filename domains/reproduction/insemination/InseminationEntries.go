@@ -8,8 +8,8 @@ type InseminationEntry struct {
 	Id               string     `json:"id,omitempty" db:"id"`
 	AnimalId         string     `json:"animalId,omitempty" db:"animal_id"`
 	AnimalOrder      string     `json:"-" db:"animal_order"`
-	Name             string     `json:"-" db:"name"`
-	AnimalName       string     `json:"animalName" db:"animal_name"`
+	AnimalName       string     `json:"-" db:"animal_name"`
+	AnimalInfo       string     `json:"animalInfo" db:"animal_info"`
 	InseminationDate *time.Time `json:"inseminationDate,omitempty" db:"insemination_date"`
 	BullId           string     `json:"bullId,omitempty" db:"bull_id"`
 	BullName         string     `json:"bullName,omitempty" db:"bull_name"`

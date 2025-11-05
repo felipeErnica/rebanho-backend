@@ -6,7 +6,8 @@ type TestEntry struct {
 	Id               string     `json:"id,omitempty" db:"id"`
 	TestDate         time.Time  `json:"testDate" db:"test_date"`
 	AnimalId         string     `json:"animalId,omitempty" db:"animal_id"`
-	AnimalName       string     `json:"animalName" db:"animal_name"`
+	AnimalName       string     `json:"-" db:"animal_name"`
+	AnimalInfo       string     `json:"animalInfo" db:"animal_info"`
 	AnimalOrder      int        `json:"animalOrder,omitempty" db:"animal_order"`
 	BirthForecast    *time.Time `json:"birthForecast,omitempty" db:"birth_forecast"`
 	BirthStatus      string     `json:"birthStatus" db:"birth_status"`

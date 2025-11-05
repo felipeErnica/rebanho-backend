@@ -3,7 +3,7 @@ package pasture
 import (
 	"net/http"
 
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
 
@@ -22,7 +22,7 @@ func (h *PastureHandler) SearchPasture(w http.ResponseWriter, r *http.Request) {
 
 	list, err := h.Repository.SearchPasture(userId, farmArray)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -37,7 +37,7 @@ func (h *PastureHandler) SearchAllPastures(w http.ResponseWriter, r *http.Reques
 
 	list, err := h.Repository.SearchAllPastures(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -54,7 +54,7 @@ func (h *PastureHandler) FindAnimalsByPasture(w http.ResponseWriter, r *http.Req
 	}
 	result, err := h.Repository.FindAnimalsByPasture(pastureId, userId, sort, order)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	handlersUtil.SendList(w, result)

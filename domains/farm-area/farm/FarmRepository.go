@@ -162,7 +162,3 @@ func (r *FarmRepository) SearchFarmById(userId string, idList []string) (*[]enti
 	}
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
-
-func (r *FarmRepository) Add(farm *Farm) (*Farm, error) {
-	return repositoriesUtil.Add(r.DB, r.TableName, farm)
-}

@@ -7,7 +7,7 @@ import (
 	"github.com/felipeErnica/rebanho-backend/config/middlewares"
 	"github.com/felipeErnica/rebanho-backend/db"
 	"github.com/felipeErnica/rebanho-backend/domains"
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/util"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -33,14 +33,14 @@ func main() {
 
 	if err != nil {
 		util.LogError("Não foi possível conectar ao banco de dados!")
-		serverErrors.InitServerError(err)
+		apiError.InitServerError(err)
 	}
 
 	err = db.Ping()
 
 	if err != nil {
 		util.LogError("Não foi possível conectar ao banco de dados!")
-		serverErrors.InitServerError(err)
+		apiError.InitServerError(err)
 	}
 
     domains.InitDomains(app)
@@ -48,7 +48,7 @@ func main() {
 
 	if err != nil {
 		util.LogError("Não foi possível conectar a porta do host especificado!")
-		serverErrors.InitServerError(err)
+		apiError.InitServerError(err)
 	}
 
 	util.LogInfo("Server encerrado com sucesso!", false)

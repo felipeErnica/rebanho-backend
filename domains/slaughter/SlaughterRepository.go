@@ -22,7 +22,7 @@ func (r *SlaughterRepository) GetLastPerformance(userId string) (*PerformanceRat
 		with cte as (
 			select 
 				entry_date,
-				avg((dead_weight / nullif(weight * (1 - discount_rate), 0))*100) performance_rate
+				avg((dead_weight / nullif(weight * (1 - discount_rate), 0)) * 100) performance_rate
 			from slaughter_entries s
 			where user_id = $1 and deleted_at is null
 			group by 1
@@ -181,7 +181,7 @@ func (r *SlaughterRepository) GetRateHist(userId string) (*[]RateHist, error) {
 		with cte as (
 			select 
 				date_trunc('month', s.entry_date) entry_date,
-				avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0))*100) avg_rate
+				avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0)) * 100) avg_rate
 			from slaughter_entries s
 			where s.user_id = $1 and s.deleted_at is null
 			group by 1
@@ -197,19 +197,19 @@ func (r *SlaughterRepository) GetBestFathers(userId string) (*[]TableRatings, er
 		with cte as (
 			select 
 				a.father_id,
-				count(animal_id) animals_number,
+				count(*) animals_number,
 				avg(weight) avg_weight,
 				avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0))*100) avg_rate
 			from slaughter_entries s join animals a on a.id = s.animal_id
 			where s.user_id = $1 and s.deleted_at is null
 			group by 1
+			having count(*) >= 10
 		),
 		gn_stats as (
 			select 
 				avg(avg_weight) gn_avg_weight,
 				avg(avg_rate) gn_avg_rate
 			from cte
-			where animals_number >= 10
 		)
 		select 
 			concat_ws(' - ', a.ring_number, a.name) name,
@@ -218,8 +218,9 @@ func (r *SlaughterRepository) GetBestFathers(userId string) (*[]TableRatings, er
 			c.avg_rate,
 			((c.avg_rate / nullif(s.gn_avg_rate, 0)) - 1) * 100 rate_comparison,
 			c.animals_number
-		from gn_stats s, cte c join animals a on a.id = c.father_id
-		where animals_number >= 10
+		from cte c 
+			cross join gn_stats s
+			join animals a on a.id = c.father_id
 		order by avg_rate desc
 		limit 10
 	`
@@ -231,19 +232,19 @@ func (r *SlaughterRepository) GetBestMothers(userId string) (*[]TableRatings, er
 		with cte as (
 			select 
 				a.mother_id,
-				count(animal_id) animals_number,
+				count(*) animals_number,
 				avg(weight) avg_weight,
 				avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0))*100) avg_rate
 			from slaughter_entries s join animals a on a.id = s.animal_id
 			where s.user_id = $1 and s.deleted_at is null
 			group by 1
+			having count(*) >= 10
 		),
 		gn_stats as (
 			select 
 				avg(avg_weight) gn_avg_weight,
 				avg(avg_rate) gn_avg_rate
 			from cte
-			where animals_number >= 3
 		)
 		select 
 			concat_ws(' - ', a.ring_number, a.name) name,
@@ -252,8 +253,9 @@ func (r *SlaughterRepository) GetBestMothers(userId string) (*[]TableRatings, er
 			c.avg_rate,
 			((c.avg_rate / nullif(s.gn_avg_rate, 0)) - 1) * 100 rate_comparison,
 			c.animals_number
-		from gn_stats s, cte c join animals a on a.id = c.mother_id
-		where c.animals_number >= 3
+		from cte c 
+			cross join gn_stats s
+			join animals a on a.id = c.mother_id
 		order by c.avg_rate desc
 		limit 10
 	`
@@ -265,7 +267,7 @@ func (r *SlaughterRepository) GetBestSlaughterhouses(userId string) (*[]TableRat
 		with cte as (
 			select 
 				slaughterhouse_id,
-				count(animal_id) animals_number,
+				count(*) animals_number,
 				avg(weight) avg_weight,
 				avg((dead_weight / nullif(weight * (1 - discount_rate), 0))*100) avg_rate
 			from slaughter_entries 
@@ -334,15 +336,16 @@ func (r *SlaughterRepository) GetLastEntries(userId string) (*[]SlaughterEntry, 
 				' - ', 
 				a.ring_number, 
 				coalesce(a.name, concat_ws(' - ', a.sex, to_char(a.birth_date, 'DD/MM/YYYY')))
-			) animal_name,
+			) animal_info,
 			h.name slaughterhouse,
 			s.entry_date,
 			s.weight,
 			s.discount_rate,
-			(s.weight*(1 - s.discount_rate)) discount_weight,
+			coalesce(s.weight * (1 - s.discount_rate), 0) discount_weight,
 			s.dead_weight,
-			(s.dead_weight /(s.weight*(1 - s.discount_rate))) * 100 performance_rate
-		from last_date l, slaughter_entries s
+			coalesce(s.dead_weight / (s.weight * (1 - s.discount_rate)), 0) * 100 performance_rate
+		from slaughter_entries s
+			cross join last_date l
 			left join animals a on a.id = s.animal_id
 			join slaughterhouses h on h.id = s.slaughterhouse_id
 		where s.entry_date = l.max_date
@@ -380,12 +383,13 @@ func (r *SlaughterRepository) FindEntriesPage(
 			s.animal_id,
 			s.slaughterhouse_id,
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+			a.name as animal_name, 
 			concat_ws(
 				' - ', 
 				a.ring_number, 
 				coalesce(a.name, a.sex),
 				to_char(a.birth_date, 'DD/MM/YYYY')
-			) animal_name,
+			) as animal_info,
 			a.birth_date,
 			concat_ws(' - ', f.ring_number, f.name) father_name,
 			concat_ws(' - ', m.ring_number, m.name) mother_name,
@@ -447,10 +451,10 @@ func (r *SlaughterRepository) GetEntriesPageFoot(filter SlaughterEntryFilter, us
 
 	query := `
 		select 
-			count(s.animal_id) animals_number,
-			avg(s.weight) avg_weight,
-			avg(s.dead_weight) avg_dead_weight,
-			avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0))*100) avg_rate
+			count(s.*) as animals_number,
+			avg(s.weight) as avg_weight,
+			avg(s.dead_weight) as avg_dead_weight,
+			avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0)) * 100) as avg_rate
 		from slaughter_entries s
 	`
 
@@ -479,10 +483,10 @@ func (r *SlaughterRepository) FindGroups(order string, userId string) (*[]Slaugh
 			select 
 				entry_date,
 				slaughterhouse_id,
-				count(animal_id) animals_number,
-				avg(weight) avg_weight,
-				avg(dead_weight) avg_dead_weight,
-				avg((dead_weight / nullif(weight * (1 - discount_rate), 0))*100) avg_rate
+				count(*) as animals_number,
+				avg(weight) as avg_weight,
+				avg(dead_weight) as avg_dead_weight,
+				avg((dead_weight / nullif(weight * (1 - discount_rate), 0)) * 100) as avg_rate
 			from slaughter_entries 
 			where user_id = $1 and deleted_at is null
 			group by 1, 2
@@ -492,19 +496,10 @@ func (r *SlaughterRepository) FindGroups(order string, userId string) (*[]Slaugh
 			s.name slaughterhouse,
 			c.avg_weight,
 			c.avg_dead_weight,
-			coalesce(
-				((c.avg_weight / lag(nullif(c.avg_weight, 0)) over win) - 1) * 100,
-				0
-			) as weight_variation,
-			coalesce(
-				((c.avg_dead_weight / lag(nullif(c.avg_dead_weight, 0)) over win) - 1) * 100,
-				0
-			) as dead_weight_variation,
+			coalesce((c.avg_weight / lag(nullif(c.avg_weight, 0)) over win) - 1, 0) * 100 as weight_variation, 
+			coalesce((c.avg_dead_weight / lag(nullif(c.avg_dead_weight, 0)) over win) - 1, 0) * 100 as dead_weight_variation,
 			c.avg_rate,
-			coalesce(
-				((c.avg_rate / lag(nullif(c.avg_rate, 0)) over win) - 1) * 100,
-				0
-			) as rate_variation,
+			coalesce((c.avg_rate / lag(nullif(c.avg_rate, 0)) over win) - 1, 0) * 100 as rate_variation,
 			c.animals_number
 		from cte c 
 			join slaughterhouses s on s.id = c.slaughterhouse_id
@@ -528,7 +523,7 @@ func (r *SlaughterRepository) FindEntriesByDate(
 		"birth_date":       {Field: "coalesce(a.birth_date, '-infinity')", Order: "desc"},
 		"weight":           {Field: "s.weight", Order: "asc"},
 		"dead_weight":      {Field: "s.dead_weight", Order: "asc"},
-		"performance_rate": {Field: "coalesce(s.dead_weight / nullif(s.weight*(1 - s.discount_rate), 0) * 100, 0)", Order: "asc"},
+		"performance_rate": {Field: "coalesce(s.dead_weight / nullif(s.weight * (1 - s.discount_rate), 0), 0) * 100", Order: "asc"},
 	}
 
 	query := `
@@ -536,11 +531,12 @@ func (r *SlaughterRepository) FindEntriesByDate(
 			s.id,
 			s.animal_id,
 			s.slaughterhouse_id,
+			a.name as animal_name,
 			concat_ws(
 				' - ', 
 				a.ring_number, 
 				coalesce(a.name, concat_ws(' - ', a.sex, to_char(a.birth_date, 'DD/MM/YYYY'))) 
-			) animal_name,
+			) animal_info,
 			concat_ws(' - ', m.ring_number, m.name) as mother_name,
 			concat_ws(' - ', f.ring_number, f.name) as father_name,
 			s.weight,
@@ -574,7 +570,7 @@ func (r *SlaughterRepository) GetEntriesByDateFoot(entryDate time.Time, userId s
 			count(s.animal_id) animals_number,
 			avg(s.weight) avg_weight,
 			avg(s.dead_weight) avg_dead_weight,
-			avg(coalesce(s.dead_weight / nullif(s.weight * (1 - s.discount_rate), 0) * 100)) avg_rate
+			avg(coalesce(s.dead_weight / nullif(s.weight * (1 - s.discount_rate), 0), 0) * 100) avg_rate
 		from slaughter_entries s 
 		where s.entry_date = $1
 			and s.user_id = $2 

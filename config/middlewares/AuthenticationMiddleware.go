@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	authConfig "github.com/felipeErnica/rebanho-backend/config/auth-config"
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 )
 
 func AuthenticationMiddleware(handler http.HandlerFunc) http.HandlerFunc {
@@ -12,7 +12,7 @@ func AuthenticationMiddleware(handler http.HandlerFunc) http.HandlerFunc {
         authorizationString:=r.Header.Get("Authorization")
         userId, err:= authConfig.VerifyToken(authorizationString)
         if err != nil {
-            serverErrors.AuthenticationError(w, err)
+            apiError.AuthenticationError(w, err)
             return
         }
         r = authConfig.RegisterUserId(r, userId)

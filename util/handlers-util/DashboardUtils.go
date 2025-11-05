@@ -3,7 +3,7 @@ package handlersUtil
 import (
 	"net/http"
 
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 )
 
 /*
@@ -25,7 +25,7 @@ func SendTotalEntity[E any, F any](
 	}
 	total, err := totalFunc(userId, filter)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	SendEntity(w, total)
@@ -50,7 +50,7 @@ func SendGroupedList[E any, F any](
 	}
 	obj, err := groupBy(userId, filter)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 	SendList(w, obj)

@@ -348,7 +348,7 @@ func (r *WeightRepository) FindEntriesPage(
 	sortMap := map[string]repositoriesUtil.SortField{
 		"entry_date":   {Field: "w.entry_date", Order: "desc"},
 		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
-		"animal_name":  {Field: "a.name", Order: "asc"},
+		"animal_name":  {Field: "coalesce(a.name, '')", Order: "asc"},
 		"birth_date":   {Field: "coalesce(a.birth_date, '-infinity')", Order: "asc"},
 		"id":           {Field: "w.id", Order: "asc"},
 		"created_at":   {Field: "w.created_at", Order: "asc"},
@@ -372,15 +372,17 @@ func (r *WeightRepository) FindEntriesPage(
 		select
 			w.id,
 			w.animal_id,
-			concat_ws(' - ',
+			coalesce(a.name, '') as animal_name,
+			concat_ws(
+				' - ',
 				a.ring_number,
 				coalesce(a.name, a.sex),
 				to_char(a.birth_date, 'DD/MM/YYYY')
-			) as animal_name,
+			) as animal_info,
 			a.birth_date,
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
-			concat_ws(' - ', f.ring_number, f.name) father_name,
-			concat_ws(' - ', m.ring_number, m.name) mother_name,
+			concat_ws(' - ', f.ring_number, f.name) as father_name,
+			concat_ws(' - ', m.ring_number, m.name) as mother_name,
 			s.weight_gain,
 			s.weight_variation,
 			w.entry_date,
@@ -464,9 +466,9 @@ func (r *WeightRepository) GetEntriesPageFoot(filter WeightFilter, userId string
 	query = fmt.Sprintf(`
 		with cte as (%s)
 		select
-			coalesce(count(animal_id), 0) animals_num,
-			coalesce(avg(weight), 0) avg_weight,
-			coalesce(avg(weight_gain), 0) avg_gain
+			count(*) as animals_num,
+			avg(weight) as avg_weight,
+			avg(weight_gain) as avg_gain
 		from cte
 	`, query)
 
@@ -545,12 +547,13 @@ func (r *WeightRepository) FindEntriesByDate(
 		select 
 			w.id,
 			w.animal_id,
+			coalesce(a.name, '') as animal_name,
 			concat_ws(
 				' - ', 
 				a.ring_number, 
 				coalesce(a.name, a.sex), 
 				to_char(a.birth_date, 'DD/MM/YYYY')
-			) as animal_name,
+			) as animal_info,
 			a.birth_date,
 			concat_ws(' - ', f.ring_number, f.name) father_name,
 			concat_ws(' - ', m.ring_number, m.name) mother_name,

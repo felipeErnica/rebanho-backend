@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/felipeErnica/rebanho-backend/serverErrors"
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
 
@@ -19,7 +19,7 @@ func (h *WeightHandler) GetWeightGainHist(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetWeightGainHist(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -33,7 +33,7 @@ func (h *WeightHandler) GetWeightHist(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetWeightHist(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (h *WeightHandler) GetLastWeightGain(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetLastWeightGain(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -61,7 +61,7 @@ func (h *WeightHandler) GetLastWeight(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetLastWeight(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *WeightHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetLastEntries(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -89,7 +89,7 @@ func (h *WeightHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetLastGroups(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *WeightHandler) GetBestMothers(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetBestMothers(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (h *WeightHandler) GetBestFathers(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetBestFathers(userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *WeightHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.Repository.FindEntriesPage(sort, order, cursor, filter, userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *WeightHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetEntriesPageFoot(filter, userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *WeightHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindGroups(userId, order)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -185,7 +185,7 @@ func (h *WeightHandler) FindEntriesByDate(w http.ResponseWriter, r *http.Request
 	entryDateStr := r.PathValue("entryDate")
 	entryDate, err := time.Parse(time.RFC3339Nano, entryDateStr)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -195,7 +195,7 @@ func (h *WeightHandler) FindEntriesByDate(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.FindEntriesByDate(entryDate, userId, order, sort)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -206,7 +206,7 @@ func (h *WeightHandler) GetEntriesByDateFoot(w http.ResponseWriter, r *http.Requ
 	entryDateStr := r.PathValue("entryDate")
 	entryDate, err := time.Parse(time.RFC3339Nano, entryDateStr)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
@@ -216,7 +216,7 @@ func (h *WeightHandler) GetEntriesByDateFoot(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.GetEntriesByDateFoot(entryDate, userId)
 	if err != nil {
-		serverErrors.DatabaseGetError(err, w)
+		apiError.DatabaseGetError(err, w)
 		return
 	}
 
