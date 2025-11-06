@@ -13,6 +13,11 @@ func validateAddLacation(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 		return err
 	}
 
+	err = noBirth(db, lac) 
+	if err != nil {
+		return err
+	}
+
 	err = invalidDates(lac)
 	if err != nil {
 		return err
@@ -58,6 +63,42 @@ func lacExists(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 	}
 
 	return nil
+}
+
+func noBirth(db *sqlx.DB, lac LactationHist) *apiError.APIError {
+
+	query := `
+		with cte as (
+			select max(start_date) last_date 
+			from lactations l
+			where l.user_id = $3 and l.deleted_at is null
+		)
+		select exists (
+			select 1
+			from animals a
+			where a.mother_id = $1
+				and a.death_date is not null
+				and a.birth_date <= $2
+				and a.birth_date > last_date
+				and a.deleted_at is null
+		)
+	`
+
+	var exists bool
+	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.AnimalId, lac.StartDate, lac.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if exists {
+		return apiError.ConflictAPIWarning(`
+			Não há parição disponível para esta lactação!
+			Deseja adicioná-la mesmo assim?
+		`)
+	}
+
+	return nil
+
 }
 
 func invalidStartDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {

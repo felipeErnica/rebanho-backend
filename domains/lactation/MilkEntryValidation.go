@@ -96,7 +96,7 @@ func entryExists(db *sqlx.DB, animalId string, entryDate time.Time, userId strin
 	}
 
 	if exists {
-		return apiError.ConflictAPIError(`Esta marcação já existe!`)
+		return apiError.ConflictAPIWarning(`Esta marcação já existe! Deseja substituí-la por esta?`)
 	}
 
 	return nil

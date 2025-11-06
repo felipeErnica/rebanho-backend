@@ -1260,8 +1260,8 @@ func (r *LactationRepository) SearchDryAnimals(userId string) (*[]entity.SearchE
 			and a.death_date is null
 			and not exists (
 				select 1
-				from lactation l
-				where l.animal_id = a.animal_id
+				from lactations l
+				where l.animal_id = a.id
 					and l.end_date is null
 			)
 			and a.deleted_at is null
@@ -1286,9 +1286,14 @@ func (r *LactationRepository) AddLactation(entry *LactationHist) *apiError.APIEr
 				select id
 				from animals a
 				where a.mother_id = :animal_id
-				  and a.birth_date <= :start_date
-				  and a.death_date is not null
-				order by death_date desc
+					and a.birth_date <= :start_date
+					and a.death_date is not null
+				 	and a.id not in (
+						select calf_id
+						from lactations
+						where animal_id = :animal_id
+					)
+				order by birth_date desc
 				limit 1
 			),
 			:start_date,
