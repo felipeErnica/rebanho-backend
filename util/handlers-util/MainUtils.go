@@ -30,7 +30,7 @@ Em caso de erro, retorna um booleano para o cancelamento da funcão requisitante
 func GetUserId(w http.ResponseWriter, r *http.Request) (string, bool) {
 	userId, err := authConfig.GetUserId(r)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return userId, false
 	}
 
@@ -40,7 +40,7 @@ func GetUserId(w http.ResponseWriter, r *http.Request) (string, bool) {
 /*
 Envia a entidade como resposta HTTP.
 */
-func SendEntity[E any](w http.ResponseWriter, model *E) {
+func WriteEntity[E any](w http.ResponseWriter, model *E) {
 	response, err := json.Marshal(model)
 	if err != nil {
 		apiError.JsonServerError(err, w)
@@ -95,7 +95,7 @@ func ReturnSearchResults[E any](
 		idList := ParseArray(id)
 		list, err := searchById(userId, idList)
 		if err != nil {
-			apiError.DatabaseGetError(err, w)
+			apiError.WriteError(err, w)
 			return
 		}
 		SendList(w, list)
@@ -105,7 +105,7 @@ func ReturnSearchResults[E any](
 	input := "%" + r.URL.Query().Get("input") + "%"
 	list, err := searchByInput(userId, input)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 	SendList(w, list)
@@ -126,10 +126,10 @@ func FindById[E any](w http.ResponseWriter, r *http.Request, repository Reposito
 	id := r.PathValue("id")
 	entity, err := repository.FindById(id)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
-	SendEntity(w, entity)
+	WriteEntity(w, entity)
 }
 
 /*
@@ -142,7 +142,7 @@ func FindAll[E any](w http.ResponseWriter, r *http.Request, repository Repositor
 	}
 	list, err := repository.FindAll(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 	SendList(w, list)
@@ -151,7 +151,7 @@ func FindAll[E any](w http.ResponseWriter, r *http.Request, repository Repositor
 /*
 Atualiza uma entidade no banco, e retorna o resultado na Resposta HTTP
 */
-func Update(w http.ResponseWriter) {
+func WriteUpdateResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 
 	response, err := json.Marshal(apiError.APIError{Title: "Sucesso", Message: "Atualizado com sucesso!"})
@@ -167,7 +167,7 @@ func Update(w http.ResponseWriter) {
 /*
 Criado uma entidade no banco, e retorna o resultado na Resposta HTTP
 */
-func Add(w http.ResponseWriter) {
+func WriteCreatedResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusCreated)
 
 	response, err := json.Marshal(apiError.APIError{Title: "Sucesso", Message: "Adicionado com sucesso!"})
@@ -182,7 +182,7 @@ func Add(w http.ResponseWriter) {
 /*
 Deleta uma entidade na tabela, correspondente ao Id fornecido na URL.
 */
-func Delete(w http.ResponseWriter) {
+func WriteDeleteResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 
 	response, err := json.Marshal(apiError.APIError{Title: "Sucesso", Message: "Excluído com sucesso!"})

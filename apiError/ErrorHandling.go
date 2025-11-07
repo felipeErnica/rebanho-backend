@@ -38,10 +38,9 @@ func DatabaseSendError(err error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
-func DatabaseGetError(err error, w http.ResponseWriter) {
-	util.LogError("Falha ao recuperar dados do banco de dados!")
-	util.LogError(err.Error())
-	w.WriteHeader(http.StatusInternalServerError)
+func WriteError(err error, w http.ResponseWriter) {
+	apiErr := InternalServerAPIError(err)
+	WriteAPIError(apiErr, w)
 }
 
 func WriteAPIError(err *APIError, w http.ResponseWriter) {

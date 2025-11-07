@@ -20,7 +20,7 @@ func (h *PastureEntryHandler) SearchPastureAnimals(w http.ResponseWriter, r *htt
 
 	result, err := h.Repository.SearchPastureAnimals(pastureId, userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 	handlersUtil.SendList(w, result)
@@ -43,11 +43,11 @@ func (h *PastureEntryHandler) FindByPasture(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.Repository.FindByPasture(pastureId, userId, filter, cursor, sort, order)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *PastureEntryHandler) FindByPastureTotal(w http.ResponseWriter, r *http.Request) {
@@ -64,18 +64,18 @@ func (h *PastureEntryHandler) FindByPastureTotal(w http.ResponseWriter, r *http.
 
 	result, err := h.Repository.FindByPastureTotal(pastureId, userId, filter)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *PastureEntryHandler) FindByAnimalId(w http.ResponseWriter, r *http.Request) {
 	animalId := r.PathValue("animalId")
 	list, err := h.Repository.FindByAnimalId(animalId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 	handlersUtil.SendList(w, list)

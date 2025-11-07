@@ -131,8 +131,10 @@ func (r *AnimalRepository) SearchFather(userId string) (*[]entity.SearchEntity, 
 
 func (r *AnimalRepository) SearchAnimals(userId string) (*[]entity.SearchEntity, error) {
 	query := `
-        select id, concat_ws(' - ', ring_number, name, to_char(birth_date, 'DD/MM/YYYY')) as label 
-            from animals 
+        select 
+			id, 
+			concat_ws(' - ', ring_number, name, to_char(birth_date, 'DD/MM/YYYY')) as label 
+		from animals 
         where user_id = $1 
             and animal_type <> 'OUTSIDE_ANIMAL'
             and deleted_at is null

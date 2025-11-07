@@ -48,6 +48,7 @@ type LactationHist struct {
 	TotalProduction   float64    `json:"totalProduction" db:"total_production"`
 	LacInterval       *int       `json:"lacInterval" db:"lac_interval"`
 	Peak              float64    `json:"peak" db:"peak"`
+	Observation       *string    `json:"observation" db:"observation"`
 	CreatedAt         time.Time  `json:"-" db:"created_at"`
 	DeletedAt         *time.Time `json:"-" db:"deleted_at"`
 	UserId            string     `json:"-" db:"user_id"`

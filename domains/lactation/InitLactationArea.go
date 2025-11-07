@@ -38,7 +38,11 @@ func InitLactationArea(app *app.App) {
     app.HandleFunc("POST /lactation/lac-hist/page/foot", handler.GetLactationPageFoot)
     app.HandleFunc("GET /lactation/lac-hist/{id}/entries", handler.GetLactationEntries)
     app.HandleFunc("GET /lactation/lac-hist/{id}/entries/foot", handler.GetLactationEntriesFoot)
-    app.HandleFunc("PUT /lactation/lac-hist/add", handler.AddLactation)
     app.HandleFunc("GET /lactation/lac-hist/search-lactating", handler.SearchLactatingAnimals)
     app.HandleFunc("GET /lactation/lac-hist/search-dry", handler.SearchDryAnimals)
+    app.HandleFunc("GET /lactation/lac-hist/search-calfs-new", handler.SearchNewLactationCalf)
+    app.HandleFunc("GET /lactation/lac-hist/search-calfs", handler.SearchLactationCalf)
+    app.HandleFunc("PUT /lactation/lac-hist/add", handler.AddLactation)
+    app.HandleFunc("PUT /lactation/lac-hist/update", handler.UpdateLactation)
+    app.HandleFunc("DELETE /lactation/lac-hist/delete/{id}", handler.DeleteLactation)
 }

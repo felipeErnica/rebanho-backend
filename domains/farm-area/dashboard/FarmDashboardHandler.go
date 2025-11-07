@@ -18,7 +18,7 @@ func (h *FarmDashboardHandler) FarmInfo(w http.ResponseWriter, r *http.Request) 
     }
     result, err := h.Repository.GetFarmInfo(userId)
     if err != nil {
-        apiError.DatabaseGetError(err ,w)
+        apiError.WriteError(err ,w)
         return
     }
     handlersUtil.SendList(w, result)
@@ -32,7 +32,7 @@ func (h *FarmDashboardHandler) PastureInfo(w http.ResponseWriter, r *http.Reques
     }
     result, err := h.Repository.GetPastureInfo(userId, farmId)
     if err != nil {
-        apiError.DatabaseGetError(err ,w)
+        apiError.WriteError(err ,w)
         return
     }
     handlersUtil.SendList(w, result)

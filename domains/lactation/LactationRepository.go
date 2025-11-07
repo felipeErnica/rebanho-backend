@@ -1041,11 +1041,11 @@ func (r *LactationRepository) FindLactationPage(
         with lac_stats as (
             select
                 l.id,
-                avg(m.quantity) avg_prod,
+                avg(coalesce(m.quantity, 0)) avg_prod,
 				max(entry_date) max_date,
-				max(m.quantity) peak
+				max(coalesce(m.quantity, 0)) peak
             from lactations l
-                join milk_entries m on 
+                left join milk_entries m on 
                     l.animal_id = m.animal_id
                     and l.start_date <= m.entry_date
                     and coalesce(l.end_date, now()) >= m.entry_date
@@ -1062,20 +1062,28 @@ func (r *LactationRepository) FindLactationPage(
 				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
 				l.calf_id,
 				c.birth_date calf_birth_date,
-				concat_ws(' - ', coalesce(c.name, c.sex), cf.name, to_char(c.birth_date, 'DD/MM/YYYY')) as calf_info,
+				case
+					when l.calf_id is null then 'Sem Bezerro'
+					when c.name is not null then format(
+						'%s (%s)',
+						concat_ws(' - ', a.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+						concat_ws(' - ', c.ring_number, c.name)
+					)
+					else concat_ws(' - ', a.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+				end as calf_info,
 				l.start_date,
 				l.end_date,
 				s.avg_prod avg_production,
-				extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1 lac_period,
-				(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1)*s.avg_prod total_production,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) lac_period,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * s.avg_prod total_production,
 				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
 				s.peak,
+				l.observation,
 				l.created_at
 			from lactations l
 				join lac_stats s using (id)
 				join animals a on a.id = l.animal_id
 				left join animals c on c.id = l.calf_id
-				left join animals cf on cf.id = c.father_id
 			where l.user_id = $1 and l.deleted_at is null
 		)
 		select * from cte
@@ -1271,47 +1279,162 @@ func (r *LactationRepository) SearchDryAnimals(userId string) (*[]entity.SearchE
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
+func (r *LactationRepository) SearchNewLactationCalf(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+		select
+			a.id,
+			concat_ws(' - ', a.ring_number, a.sex, to_char(a.birth_date, 'DD/MM/YYYY')) as label
+		from animals a
+		where a.death_date is null
+			and a.animal_type = 'OFFSPRING'
+			and a.deleted_at is null
+			and not exists (
+				select 1
+				from lactations l
+				where l.deleted_at is null
+					and l.user_id = $1 
+					and l.calf_id = a.id
+			)
+			and a.user_id = $1
+		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0), a.birth_date
+	`
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *LactationRepository) SearchLactationCalf(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+		select
+			a.id,
+			case
+				when a.name is not null then format(
+					'%s (%s)',
+					concat_ws(' - ', m.ring_number, a.sex, to_char(a.birth_date, 'DD/MM/YYYY')),
+					concat_ws(' - ', a.ring_number, a.name)
+				)
+				else concat_ws(' - ', m.ring_number, a.sex, to_char(a.birth_date, 'DD/MM/YYYY'))
+			end as label
+		from animals a
+			join animals m on m.id = a.mother_id
+				and m.animal_type = 'DAIRY_ANIMAL'
+		where a.deleted_at is null
+			and a.animal_type <> 'OUTSIDE_ANIMAL'
+			and a.user_id = $1
+		order by coalesce(regexp_replace(m.ring_number, '[^0-9]', '', 'g')::int, 0), a.birth_date
+	`
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
 func (r *LactationRepository) AddLactation(entry *LactationHist) *apiError.APIError {
 
-	validateErr := validateAddLacation(r.DB, *entry) 
+	validateErr := validateAddLacation(r.DB, *entry)
 	if validateErr != nil {
-		return  validateErr
+		return validateErr
 	}
 
 	insertQuery := `
 		insert into lactations (animal_id, calf_id, start_date, user_id)
-		values (
-			:animal_id,
-			(
-				select id
-				from animals a
-				where a.mother_id = :animal_id
-					and a.birth_date <= :start_date
-					and a.death_date is not null
-				 	and a.id not in (
-						select calf_id
-						from lactations
-						where animal_id = :animal_id
-					)
-				order by birth_date desc
-				limit 1
-			),
-			:start_date,
-			:user_id
-		)
+		values (:animal_id, :calf_id, :start_date, :user_id)
 	`
 
 	err := repositoriesUtil.NamedExec(r.DB, insertQuery, entry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
-		
+
+	return nil
+}
+
+func (r *LactationRepository) UpdateLactation(entry *LactationHist) (*LactationHist, *apiError.APIError) {
+
+	validateErr := validateUpdateLacation(r.DB, *entry)
+	if validateErr != nil {
+		return nil, validateErr
+	}
+
+	insertQuery := `
+		update lactations
+		set calf_id = :calf_id,
+			start_date = :start_date,
+			end_date = :end_date,
+			observation = :observation
+		where id = :id and user_id = :user_id
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, insertQuery, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	selectQuery := `
+		with lac_stats as (
+            select
+                avg(coalesce(m.quantity, 0)) as avg_prod,
+				max(entry_date) as max_date,
+				max(coalesce(m.quantity, 0)) as peak
+            from lactations l
+                left join milk_entries m on 
+                    l.animal_id = m.animal_id
+                    and l.start_date <= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
+                    and m.deleted_at is null
+                    and m.user_id = $1
+			where l.id = $1
+        )
+		select
+			l.id,
+			l.animal_id,
+			concat_ws(' - ', a.ring_number, a.name) as animal_name,
+			l.calf_id,
+			c.birth_date calf_birth_date,
+			case
+				when l.calf_id is null then 'Sem Bezerro'
+				when c.name is not null then format(
+					'%s (%s)',
+					concat_ws(' - ', a.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+					concat_ws(' - ', c.ring_number, c.name)
+				)
+				else concat_ws(' - ', a.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+			end as calf_info,
+			l.start_date,
+			l.end_date,
+			s.avg_prod as avg_production,
+			coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) as lac_period,
+			coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * s.avg_prod as total_production,
+			extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+			s.peak,
+			l.observation
+		from lactations l
+			cross join lac_stats s
+			join animals a on a.id = l.animal_id
+			left join animals c on c.id = l.calf_id
+		where l.id = $1
+	`
+
+	response, err := repositoriesUtil.GetOne[LactationHist](r.DB, selectQuery, entry.Id)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	return response, nil
+}
+
+func (r *LactationRepository) DeleteLactation(id string) *apiError.APIError {
+	query := `
+		update lactations
+		set deleted_at = now()
+		where id = $1
+	`
+	err := repositoriesUtil.Exec(r.DB, query, id)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
 	return nil
 }
 
 func (r *LactationRepository) AddMilkEntry(entry *MilkEntry, userId string) *apiError.APIError {
 
-	apiErr := ValidateMilkEntry(r.DB, *entry, userId) 
+	apiErr := ValidateMilkEntry(r.DB, *entry, userId)
 	if apiErr != nil {
 		return apiErr
 	}
@@ -1325,7 +1448,7 @@ func (r *LactationRepository) AddMilkEntry(entry *MilkEntry, userId string) *api
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
-		
+
 	return nil
 }
 
@@ -1344,7 +1467,7 @@ func (r *LactationRepository) ReplaceMilkEntry(entry *MilkEntry, userId string) 
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
-		
+
 	return nil
 }
 
@@ -1389,7 +1512,7 @@ func (r *LactationRepository) UpdateMilkEntry(entry *MilkEntry) (*MilkEntry, *ap
 	if err != nil {
 		return nil, apiError.InternalServerAPIError(err)
 	}
-		
+
 	return response, nil
 }
 
@@ -1404,6 +1527,6 @@ func (r *LactationRepository) DeleteMilkEntry(id string) *apiError.APIError {
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
-		
+
 	return nil
 }

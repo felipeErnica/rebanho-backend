@@ -20,11 +20,11 @@ func (h *TransferHandler) GetBirthRateStats(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.Repository.GetBirthRateStats(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) GetPregnancyRateStats(w http.ResponseWriter, r *http.Request) {
@@ -35,11 +35,11 @@ func (h *TransferHandler) GetPregnancyRateStats(w http.ResponseWriter, r *http.R
 
 	result, err := h.Repository.GetPregnancyRateStats(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) GetTransferHist(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +50,7 @@ func (h *TransferHandler) GetTransferHist(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetTransferHist(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -65,11 +65,11 @@ func (h *TransferHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetAnimalsNumber(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) GetFutureBirths(w http.ResponseWriter, r *http.Request) {
@@ -80,11 +80,11 @@ func (h *TransferHandler) GetFutureBirths(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetFutureBirths(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
@@ -95,11 +95,11 @@ func (h *TransferHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.Repository.GetLastGroups(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
@@ -110,11 +110,11 @@ func (h *TransferHandler) GetLastEntries(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetLastEntries(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) GetBestBull(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +125,7 @@ func (h *TransferHandler) GetBestBull(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetBestBull(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -140,7 +140,7 @@ func (h *TransferHandler) GetBestReceivers(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetBestReceivers(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *TransferHandler) GetBestDonors(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.Repository.GetBestDonors(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -179,11 +179,11 @@ func (h *TransferHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.FindEntriesPage(userId, filter, sort, order, cursor)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +191,7 @@ func (h *TransferHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Requ
 
 	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -202,7 +202,7 @@ func (h *TransferHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.FindEntriesByGroup(userId, inseminationDate)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -217,7 +217,7 @@ func (h *TransferHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindGroups(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -229,7 +229,7 @@ func (h *TransferHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.R
 
 	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -240,11 +240,11 @@ func (h *TransferHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.R
 
 	result, err := h.Repository.GetEntriesByGroupFoot(userId, inseminationDate)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
@@ -260,11 +260,11 @@ func (h *TransferHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetEntriesFoot(userId, filter)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *TransferHandler) SearchTransferBulls(w http.ResponseWriter, r *http.Request) {
@@ -275,7 +275,7 @@ func (h *TransferHandler) SearchTransferBulls(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.SearchTransferBulls(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 

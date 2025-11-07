@@ -22,10 +22,10 @@ func (h *BirthHandler) FindPageFooter(w http.ResponseWriter, r *http.Request) {
 
     result, err := h.Repository.FindPageFooter(userId, filter)
     if err != nil {
-        apiError.DatabaseGetError(err , w)
+        apiError.WriteError(err , w)
         return
     }
-    handlersUtil.SendEntity(w, result)
+    handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) FindPage(w http.ResponseWriter, r *http.Request) {
@@ -43,11 +43,11 @@ func (h *BirthHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 
     result, err := h.Repository.FindPage(userId, sort, order, filter, cursor)
     if err != nil {
-        apiError.DatabaseGetError(err , w)
+        apiError.WriteError(err , w)
         return
     }
 
-    handlersUtil.SendEntity(w, result)
+    handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) GetBestIntervals(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +58,7 @@ func (h *BirthHandler) GetBestIntervals(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.Repository.GetBestIntervals(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (h *BirthHandler) GetLastBirths(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetLastBirths(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -87,11 +87,11 @@ func (h *BirthHandler) GetLastBirthsNumber(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetLastBirthsNumber(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) GetYearBirthsNumber(w http.ResponseWriter, r *http.Request) {
@@ -101,11 +101,11 @@ func (h *BirthHandler) GetYearBirthsNumber(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetYearBirthsNumber(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) GetYearDeathsNumber(w http.ResponseWriter, r *http.Request) {
@@ -115,11 +115,11 @@ func (h *BirthHandler) GetYearDeathsNumber(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetYearDeathsNumber(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) GetWorstIntervals(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +130,7 @@ func (h *BirthHandler) GetWorstIntervals(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetWorstIntervals(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
@@ -145,11 +145,11 @@ func (h *BirthHandler) GetBirthIntervalHistory(w http.ResponseWriter, r *http.Re
 
 	result, err := h.Repository.GetBirthIntervalHistory(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) GetDeathIndex(w http.ResponseWriter, r *http.Request) {
@@ -160,11 +160,11 @@ func (h *BirthHandler) GetDeathIndex(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetDeathIndex(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) GetBirthHistory(w http.ResponseWriter, r *http.Request) {
@@ -175,11 +175,11 @@ func (h *BirthHandler) GetBirthHistory(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetBirthHistory(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
 
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) TotalBySex(w http.ResponseWriter, r *http.Request) {
@@ -190,10 +190,10 @@ func (h *BirthHandler) TotalBySex(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.TotalBySex(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) GetYearBySex(w http.ResponseWriter, r *http.Request) {
@@ -204,8 +204,8 @@ func (h *BirthHandler) GetYearBySex(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetYearBySex(userId)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }

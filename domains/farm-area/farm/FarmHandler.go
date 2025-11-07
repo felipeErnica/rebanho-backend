@@ -29,10 +29,10 @@ func (h *FarmHandler) FindFarmAnimals(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindFarmAnimals(farmId, userId, filter, sort, order, cursor)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *FarmHandler) FindFarmAnimalsTotal(w http.ResponseWriter, r *http.Request) {
@@ -49,10 +49,10 @@ func (h *FarmHandler) FindFarmAnimalsTotal(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.FindFarmAnimalsTotal(farmId, userId, filter)
 	if err != nil {
-		apiError.DatabaseGetError(err, w)
+		apiError.WriteError(err, w)
 		return
 	}
-	handlersUtil.SendEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *FarmHandler) SearchFarm(w http.ResponseWriter, r *http.Request) {
