@@ -779,8 +779,7 @@ func (r *LactationRepository) GetLastEntries(userId string) (*[]MilkEntry, error
 				and m.entry_date < coalesce(pe.exit_date, now())
 				and pe.deleted_at is null
 			left join pastures p on p.id = pe.pasture_id
-		where 
-			m.user_id = $1 
+		where m.user_id = $1 
 			and m.deleted_at is null 
 			and m.entry_date = max_date
 		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
@@ -1493,9 +1492,31 @@ func (r *LactationRepository) DeleteLactationAndEntries(id string) *apiError.API
 	return nil
 }
 
-func (r *LactationRepository) AddMilkEntry(entry *MilkEntry, userId string) *apiError.APIError {
+func (r *LactationRepository) AddMilkEntry(entry *AddMilkEntryStruct, userId string) *apiError.APIError {
 
-	apiErr := ValidateMilkEntry(r.DB, *entry, userId)
+	if entry.PastureId != nil {
+		pastureEntry := pastureEntries.PastureEntry{
+			AnimalId:  entry.AnimalId,
+			PastureId: *entry.PastureId,
+			EntryDate: entry.EntryDate,
+			UserId: entry.UserId,
+		}
+		entriesRepo := pastureEntries.NewRepository(r.DB)
+		err := entriesRepo.TransferEntry(&pastureEntry)
+		if err != nil {
+			return err				
+		}
+
+	}
+
+	milkEntry := MilkEntry{
+		AnimalId: entry.AnimalId,
+		Quantity: entry.Quantity,
+		EntryDate: entry.EntryDate,
+		UserId: entry.UserId,
+	}
+
+	apiErr := validateMilkEntry(r.DB, milkEntry, userId)
 	if apiErr != nil {
 		return apiErr
 	}

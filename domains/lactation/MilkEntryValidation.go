@@ -35,7 +35,7 @@ func ValidateMilkEntryUpdate(db *sqlx.DB, entry MilkEntry, userId string) *apiEr
 	return nil
 }
 
-func ValidateMilkEntry(db *sqlx.DB, entry MilkEntry, userId string) *apiError.APIError {
+func validateMilkEntry(db *sqlx.DB, entry MilkEntry, userId string) *apiError.APIError {
 	err := isOnLac(db, entry.AnimalId, entry.EntryDate, userId)
 	if err != nil {
 		return err
