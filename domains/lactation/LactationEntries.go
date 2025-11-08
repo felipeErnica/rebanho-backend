@@ -84,6 +84,16 @@ type LactationHistFoot struct {
 	AveragePeak       float64 `json:"averagePeak" db:"avg_peak"`
 }
 
+type AddLactationStruct struct {
+	AnimalId    string     `json:"animalId"`
+	CalfId      *string    `json:"calfId"`
+	PastureId   *string    `json:"pastureId"`
+	StartDate   time.Time  `json:"startDate"`
+	EndDate     *time.Time `json:"endDate"`
+	Observation *string    `json:"observation"`
+	UserId      string     `json:"-"`
+}
+
 type AverageMilkEntry struct {
 	EntryDate   time.Time `json:"entryDate" db:"entry_date"`
 	AverageMilk float64   `json:"averageMilk" db:"avg_milk"`

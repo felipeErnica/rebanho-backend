@@ -1,6 +1,7 @@
 package pastureEntries
 
 import (
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -9,7 +10,7 @@ import (
 type PastureEntryRepository struct {
 	SelectQuery string
 	TableName   string
-	Db          *sqlx.DB
+	DB          *sqlx.DB
 }
 
 func NewRepository(db *sqlx.DB) *PastureEntryRepository {
@@ -42,7 +43,7 @@ func (r *PastureEntryRepository) SearchPastureAnimals(pastureId string, userId s
 			coalesce(animals.birth_date, '-infinity')
         limit 20
     `
-	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, pastureId, userId)
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, pastureId, userId)
 }
 
 func (r *PastureEntryRepository) FindByPasture(
@@ -123,7 +124,7 @@ func (r *PastureEntryRepository) FindByPasture(
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
 
-	return repositoriesUtil.GetPage[PastureEntry](r.Db, query, sort, 200, args...)
+	return repositoriesUtil.GetPage[PastureEntry](r.DB, query, sort, 200, args...)
 }
 
 func (r *PastureEntryRepository) FindByPastureTotal(
@@ -154,14 +155,67 @@ func (r *PastureEntryRepository) FindByPastureTotal(
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 
-	return repositoriesUtil.GetOne[PastureTotal](r.Db, query, args...)
+	return repositoriesUtil.GetOne[PastureTotal](r.DB, query, args...)
 }
 
 func (r *PastureEntryRepository) FindByAnimalId(animalId string) (*[]PastureEntry, error) {
 	query := r.SelectQuery + " WHERE pastures_entries.deleted_at is null and pastures_entries.animal_id = $1"
-	return repositoriesUtil.GetList[PastureEntry](r.Db, query, animalId)
+	return repositoriesUtil.GetList[PastureEntry](r.DB, query, animalId)
 }
 
 func (r *PastureEntryRepository) Delete(id string) error {
-	return repositoriesUtil.Delete(r.Db, r.TableName, id)
+	return repositoriesUtil.Delete(r.DB, r.TableName, id)
+}
+
+func (r *PastureEntryRepository) AddEntry(entry *PastureEntry) *apiError.APIError {
+
+	validateErr := validateAddEntry(r.DB, *entry) 
+	if validateErr != nil {
+		return  validateErr
+	}
+
+	query := `
+		insert into pasture_entries (animal_id, pasture_id, entry_date, user_id)
+		values(:animal_id, :pasture_id, :entry_date, :user_id)
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *PastureEntryRepository) TransferEntry(entry *PastureEntry) *apiError.APIError {
+
+	validateErr := validateTransferEntry(r.DB, *entry) 
+	if validateErr != nil {
+		return  validateErr
+	}
+
+	updateQuery := `
+		update pasture_entries
+		set exit_date = $1
+		where animal_id = $2
+			and exit_date is null
+			and deleted_at is null
+	`
+
+	err := repositoriesUtil.Exec(r.DB, updateQuery, entry.EntryDate, entry.AnimalId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	query := `
+		insert into pasture_entries (animal_id, pasture_id, entry_date, user_id)
+		values(:animal_id, :pasture_id, :entry_date, :user_id)
+	`
+
+	err = repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
 }

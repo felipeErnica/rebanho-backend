@@ -80,3 +80,45 @@ func (h *PastureEntryHandler) FindByAnimalId(w http.ResponseWriter, r *http.Requ
 	}
 	handlersUtil.SendList(w, list)
 }
+
+func (h *PastureEntryHandler) AddEntry(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &PastureEntry{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.AddEntry(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *PastureEntryHandler) TransferEntry(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &PastureEntry{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.TransferEntry(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteCreatedResponse(w)
+}

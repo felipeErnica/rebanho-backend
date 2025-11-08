@@ -457,7 +457,7 @@ func (h *LactationHandler) AddLactation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	lac, ok := handlersUtil.DecodeEntity(w, r, &LactationHist{}); if !ok {
+	lac, ok := handlersUtil.DecodeEntity(w, r, &AddLactationStruct{}); if !ok {
 		return
 	}
 
@@ -493,6 +493,17 @@ func (h *LactationHandler) UpdateLactation(w http.ResponseWriter, r *http.Reques
 func (h *LactationHandler) DeleteLactation(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	err := h.Repository.DeleteLactation(id)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *LactationHandler) DeleteLactationAndEntries(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	err := h.Repository.DeleteLactationAndEntries(id)
 	if err != nil {
 		apiError.WriteAPIError(err, w)
 		return

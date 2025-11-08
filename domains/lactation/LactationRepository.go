@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/apiError"
+	pastureEntries "github.com/felipeErnica/rebanho-backend/domains/farm-area/pasture-entries"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -773,10 +774,10 @@ func (r *LactationRepository) GetLastEntries(userId string) (*[]MilkEntry, error
 		from milk_entries m 
 			cross join max_tbl
 			join animals a on a.id = m.animal_id
-			left join pasture_entries pe on 
-				pe.animal_id = m.animal_id
-				and pe.entry_date <= m.entry_date
-				and m.entry_date <= coalesce(pe.exit_date, now())
+			left join pasture_entries pe on pe.animal_id = m.animal_id
+				and m.entry_date >= pe.entry_date
+				and m.entry_date < coalesce(pe.exit_date, now())
+				and pe.deleted_at is null
 			left join pastures p on p.id = pe.pasture_id
 		where 
 			m.user_id = $1 
@@ -905,10 +906,10 @@ func (r *LactationRepository) FindEntriesPage(
 			m.created_at
 		from milk_entries m
 			join animals a on a.id = m.animal_id
-			left join pasture_entries pe on
-				pe.animal_id = m.animal_id
-				and pe.entry_date <= m.entry_date
-				and coalesce(pe.exit_date, now()) >= m.entry_date
+			left join pasture_entries pe on pe.animal_id = m.animal_id
+				and m.entry_date >= pe.entry_date
+				and m.entry_date < coalesce(pe.exit_date, now())
+				and pe.deleted_at is null
 			left join pastures p on p.id = pe.pasture_id
     `
 
@@ -991,10 +992,10 @@ func (r *LactationRepository) GetGroupEntries(userId string, entryDate time.Time
 			m.quantity
 		from milk_entries m
 			join animals a on a.id = m.animal_id
-			join pasture_entries pe on
-				pe.animal_id = m.animal_id
+			join pasture_entries pe on pe.animal_id = m.animal_id
 				and pe.entry_date <= m.entry_date
-				and m.entry_date <= coalesce(pe.exit_date, now())
+				and coalesce(pe.exit_date, now()) > m.entry_date
+				and pe.deleted_at is null
 			join pastures p on p.id = pe.pasture_id
 		where m.user_id = $1 and m.deleted_at is null and m.entry_date = $2
 		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
@@ -1324,9 +1325,35 @@ func (r *LactationRepository) SearchLactationCalf(userId string) (*[]entity.Sear
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *LactationRepository) AddLactation(entry *LactationHist) *apiError.APIError {
+func (r *LactationRepository) AddLactation(entry *AddLactationStruct) *apiError.APIError {
 
-	validateErr := validateAddLacation(r.DB, *entry)
+	if entry.PastureId != nil {
+
+		pastureEntry := pastureEntries.PastureEntry{
+			PastureId: *entry.PastureId,
+			AnimalId:  entry.AnimalId,
+			EntryDate: entry.StartDate,
+			UserId:    entry.UserId,
+		}
+
+		pastureRepository := pastureEntries.NewRepository(r.DB)
+		err := pastureRepository.TransferEntry(&pastureEntry)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	lacEntry := LactationHist{
+		CalfId:      entry.CalfId,
+		AnimalId:    entry.AnimalId,
+		StartDate:   entry.StartDate,
+		EndDate:     entry.EndDate,
+		Observation: entry.Observation,
+		UserId:      entry.UserId,
+	}
+
+	validateErr := validateAddLacation(r.DB, lacEntry)
 	if validateErr != nil {
 		return validateErr
 	}
@@ -1336,7 +1363,7 @@ func (r *LactationRepository) AddLactation(entry *LactationHist) *apiError.APIEr
 		values (:animal_id, :calf_id, :start_date, :user_id)
 	`
 
-	err := repositoriesUtil.NamedExec(r.DB, insertQuery, entry)
+	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &lacEntry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -1419,12 +1446,46 @@ func (r *LactationRepository) UpdateLactation(entry *LactationHist) (*LactationH
 }
 
 func (r *LactationRepository) DeleteLactation(id string) *apiError.APIError {
+
+	validateErr := validateDeleteLactation(r.DB, id)
+	if validateErr != nil {
+		return validateErr
+	}
+
 	query := `
 		update lactations
 		set deleted_at = now()
 		where id = $1
 	`
 	err := repositoriesUtil.Exec(r.DB, query, id)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *LactationRepository) DeleteLactationAndEntries(id string) *apiError.APIError {
+
+	entriesQuery := `
+		update milk_entries m
+		set deleted_at = now()
+		from lactations l
+		where l.id = $1
+			and m.animal_id = l.animal_id
+			and m.entry_date between l.start_date and coalesce(l.end_date, now());
+	`
+	err := repositoriesUtil.Exec(r.DB, entriesQuery, id)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	query := `
+		update lactations
+		set deleted_at = now()
+		where id = $1
+	`
+	err = repositoriesUtil.Exec(r.DB, query, id)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}

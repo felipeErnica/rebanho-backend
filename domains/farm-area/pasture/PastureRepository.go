@@ -42,14 +42,18 @@ func (r *PastureRepository) SearchPasture(userId string, farmsId []string) (*[]e
 func (r *PastureRepository) SearchAllPastures(userId string) (*[]entity.SearchEntity, error) {
 
 	query := `
-        select id, name label 
-        from pastures 
-        where user_id = $1 and deleted_at is null
+        select 
+			p.id, 
+			format('%s (%s)', p.name, f.name) as label 
+        from pastures p
+			join farms f on f.id = p.farm_id
+        where p.user_id = $1 and p.deleted_at is null
         order by label
     `
 
 	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, userId)
 }
+
 func (r *PastureRepository) FindAnimalsByPasture(
 	pastureId string,
 	userId string,

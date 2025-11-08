@@ -45,4 +45,5 @@ func InitLactationArea(app *app.App) {
     app.HandleFunc("PUT /lactation/lac-hist/add", handler.AddLactation)
     app.HandleFunc("PUT /lactation/lac-hist/update", handler.UpdateLactation)
     app.HandleFunc("DELETE /lactation/lac-hist/delete/{id}", handler.DeleteLactation)
+    app.HandleFunc("DELETE /lactation/lac-hist/delete-entries/{id}", handler.DeleteLactationAndEntries)
 }
