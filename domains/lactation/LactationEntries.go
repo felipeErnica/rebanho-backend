@@ -34,11 +34,11 @@ type MilkEntryFoot struct {
 }
 
 type AddMilkEntryStruct struct {
-	AnimalId  string    `json:"animalId" db:"animal_id"`
-	PastureId *string   `json:"pastureName" db:"pasture_name"`
-	EntryDate time.Time `json:"entryDate" db:"entry_date"`
-	Quantity  float64   `json:"quantity" db:"quantity"`
-	UserId    string    `json:"userId" db:"user_id"`
+	AnimalId  string    `json:"animalId"`
+	PastureId *string   `json:"pastureId"`
+	EntryDate time.Time `json:"entryDate"`
+	Quantity  float64   `json:"quantity"`
+	UserId    string    `json:"userId"`
 }
 
 type LactationHist struct {

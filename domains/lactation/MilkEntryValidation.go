@@ -35,13 +35,13 @@ func ValidateMilkEntryUpdate(db *sqlx.DB, entry MilkEntry, userId string) *apiEr
 	return nil
 }
 
-func validateMilkEntry(db *sqlx.DB, entry MilkEntry, userId string) *apiError.APIError {
-	err := isOnLac(db, entry.AnimalId, entry.EntryDate, userId)
+func validateMilkEntry(db *sqlx.DB, entry MilkEntry) *apiError.APIError {
+	err := isOnLac(db, entry.AnimalId, entry.EntryDate, entry.UserId)
 	if err != nil {
 		return err
 	}
 
-	err = entryExists(db, entry.AnimalId, entry.EntryDate, userId)
+	err = entryExists(db, entry.AnimalId, entry.EntryDate, entry.UserId)
 	if err != nil {
 		return err
 	}
@@ -100,4 +100,32 @@ func entryExists(db *sqlx.DB, animalId string, entryDate time.Time, userId strin
 	}
 
 	return nil
+}
+
+func isDiferentPasture(db *sqlx.DB, entry AddMilkEntryStruct) *apiError.APIError {
+
+	query := `
+		select pasture_id <> $1 as other_pasture
+		from pasture_entries
+		where animal_id = $2 and deleted_at is null
+		order by entry_date desc
+		limit 1
+	`
+
+	var otherPasture bool
+	err := repositoriesUtil.GetPrimitive(db, query, &otherPasture, entry.PastureId, entry.AnimalId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if otherPasture {
+		return apiError.NewAPIWarning(
+			"Lote diferente!",
+			"A vaca não está no Lote informado! Deseja transferi-la?",
+			apiError.TRANSFER_WARNING,
+		)
+	}
+
+	return nil
+
 }

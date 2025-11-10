@@ -1492,31 +1492,23 @@ func (r *LactationRepository) DeleteLactationAndEntries(id string) *apiError.API
 	return nil
 }
 
-func (r *LactationRepository) AddMilkEntry(entry *AddMilkEntryStruct, userId string) *apiError.APIError {
+func (r *LactationRepository) AddMilkEntry(entry *AddMilkEntryStruct) *apiError.APIError {
 
 	if entry.PastureId != nil {
-		pastureEntry := pastureEntries.PastureEntry{
-			AnimalId:  entry.AnimalId,
-			PastureId: *entry.PastureId,
-			EntryDate: entry.EntryDate,
-			UserId: entry.UserId,
+		validateErr := isDiferentPasture(r.DB, *entry)
+		if validateErr != nil {
+			return validateErr
 		}
-		entriesRepo := pastureEntries.NewRepository(r.DB)
-		err := entriesRepo.TransferEntry(&pastureEntry)
-		if err != nil {
-			return err				
-		}
-
 	}
 
 	milkEntry := MilkEntry{
-		AnimalId: entry.AnimalId,
-		Quantity: entry.Quantity,
+		AnimalId:  entry.AnimalId,
+		Quantity:  entry.Quantity,
 		EntryDate: entry.EntryDate,
-		UserId: entry.UserId,
+		UserId:    entry.UserId,
 	}
 
-	apiErr := validateMilkEntry(r.DB, milkEntry, userId)
+	apiErr := validateMilkEntry(r.DB, milkEntry)
 	if apiErr != nil {
 		return apiErr
 	}
@@ -1526,7 +1518,74 @@ func (r *LactationRepository) AddMilkEntry(entry *AddMilkEntryStruct, userId str
 		values (:animal_id, :entry_date, :quantity, :user_id)
 	`
 
-	err := repositoriesUtil.Add(r.DB, insertQuery, userId, entry)
+	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &milkEntry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *LactationRepository) AddMilkEntryNoTransfer(entry *AddMilkEntryStruct) *apiError.APIError {
+
+	milkEntry := MilkEntry{
+		AnimalId:  entry.AnimalId,
+		Quantity:  entry.Quantity,
+		EntryDate: entry.EntryDate,
+		UserId:    entry.UserId,
+	}
+
+	apiErr := validateMilkEntry(r.DB, milkEntry)
+	if apiErr != nil {
+		return apiErr
+	}
+
+	insertQuery := `
+		insert into milk_entries (animal_id, entry_date, quantity, user_id) 
+		values (:animal_id, :entry_date, :quantity, :user_id)
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &milkEntry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *LactationRepository) AddMilkAndTransferPasture(entry *AddMilkEntryStruct) *apiError.APIError {
+
+	pastureEntry := pastureEntries.PastureEntry{
+		AnimalId:  entry.AnimalId,
+		PastureId: *entry.PastureId,
+		EntryDate: entry.EntryDate,
+		UserId:    entry.UserId,
+	}
+
+	entriesRepo := pastureEntries.NewRepository(r.DB)
+	validateErr := entriesRepo.TransferEntry(&pastureEntry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	milkEntry := MilkEntry{
+		AnimalId:  entry.AnimalId,
+		Quantity:  entry.Quantity,
+		EntryDate: entry.EntryDate,
+		UserId:    entry.UserId,
+	}
+
+	validateErr = validateMilkEntry(r.DB, milkEntry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	insertQuery := `
+		insert into milk_entries (animal_id, entry_date, quantity, user_id) 
+		values (:animal_id, :entry_date, :quantity, :user_id)
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &milkEntry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}

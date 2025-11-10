@@ -59,7 +59,7 @@ func lacExists(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 	}
 
 	if exists {
-		return apiError.ConflictAPIWarning("Esta lactação já existe! Deseja substitui-lá por esta?")
+		return apiError.ConflictAPIError("Esta lactação já existe! Deseja substitui-lá por esta?")
 	}
 
 	return nil

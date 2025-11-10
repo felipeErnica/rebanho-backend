@@ -9,20 +9,26 @@ import (
 type APIError struct {
 	Code    int    `json:"-"`
 	Kind    string `json:"kind"`
+	ErrType string `json:"errType"`
 	Title   string `json:"title"`
 	Message string `json:"message"`
 }
+
+const ERROR_TYPE = "Error"
+const WARNING_TYPE = "Warning"
 
 const INTERNAL_ERROR = "InternalError"
 const CONFLICT_ERROR = "ConflictError"
 const INFO_INCORRET_ERROR = "IncorretInfoError"
 const DELETE_ERROR = "DeleteError"
-const OTHER_ERROR = "OtherError"
-const API_WARNING = "ApiWarning"
+
+const CONFLICT_WARNING = "ConflictWarning"
+const TRANSFER_WARNING = "TransferWarning"
 
 func NewAPIError(code int, kind string, title string, message string) *APIError {
 	return &APIError{
 		Code:    code,
+		ErrType: ERROR_TYPE,
 		Kind:    kind,
 		Title:   "ERRO: " + title,
 		Message: message,
@@ -32,6 +38,7 @@ func NewAPIError(code int, kind string, title string, message string) *APIError 
 func ConflictAPIError(message string) *APIError {
 	return &APIError{
 		Code:    http.StatusConflict,
+		ErrType: ERROR_TYPE,
 		Kind:    CONFLICT_ERROR,
 		Title:   "ERRO: Informação já existe!",
 		Message: message,
@@ -41,6 +48,7 @@ func ConflictAPIError(message string) *APIError {
 func IncorrectEntityAPIError(message string) *APIError {
 	return &APIError{
 		Code:    http.StatusUnprocessableEntity,
+		ErrType: ERROR_TYPE,
 		Kind:    INFO_INCORRET_ERROR,
 		Title:   "ERRO: Informação Incorreta!",
 		Message: message,
@@ -50,6 +58,7 @@ func IncorrectEntityAPIError(message string) *APIError {
 func InternalServerAPIError(err error) *APIError {
 	return &APIError{
 		Code:    http.StatusInternalServerError,
+		ErrType: ERROR_TYPE,
 		Kind:    INTERNAL_ERROR,
 		Title:   "GRAVE: Erro Interno do Servidor!",
 		Message: fmt.Sprintf("Erro causado por: %s. Consulte o suporte para resolver esta questão.", err.Error()),
@@ -59,6 +68,7 @@ func InternalServerAPIError(err error) *APIError {
 func DeleteAPIError(message string) *APIError {
 	return &APIError{
 		Code:    http.StatusUpgradeRequired,
+		ErrType: ERROR_TYPE,
 		Kind:    DELETE_ERROR,
 		Title:   "AVISO: Este objeto possui dependências.",
 		Message: message,
@@ -68,7 +78,8 @@ func DeleteAPIError(message string) *APIError {
 func ConflictAPIWarning(message string) *APIError {
 	return &APIError{
 		Code:    http.StatusConflict,
-		Kind:    API_WARNING,
+		ErrType: WARNING_TYPE,
+		Kind:    CONFLICT_WARNING,
 		Title:   "AVISO: Informação já existe!",
 		Message: message,
 	}
@@ -77,17 +88,19 @@ func ConflictAPIWarning(message string) *APIError {
 func DeleteWarning(message string) *APIError {
 	return &APIError{
 		Code:    http.StatusUpgradeRequired,
-		Kind:    API_WARNING,
+		ErrType: WARNING_TYPE,
+		Kind:    CONFLICT_WARNING,
 		Title:   "AVISO: Este objeto possui dependências.",
 		Message: message,
 	}
 }
 
-func NewAPIWarning(message string, title string) *APIError {
+func NewAPIWarning(title string, message string, kind string) *APIError {
 	return &APIError{
 		Code:    http.StatusConflict,
-		Kind:    API_WARNING,
-		Title:   "AVISO: ",
+		ErrType: WARNING_TYPE,
+		Kind:    kind,
+		Title:   "AVISO: " + title,
 		Message: message,
 	}
 }

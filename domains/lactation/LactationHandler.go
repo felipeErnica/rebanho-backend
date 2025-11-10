@@ -439,11 +439,50 @@ func (h *LactationHandler) AddMilkEntry(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	milkEntry, ok := handlersUtil.DecodeEntity(w, r, &MilkEntry{}); if !ok {
+	milkEntry, ok := handlersUtil.DecodeEntity(w, r, &AddMilkEntryStruct{}); if !ok {
 		return
 	}
 
-	err := h.Repository.AddMilkEntry(milkEntry, userId)
+	milkEntry.UserId = userId
+	err := h.Repository.AddMilkEntry(milkEntry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+	
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *LactationHandler) AddMilkEntryNoTransfer(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	milkEntry, ok := handlersUtil.DecodeEntity(w, r, &AddMilkEntryStruct{}); if !ok {
+		return
+	}
+
+	milkEntry.UserId = userId
+	err := h.Repository.AddMilkEntryNoTransfer(milkEntry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+	
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *LactationHandler) AddMilkAndTransferPasture(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	milkEntry, ok := handlersUtil.DecodeEntity(w, r, &AddMilkEntryStruct{}); if !ok {
+		return
+	}
+
+	milkEntry.UserId = userId
+	err := h.Repository.AddMilkAndTransferPasture(milkEntry)
 	if err != nil {
 		apiError.WriteAPIError(err, w)
 		return

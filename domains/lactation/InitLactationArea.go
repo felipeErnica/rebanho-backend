@@ -30,6 +30,8 @@ func InitLactationArea(app *app.App) {
     app.HandleFunc("POST /lactation/entries/page", handler.FindEntriesPage)
     app.HandleFunc("POST /lactation/entries/page/foot", handler.GetEntriesPageFoot)
     app.HandleFunc("PUT /lactation/entries/add", handler.AddMilkEntry)
+    app.HandleFunc("PUT /lactation/entries/add-and-transfer", handler.AddMilkAndTransferPasture)
+    app.HandleFunc("PUT /lactation/entries/add-no-transfer", handler.AddMilkEntryNoTransfer)
     app.HandleFunc("DELETE /lactation/entries/delete/{id}", handler.DeleteMilkEntry)
     app.HandleFunc("PUT /lactation/entries/update", handler.UpdateMilkEntry)
     app.HandleFunc("PUT /lactation/entries/replace", handler.ReplaceMilkEntry)
