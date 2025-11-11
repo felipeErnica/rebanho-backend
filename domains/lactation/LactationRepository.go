@@ -1066,10 +1066,10 @@ func (r *LactationRepository) FindLactationPage(
 					when l.calf_id is null then 'Sem Bezerro'
 					when c.name is not null then format(
 						'%s (%s)',
-						concat_ws(' - ', a.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+						concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
 						concat_ws(' - ', c.ring_number, c.name)
 					)
-					else concat_ws(' - ', a.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+					else concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
 				end as calf_info,
 				l.start_date,
 				l.end_date,
@@ -1084,6 +1084,7 @@ func (r *LactationRepository) FindLactationPage(
 				join lac_stats s using (id)
 				join animals a on a.id = l.animal_id
 				left join animals c on c.id = l.calf_id
+				left join animals cm on cm.id = c.mother_id
 			where l.user_id = $1 and l.deleted_at is null
 		)
 		select * from cte
@@ -1099,17 +1100,7 @@ func (r *LactationRepository) FindLactationPage(
 		return nil, err
 	}
 
-	whereExpression := ""
-	if filterExpression != "" {
-		whereExpression = "where " + filterExpression
-	}
-
-	if cursorExpression != "" {
-		whereExpression += " and " + cursorExpression
-		if filterExpression == "" {
-			whereExpression = "where " + cursorExpression
-		}
-	}
+	whereExpression := repositoriesUtil.GetWhereExpression(filterExpression, cursorExpression)
 
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
@@ -1173,7 +1164,8 @@ func (r *LactationRepository) GetLactationPageFoot(filter LactationHistFilter, u
 				extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1 lac_period,
 				(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1)*s.avg_prod total_production,
 				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) lac_interval,
-				s.peak
+				s.peak,
+				l.observation
 			from lactations l
 				join lac_stats s using (id)
 				left join animals c on c.id = l.calf_id
@@ -1341,6 +1333,20 @@ func (r *LactationRepository) AddLactation(entry *AddLactationStruct) *apiError.
 			return err
 		}
 
+		if entry.CalfId != nil {
+			calfEntry := pastureEntries.PastureEntry{
+				PastureId: *entry.PastureId,
+				AnimalId:  *entry.CalfId,
+				EntryDate: entry.StartDate,
+				UserId:    entry.UserId,
+			}
+
+			err := pastureRepository.TransferCalfEntry(&calfEntry)
+			if err != nil {
+				return err
+			}
+
+		}
 	}
 
 	lacEntry := LactationHist{
@@ -1360,6 +1366,65 @@ func (r *LactationRepository) AddLactation(entry *AddLactationStruct) *apiError.
 	insertQuery := `
 		insert into lactations (animal_id, calf_id, start_date, user_id)
 		values (:animal_id, :calf_id, :start_date, :user_id)
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &lacEntry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *LactationRepository) EndLactation(entry *AddLactationStruct) *apiError.APIError {
+
+	if entry.PastureId != nil {
+
+		pastureEntry := pastureEntries.PastureEntry{
+			PastureId: *entry.PastureId,
+			AnimalId:  entry.AnimalId,
+			EntryDate: entry.StartDate,
+			UserId:    entry.UserId,
+		}
+
+		pastureRepository := pastureEntries.NewRepository(r.DB)
+		err := pastureRepository.TransferEntry(&pastureEntry)
+		if err != nil {
+			return err
+		}
+
+		if entry.CalfId != nil {
+			calfEntry := pastureEntries.PastureEntry{
+				PastureId: *entry.PastureId,
+				AnimalId:  *entry.CalfId,
+				EntryDate: entry.StartDate,
+				UserId:    entry.UserId,
+			}
+
+			err := pastureRepository.TransferCalfEntry(&calfEntry)
+			if err != nil {
+				return err
+			}
+
+		}
+	}
+
+	lacEntry := LactationHist{
+		Id:          entry.Id,
+		EndDate:     entry.EndDate,
+		Observation: entry.Observation,
+	}
+
+	validateErr := validateUpdateLacation(r.DB, lacEntry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	insertQuery := `
+		update lactations
+		set end_date = :end_date,
+			observation = :observation
+		where id = :id
 	`
 
 	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &lacEntry)
@@ -1416,10 +1481,10 @@ func (r *LactationRepository) UpdateLactation(entry *LactationHist) (*LactationH
 				when l.calf_id is null then 'Sem Bezerro'
 				when c.name is not null then format(
 					'%s (%s)',
-					concat_ws(' - ', a.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+					concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
 					concat_ws(' - ', c.ring_number, c.name)
 				)
-				else concat_ws(' - ', a.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+				else concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
 			end as calf_info,
 			l.start_date,
 			l.end_date,
@@ -1433,6 +1498,7 @@ func (r *LactationRepository) UpdateLactation(entry *LactationHist) (*LactationH
 			cross join lac_stats s
 			join animals a on a.id = l.animal_id
 			left join animals c on c.id = l.calf_id
+			left join animals cm on cm.id = c.mother_id
 		where l.id = $1
 	`
 
@@ -1568,6 +1634,39 @@ func (r *LactationRepository) AddMilkAndTransferPasture(entry *AddMilkEntryStruc
 		return validateErr
 	}
 
+	calfQuery := `
+		select calf_id
+		from lactations
+		where user_id = $1
+			and animal_id = $2
+			and end_date is null
+			and deleted_at is null
+		order by start_date desc
+		limit 1
+	`
+	
+	var calfId string
+	err := repositoriesUtil.GetPrimitive(r.DB, calfQuery, &calfId, entry.UserId, entry.AnimalId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if calfId != "" {
+		pastureRepository := pastureEntries.NewRepository(r.DB)
+		calfEntry := pastureEntries.PastureEntry{
+			PastureId: *entry.PastureId,
+			AnimalId:  calfId,
+			EntryDate: entry.EntryDate,
+			UserId:    entry.UserId,
+		}
+
+		err := pastureRepository.TransferCalfEntry(&calfEntry)
+		if err != nil {
+			return err
+		}
+
+	}
+
 	milkEntry := MilkEntry{
 		AnimalId:  entry.AnimalId,
 		Quantity:  entry.Quantity,
@@ -1585,7 +1684,7 @@ func (r *LactationRepository) AddMilkAndTransferPasture(entry *AddMilkEntryStruc
 		values (:animal_id, :entry_date, :quantity, :user_id)
 	`
 
-	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &milkEntry)
+	err = repositoriesUtil.NamedExec(r.DB, insertQuery, &milkEntry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -1594,6 +1693,7 @@ func (r *LactationRepository) AddMilkAndTransferPasture(entry *AddMilkEntryStruc
 }
 
 func (r *LactationRepository) ReplaceMilkEntry(entry *MilkEntry, userId string) *apiError.APIError {
+
 	query := `
 		update milk_entries 
 		set quantity = :quantity,

@@ -82,6 +82,7 @@ type LactationHistFilter struct {
 	MaxLacInterval       *int       `json:"maxLacInterval" db:"lac_interval"`
 	MinPeak              *float64   `json:"minPeak" db:"peak"`
 	MaxPeak              *float64   `json:"maxPeak" db:"peak"`
+	Observation          *string    `json:"observation" db:"observation"`
 }
 
 type LactationHistFoot struct {
@@ -94,6 +95,7 @@ type LactationHistFoot struct {
 }
 
 type AddLactationStruct struct {
+	Id          string     `json:"id"`
 	AnimalId    string     `json:"animalId"`
 	CalfId      *string    `json:"calfId"`
 	PastureId   *string    `json:"pastureId"`

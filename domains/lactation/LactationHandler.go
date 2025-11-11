@@ -510,6 +510,25 @@ func (h *LactationHandler) AddLactation(w http.ResponseWriter, r *http.Request) 
 	handlersUtil.WriteCreatedResponse(w)
 }
 
+func (h *LactationHandler) UpdateLacAndTransfer(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	lac, ok := handlersUtil.DecodeEntity(w, r, &AddLactationStruct{}); if !ok {
+		return
+	}
+
+	lac.UserId = userId
+	err := h.Repository.EndLactation(lac)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+	
+	handlersUtil.WriteUpdateResponse(w)
+}
+
 func (h *LactationHandler) UpdateLactation(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
 		return

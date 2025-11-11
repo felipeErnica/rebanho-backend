@@ -46,12 +46,7 @@ func validateAddEntry(db *sqlx.DB, entry PastureEntry) *apiError.APIError {
 
 func validateTransferEntry(db *sqlx.DB, entry PastureEntry) *apiError.APIError {
 
-	err := transferExists(db, entry)
-	if err != nil {
-		return err
-	}
-
-	err = invalidEntryDate(db, entry)
+	err := invalidEntryDate(db, entry)
 	if err != nil {
 		return err
 	}
@@ -76,31 +71,6 @@ func validateTransferEntry(db *sqlx.DB, entry PastureEntry) *apiError.APIError {
 
 	return nil
 
-}
-
-func transferExists(db *sqlx.DB, entry PastureEntry) *apiError.APIError {
-	query := `
-		select exists (
-			select 1
-			from pasture_entries
-			where entry_date = $1
-				and animal_id = $2
-				and pasture_id = $3
-				and deleted_at is null
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.EntryDate, entry.AnimalId, entry.PastureId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.ConflictAPIError("Esta entrada já existe!")
-	}
-
-	return nil
 }
 
 func entryExists(db *sqlx.DB, entry PastureEntry) *apiError.APIError {
@@ -245,6 +215,135 @@ func invalidDates(entry PastureEntry) *apiError.APIError {
 
 	if entry.EntryDate.After(*entry.ExitDate) {
 		return apiError.IncorrectEntityAPIError("A data final não pode ser maior que a inicial!")
+	}
+
+	return nil
+}
+
+func validateTransferCalf(db *sqlx.DB, entry PastureEntry) *apiError.APIError {
+
+	err := invalidCalfEntry(db, entry)
+	if err != nil {
+		return err
+	}
+
+	if entry.ExitDate != nil {
+		err = invalidCalfExit(db, entry)
+		if err != nil {
+			return err
+		}
+
+		err = invalidCalfDates(entry)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+func cancelChangeCalf(db *sqlx.DB, entry PastureEntry) (bool, *apiError.APIError) {
+
+	weaningQuery := `
+		select exists(
+			select 1
+			from animals
+			where id = $1 
+				and deleted_at is null 
+				and animal_type <> 'OFFSPRING'
+		)
+	`
+
+	var isNotWeaningCalf bool
+	err := repositoriesUtil.GetPrimitive(db, weaningQuery, &isNotWeaningCalf, entry.AnimalId)
+	if err != nil {
+		return false, apiError.InternalServerAPIError(err)
+	}
+
+	query := `
+		select pasture_id = $1 as same_pasture
+		from pasture_entries
+		where animal_id = $2 and deleted_at is null
+		order by entry_date desc
+		limit 1
+	`
+
+	var samePasture bool
+	err = repositoriesUtil.GetPrimitive(db, query, &samePasture, entry.PastureId, entry.AnimalId)
+	if err != nil {
+		return false, apiError.InternalServerAPIError(err)
+	}
+
+	return samePasture || isNotWeaningCalf, nil
+}
+
+func invalidCalfEntry(db *sqlx.DB, entry PastureEntry) *apiError.APIError {
+	query := `
+		select exists (
+			select 1 
+			from pasture_entries 
+			where animal_id = $1
+				and entry_date between $2 and exit_date
+				and deleted_at is null
+				and user_id = $3
+		)
+	`
+
+	var exists bool
+	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.AnimalId, entry.EntryDate, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if exists {
+		return apiError.IncorrectEntityAPIError(`
+			A data de entrada do bezerro(a) está em conflito com a data de saída anterior. 
+			A data de saída anterior é maior que a data de entrada informada! 
+		`)
+	}
+
+	return nil
+}
+
+func invalidCalfExit(db *sqlx.DB, entry PastureEntry) *apiError.APIError {
+
+	query := `
+		select exists (
+			select 1 
+			from pasture_entries
+			where animal_id = $1
+				and start_date > $2
+				and start_date <= $3
+				and deleted_at is null
+				and user_id = $4
+		)
+	`
+
+	var exists bool
+	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.AnimalId, entry.EntryDate, entry.ExitDate, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if exists {
+		return apiError.IncorrectEntityAPIError(`
+			A data de saída do bezerro(a) está em conflito com a data de entrada
+			de uma entrada posterior. A data de entrada posterior é menor que a data de saída informada! 
+		`)
+	}
+
+	return nil
+}
+
+func invalidCalfDates(entry PastureEntry) *apiError.APIError {
+
+	if entry.ExitDate == nil {
+		return nil
+	}
+
+	if entry.EntryDate.After(*entry.ExitDate) {
+		return apiError.IncorrectEntityAPIError("A data de saída do bezerro(a) não pode ser menor que a de entrada!")
 	}
 
 	return nil

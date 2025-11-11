@@ -219,3 +219,45 @@ func (r *PastureEntryRepository) TransferEntry(entry *PastureEntry) *apiError.AP
 
 	return nil
 }
+
+func (r *PastureEntryRepository) TransferCalfEntry(entry *PastureEntry) *apiError.APIError {
+
+	cancelTransfer, validateErr := cancelChangeCalf(r.DB, *entry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	if cancelTransfer {
+		return nil
+	}
+
+	validateErr = validateTransferCalf(r.DB, *entry) 
+	if validateErr != nil {
+		return  validateErr
+	}
+
+	updateQuery := `
+		update pasture_entries
+		set exit_date = $1
+		where animal_id = $2
+			and exit_date is null
+			and deleted_at is null
+	`
+
+	err := repositoriesUtil.Exec(r.DB, updateQuery, entry.EntryDate, entry.AnimalId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	query := `
+		insert into pasture_entries (animal_id, pasture_id, entry_date, user_id)
+		values(:animal_id, :pasture_id, :entry_date, :user_id)
+	`
+
+	err = repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
