@@ -1,6 +1,10 @@
 package birth
 
 import (
+	"database/sql"
+
+	"github.com/felipeErnica/rebanho-backend/apiError"
+	pastureEntries "github.com/felipeErnica/rebanho-backend/domains/farm-area/pasture-entries"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -636,4 +640,145 @@ func (r *BirthRepository) FindPageFooter(userId string, filter BirthEntryFilter)
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 	return repositoriesUtil.GetOne[BirthFooter](r.DB, query, args...)
+}
+
+func (r *BirthRepository) UpdateBirth(entry *BirthEntrySave) (*BirthEntry, *apiError.APIError) {
+
+	validateErr := validateUpdateBirth(r.DB, entry)
+	if validateErr != nil {
+		return nil, validateErr
+	}
+
+	query := `
+		update animals
+		set birth_date = :birth_date,
+			sex = :sex,
+			father_id = :father_id,
+			observation = :observation
+		where id = :id
+	`
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	selectQuery := `
+		select 
+			a.id,
+			a.mother_id,
+			m.name as mother_name,
+			concat_ws(' - ', m.ring_number, m.name) as mother_info,
+			a.birth_date as calf_birth_date,
+			a.sex as calf_sex,
+			case 
+				when a.name is null then ''
+				else concat_ws(' - ', a.ring_number, a.name)
+			end as calf_name,
+			a.father_id as calf_father_id,
+			concat_ws(' - ', f.ring_number, f.name) calf_father,
+			extract(days from a.birth_date - lag(a.birth_date) over win) as birth_interval
+		from animals a
+			join animals m on m.id = a.mother_id and m.animal_type <> 'OUTSIDE_ANIMAL'
+			left join animals f on f.id = a.father_id
+		where id = $1
+		window win as (partition by a.mother_id order by a.birth_date)
+	`
+
+	result, err := repositoriesUtil.GetOne[BirthEntry](r.DB, selectQuery, entry.Id)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	return result, nil
+}
+
+func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
+	
+	validateErr := validateAddBirth(r.DB, entry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	birthQuery := `
+		insert into animals(
+			ring_number, 
+			sex, 
+			birth_date, 
+			father_id, 
+			mother_id, 
+			animal_type, 
+			observation,
+			user_id
+		)
+		values (
+			(
+				select ring_number
+				from animals
+				where id = :mother_id
+			), 
+			:sex, 
+			:birth_date, 
+			:father_id, 
+			:mother_id, 'OFFSPRING', 
+			:observation,
+			:user_id
+		)
+	`
+
+	newId, err := repositoriesUtil.NamedExecReturningIdTx(tx, birthQuery, entry)
+	if err != nil {
+		return  apiError.InternalServerAPIError(err)
+	}
+
+	pastureQuery := `
+		select pasture_id
+		from pasture_entries
+		where animal_id = $1
+			and exit_date is null
+			and deleted_at is null
+		order by entry_date desc
+		limit 1
+	`
+
+	var pastureId sql.NullString
+	err = repositoriesUtil.GetPrimitive(r.DB, pastureQuery, &pastureId, newId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if !pastureId.Valid {
+		return nil
+	}
+
+	pastureEntry := &pastureEntries.PastureEntry{
+		AnimalId: newId,
+		EntryDate: entry.BirthDate,
+		UserId: entry.UserId,
+	}
+
+	pastureEntryQuery := `
+		insert into pasture_entries (animal_id, pasture_id, entry_date, user_id)
+		values (
+			:animal_id,
+			:pasture_id,
+			:entry_date,
+			:user_id
+		)
+	`
+	err = repositoriesUtil.NamedExecTx(tx, pastureEntryQuery, pastureEntry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
 }

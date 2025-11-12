@@ -81,3 +81,13 @@ type AnimalFilter struct {
 	MinChildrenQuantity     *int       `json:"minChildrenQuantity" db:"children_quantity"`
 	MaxChildrenQuantity     *int       `json:"maxChildrenQuantity" db:"children_quantity"`
 }
+
+type DeleteAnimalStruct struct {
+	Id                string
+	UserId            string
+	CheckLactation    bool
+	CheckSlaughter    bool
+	CheckInsemination bool
+	CheckBreeding     bool
+	CheckTransfer     bool
+}

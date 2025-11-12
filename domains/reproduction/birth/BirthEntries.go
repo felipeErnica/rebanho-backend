@@ -33,14 +33,13 @@ type BirthEntryFilter struct {
 }
 
 type BirthEntrySave struct {
-	Id            string     `json:"id" db:"id"`
-	MotherId      string     `json:"motherId" db:"mother_id"`
-	CalfId        string     `json:"calfId" db:"calf_id"`
-	BirthInterval *int       `json:"birthInterval" db:"a_birth_interval"`
-	Observation   *string    `json:"observation" db:"observation"`
-	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
-	DeletedAt     *time.Time `json:"deletedAt" db:"deleted_at"`
-	UserId        string     `json:"userId" db:"user_id"`
+	Id          string    `json:"id" db:"id"`
+	MotherId    *string   `json:"motherId" db:"mother_id"`
+	FatherId    *string   `json:"fatherId" db:"father_id"`
+	BirthDate   time.Time `json:"birthDate" db:"birth_date"`
+	Sex         string    `json:"sex" db:"sex"`
+	Observation *string   `json:"observation" db:"observation"`
+	UserId      string    `json:"-" db:"user_id"`
 }
 
 type BirthFooter struct {

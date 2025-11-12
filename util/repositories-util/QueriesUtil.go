@@ -90,10 +90,53 @@ func NamedExec[E any](db *sqlx.DB, query string, obj *E) error {
 	return nil
 }
 
+/*Envia um comando SQL a uma transação, usando um objeto mapeado como parâmetro*/
+func NamedExecTx[E any](tx *sqlx.Tx, query string, obj *E) error {
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	_, err := tx.NamedExec(query, obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+/*
+Envia um comando SQL a uma transição,
+usando um objeto mapeado como parâmetro
+e retorna o id alterado
+*/
+func NamedExecReturningIdTx[E any](tx *sqlx.Tx, query string, obj *E) (string, error) {
+	query += " returning id"
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	row, err := tx.NamedQuery(query, obj)
+	if err != nil {
+		return "", err
+	}
+
+	id := ""
+	if row.Next() {
+		err := row.Scan(&id)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return id, nil
+}
 /*Executa um comando SQL*/
 func Exec(db *sqlx.DB, query string, args ...any) error {
 	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
 	_, err := db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+/*Executa um comando SQL e envia a uma transação*/
+func ExecTx(tx *sqlx.Tx, query string, args ...any) error {
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	_, err := tx.Exec(query, args...)
 	if err != nil {
 		return err
 	}

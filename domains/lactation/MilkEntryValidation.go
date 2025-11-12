@@ -105,7 +105,7 @@ func entryExists(db *sqlx.DB, animalId string, entryDate time.Time, userId strin
 func isDiferentPasture(db *sqlx.DB, entry AddMilkEntryStruct) *apiError.APIError {
 
 	query := `
-		select pasture_id <> $1 as other_pasture
+		select coalesce(pasture_id <> $1, false) as other_pasture
 		from pasture_entries
 		where animal_id = $2 and deleted_at is null
 		order by entry_date desc

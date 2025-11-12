@@ -95,6 +95,16 @@ func DeleteWarning(message string) *APIError {
 	}
 }
 
+func DeleteWarningKind(kind string, message string) *APIError {
+	return &APIError{
+		Code:    http.StatusUpgradeRequired,
+		ErrType: WARNING_TYPE,
+		Kind:    kind,
+		Title:   "AVISO: Este objeto possui dependências.",
+		Message: message,
+	}
+}
+
 func NewAPIWarning(title string, message string, kind string) *APIError {
 	return &APIError{
 		Code:    http.StatusConflict,

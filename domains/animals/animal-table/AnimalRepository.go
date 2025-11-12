@@ -1,6 +1,7 @@
 package animalTable
 
 import (
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -187,6 +188,132 @@ func (r *AnimalRepository) SearchBull(userId string) (*[]entity.SearchEntity, er
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) Delete(id string) error {
-	return repositoriesUtil.Delete(r.DB, r.TableName, id)
+func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError {
+
+	validateErr := validDelete(r.DB, *entry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	query := `
+		update animals
+		set deleted_at = now()
+		where id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, query, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	lacQuery := `
+		update lactations
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, lacQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	milkQuery := `
+		update milk_entries
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, milkQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	embryoQuery := `
+		update embryo_transfer
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, embryoQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	inseminationQuery := `
+		update embryo_transfer
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, inseminationQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	breedingQuery := `
+		update natural_breedings
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, breedingQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	pastureQuery := `
+		update natural_breedings
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, pastureQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	pregnancyQuery := `
+		update pregnancy_tests
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, pregnancyQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	slaughterQuery := `
+		update slaughter_entries
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, slaughterQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	weightQuery := `
+		update weight_entries
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, weightQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
 }

@@ -1,9 +1,9 @@
 package animalTable
 
 import (
-	"net/http"
 	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
+	"net/http"
 )
 
 type AnimalHandler struct {
@@ -89,10 +89,10 @@ func (h *AnimalHandler) FindByMotherId(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AnimalHandler) SearchFather(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
-
 
 	result, err := h.Repository.SearchFather(userId)
 	if err != nil {
@@ -104,10 +104,10 @@ func (h *AnimalHandler) SearchFather(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AnimalHandler) SearchAnimal(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
-
 
 	result, err := h.Repository.SearchAnimals(userId)
 	if err != nil {
@@ -119,10 +119,10 @@ func (h *AnimalHandler) SearchAnimal(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AnimalHandler) SearchMother(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
-
 
 	result, err := h.Repository.SearchMother(userId)
 	if err != nil {
@@ -134,10 +134,10 @@ func (h *AnimalHandler) SearchMother(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AnimalHandler) SearchBull(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
-
 
 	result, err := h.Repository.SearchBull(userId)
 	if err != nil {
@@ -150,10 +150,10 @@ func (h *AnimalHandler) SearchBull(w http.ResponseWriter, r *http.Request) {
 
 func (h *AnimalHandler) SearchDairyAnimal(w http.ResponseWriter, r *http.Request) {
 
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
-
 
 	result, err := h.Repository.SearchDairyAnimals(userId)
 	if err != nil {
@@ -162,4 +162,25 @@ func (h *AnimalHandler) SearchDairyAnimal(w http.ResponseWriter, r *http.Request
 	}
 
 	handlersUtil.WriteEntity(w, result)
+}
+
+func (h *AnimalHandler) DeleteAnimal(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	deleteEntry, ok := handlersUtil.DecodeEntity(w, r, &DeleteAnimalStruct{})
+	if !ok {
+		return
+	}
+
+	deleteEntry.UserId = userId
+	err := h.Repository.Delete(deleteEntry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
 }

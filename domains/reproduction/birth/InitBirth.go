@@ -8,8 +8,12 @@ import (
 func InitBirth(app *app.App) {
 	repository := NewRepository(app.DBconn)
 	handler := BirthHandler{repository}
+
 	app.HandleFunc("POST /reproduction/births/table/page/footer", handler.FindPageFooter)
 	app.HandleFunc("POST /reproduction/births/table/page", handler.FindPage)
+
+	app.HandleFunc("PUT /reproduction/births/add", handler.AddBirth)
+	app.HandleFunc("PUT /reproduction/births/update", handler.UpdateBirth)
 
 	app.HandleFunc("GET /reproduction/births/dashboard/last-births", handler.GetLastBirths)
 	app.HandleFunc("GET /reproduction/births/dashboard/births-number", handler.GetLastBirthsNumber)

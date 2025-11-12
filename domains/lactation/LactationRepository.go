@@ -1,6 +1,7 @@
 package lactation
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -1522,6 +1523,7 @@ func (r *LactationRepository) DeleteLactation(id string) *apiError.APIError {
 		set deleted_at = now()
 		where id = $1
 	`
+
 	err := repositoriesUtil.Exec(r.DB, query, id)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
@@ -1540,6 +1542,7 @@ func (r *LactationRepository) DeleteLactationAndEntries(id string) *apiError.API
 			and m.animal_id = l.animal_id
 			and m.entry_date between l.start_date and coalesce(l.end_date, now());
 	`
+
 	err := repositoriesUtil.Exec(r.DB, entriesQuery, id)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
@@ -1644,18 +1647,18 @@ func (r *LactationRepository) AddMilkAndTransferPasture(entry *AddMilkEntryStruc
 		order by start_date desc
 		limit 1
 	`
-	
-	var calfId string
+
+	var calfId sql.NullString
 	err := repositoriesUtil.GetPrimitive(r.DB, calfQuery, &calfId, entry.UserId, entry.AnimalId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
-	if calfId != "" {
+	if calfId.Valid {
 		pastureRepository := pastureEntries.NewRepository(r.DB)
 		calfEntry := pastureEntries.PastureEntry{
 			PastureId: *entry.PastureId,
-			AnimalId:  calfId,
+			AnimalId:  calfId.String,
 			EntryDate: entry.EntryDate,
 			UserId:    entry.UserId,
 		}
