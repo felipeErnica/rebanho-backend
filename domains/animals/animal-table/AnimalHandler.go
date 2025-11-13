@@ -118,6 +118,21 @@ func (h *AnimalHandler) SearchAnimal(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, result)
 }
 
+func (h *AnimalHandler) SearchAllMothers(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchAllMothers(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
 func (h *AnimalHandler) SearchMother(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
@@ -165,18 +180,29 @@ func (h *AnimalHandler) SearchDairyAnimal(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AnimalHandler) DeleteAnimal(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	deleteEntry, ok := handlersUtil.DecodeEntity(w, r, &DeleteAnimalStruct{})
+	err := h.Repository.Delete(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *AnimalHandler) DeleteNoValidation(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	deleteEntry.UserId = userId
-	err := h.Repository.Delete(deleteEntry)
+	err := h.Repository.DeleteNoValidation(id, userId)
 	if err != nil {
 		apiError.WriteAPIError(err, w)
 		return

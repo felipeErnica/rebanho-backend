@@ -1,6 +1,7 @@
 package repositoriesUtil
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -52,6 +53,7 @@ func AddReturningId[E any](db *sqlx.DB, query string, userId string, object *E) 
 			return id, err
 		}
 	}
+	rows.Close()
 
 	return id, err
 }
@@ -120,9 +122,11 @@ func NamedExecReturningIdTx[E any](tx *sqlx.Tx, query string, obj *E) (string, e
 			return "", err
 		}
 	}
+	row.Close()
 
 	return id, nil
 }
+
 /*Executa um comando SQL*/
 func Exec(db *sqlx.DB, query string, args ...any) error {
 	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
@@ -163,7 +167,23 @@ func GetPrimitive(db *sqlx.DB, query string, dest any, args ...any) error {
 
 	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
 	err := db.Get(dest, query, args...)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	return nil
+}
+
+/*Retorna um objeto da Tabela SQL, através de uma transação, de acordo com os parâmetros informados*/
+func GetPrimitiveTx(tx *sqlx.Tx, query string, dest any, args ...any) error {
+	t := reflect.TypeOf(dest)
+	if t.Kind() != reflect.Pointer {
+		return errors.New("A variável deve ser um ponteiro")
+	}
+
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	err := tx.Get(dest, query, args...)
+	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
 

@@ -1,357 +1,228 @@
 package animalTable
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/felipeErnica/rebanho-backend/apiError"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
 
-const DELETE_OBSERVATION = `
-	\nOBS.: A exclusão de animais só é recomendada em caso de erros. Em caso de morte e/ou abate, faça o registro apropriado.
-	Lembre-se, apagar um animal do sistema apagará, PERMANENTEMENTE, todas as informções ligadas a ele.
-`
+type WarnRecordValidations struct {
+	HasLactation          bool `db:"has_lactation"`
+	HasSlaughter          bool `db:"has_slaughter"`
+	HasInsemination       bool `db:"has_insemination"`
+	HasBreeding           bool `db:"has_breeding"`
+	HasTransfer           bool `db:"has_transfer"`
+	HasBullPastureEntries bool `db:"has_bull_pastures_entries"`
+}
 
-func validDelete(db *sqlx.DB, entry DeleteAnimalStruct) *apiError.APIError {
+type ErrorRecordValidations struct {
+	HasChildren        bool `db:"has_children"`
+	IsCalfInLactation  bool `db:"is_calf_lac"`
+	IsEmbryoDonor      bool `db:"is_embryo_donor"`
+	IsEmbryoBull       bool `db:"is_embryo_bull"`
+	IsInseminationBull bool `db:"is_insemination_bull"`
+	IsBreedingBull     bool `db:"is_breeding_bull"`
+}
 
-	err := hasChildren(db, entry.Id, entry.UserId)
+const DELETE_OBSERVATION = "\n\nOBS.: A exclusão de animais só é recomendada em caso de erros." +
+	"Em caso de morte e/ou abate, faça o registro apropriado." +
+	"Lembre-se, apagar um animal do sistema apagará, PERMANENTEMENTE, todas as informções ligadas a ele."
+
+func validDelete(db *sqlx.DB, id string, userId string) *apiError.APIError {
+
+	err := throwError(db, id, userId)
 	if err != nil {
 		return err
 	}
 
-	err = isCalfInLacation(db, entry.Id, entry.UserId)
+	err = hasImportantRecords(db, id, userId)
 	if err != nil {
 		return err
 	}
 
-	err = isEmbryoDonor(db, entry.Id, entry.UserId)
+	return nil
+}
+
+func throwError(db *sqlx.DB, id string, userId string) *apiError.APIError {
+
+	query := `
+		select 
+			exists (
+				select 1
+				from animals
+				where deleted_at is null
+					and (mother_id = $1 or father_id = $1)
+					and user_id = $2
+			) as has_children,
+			exists (
+				select 1
+				from lactations
+				where deleted_at is null
+					and calf_id = $1
+					and user_id = $2
+			) as is_calf_lac,
+			exists (
+				select 1
+				from embryo_transfer
+				where donor_id = $1
+					and user_id = $2
+					and deleted_at is null
+			) as is_embryo_donor,
+			exists (
+				select 1
+				from embryo_transfer
+				where bull_id = $1
+					and user_id = $2
+					and deleted_at is null
+			) as is_embryo_bull,
+			exists (
+				select 1
+				from insemination_entries
+				where bull_id = $1
+					and user_id = $2
+					and deleted_at is null
+			) as is_insemination_bull,
+			exists (
+				select 1
+				from natural_breedings
+				where bull_id = $1
+					and user_id = $2
+					and deleted_at is null
+			) as is_breeding_bull
+	`
+
+	res, err := repositoriesUtil.GetOne[ErrorRecordValidations](db, query, id, userId)
 	if err != nil {
-		return err
+		return apiError.InternalServerAPIError(err)
 	}
 
-	err = isReproductionBull(db, entry.Id, entry.UserId)
-	if err != nil {
-		return err
+	messages := []string{}
+	if res.HasChildren {
+		messages = append(messages, "O animal possui filhos registrados no sistema.")
 	}
 
-	err = hasBullPastureEntries(db, entry.Id, entry.UserId)
-	if err != nil {
-		return err
+	if res.IsCalfInLactation {
+		messages = append(messages, "O animal está ligado, como bezerro, a uma lactação.")
 	}
 
-	if entry.CheckLactation {
-		err = hasLactations(db, entry.Id, entry.UserId)
-		if err != nil {
-			return err
+	if res.IsEmbryoDonor {
+		messages = append(messages, "A vaca é uma doadora de embriões.")
+	}
+
+	if res.IsInseminationBull {
+		messages = append(messages, "O touro possui registros ativos de inseminação.")
+	}
+
+	if res.IsBreedingBull {
+		messages = append(messages, "O touro possui registros ativos de cobertura.")
+	}
+
+	if res.IsEmbryoBull {
+		messages = append(messages, "O touro possui registros ativos de transferência embrionária.")
+	}
+
+	if len(messages) != 0 {
+		warnMsg := "O animal não pode ser excluído, devido aos seguintes motivos:"
+		formatedMsg := []string{}
+		for i, message := range messages {
+			msg := fmt.Sprintf("%d - %s", i+1, message)
+			formatedMsg = append(formatedMsg, msg)
 		}
-	}
-
-	if entry.CheckInsemination {
-		err = hasInseminationEntries(db, entry.Id, entry.UserId)
-		if err != nil {
-			return err
-		}
-	}
-
-	if entry.CheckSlaughter {
-		err = hasSlaughterEntries(db, entry.Id, entry.UserId)
-		if err != nil {
-			return err
-		}
-	}
-
-	if entry.CheckBreeding {
-		err = hasBreeding(db, entry.Id, entry.UserId)
-		if err != nil {
-			return err
-		}
-	}
-
-	if entry.CheckSlaughter {
-		err = isReceiverInTransfer(db, entry.Id, entry.UserId)
-		if err != nil {
-			return err
-		}
+		resultMsg := strings.Join(formatedMsg, "\n")
+		return apiError.DeleteAPIError(warnMsg + "\n" + resultMsg + DELETE_OBSERVATION)
 	}
 
 	return nil
 }
 
-func hasChildren(db *sqlx.DB, id string, userId string) *apiError.APIError {
+func hasImportantRecords(db *sqlx.DB, id string, userId string) *apiError.APIError {
 
 	query := `
-		select exists (
-			select 1
-			from animals
-			where deleted_at is null
-				and (mother_id = $1 or father_id = $1)
-				and user_id = $2
-		)
+		select 
+			exists (
+				select 1
+				from lactations
+				where deleted_at is null
+					and animal_id = $1
+					and user_id = $2
+			) as has_lactation,
+			exists (
+				select 1
+				from natural_breedings
+				where deleted_at is null
+					and animal_id = $1
+					and user_id = $2
+			) as has_breeding,
+			exists (
+				select 1
+				from embryo_transfer
+				where deleted_at is null
+					and receiver_id = $1
+					and user_id = $2
+			) as has_transfer,
+			exists (
+				select 1
+				from slaughter_entries
+				where deleted_at is null
+					and animal_id = $1
+					and user_id = $2
+			) as has_slaughter,
+			exists (
+				select 1
+				from insemination_entries
+				where deleted_at is null
+					and animal_id = $1
+					and user_id = $2
+			) as has_insemination,
+			exists (
+				select 1
+				from pasture_entries pe
+					join animals a on a.id = pe.animal_id
+				where pe.deleted_at is null
+					and a.sex = 'M'
+					and a.animal_type = 'REPRODUCTION_ANIMAL'
+					and pe.animal_id = $1
+					and pe.user_id = $2
+			) as has_bull_pastures_entries
 	`
 
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
+	res, err := repositoriesUtil.GetOne[WarnRecordValidations](db, query, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
-	if exists {
-		return apiError.DeleteAPIError("Não é possível deletar animais com filhos registrados no sistema" + DELETE_OBSERVATION)
+	records := make([]string, 0)
+	if res.HasLactation {
+		records = append(records, "lactações")
 	}
 
-	return nil
-}
-
-func hasLactations(db *sqlx.DB, id string, userId string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from lactations
-			where deleted_at is null
-				and animal_id = $1
-				and user_id = $2
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
+	if res.HasBreeding {
+		records = append(records, "coberturas")
 	}
 
-	if exists {
-		return apiError.DeleteWarningKind(
-			"InseminationWarning",
-			"Este animal possui lactações registradas. Deseja continuar?"+DELETE_OBSERVATION,
-		)
+	if res.HasInsemination {
+		records = append(records, "inseminações")
 	}
 
-	return nil
-}
-
-func hasBreeding(db *sqlx.DB, id string, userId string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from natural_breedings
-			where deleted_at is null
-				and animal_id = $1
-				and user_id = $2
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
+	if res.HasSlaughter {
+		records = append(records, "abate")
 	}
 
-	if exists {
-		return apiError.DeleteWarningKind(
-			"BreedingWarning",
-			"Este animal possui coberturas registradas. Deseja continuar?"+DELETE_OBSERVATION,
-		)
+	if res.HasTransfer {
+		records = append(records, "receptação de embrião")
 	}
 
-	return nil
-}
-
-func isReceiverInTransfer(db *sqlx.DB, id string, userId string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from embryo_transfer
-			where deleted_at is null
-				and receiver_id = $1
-				and user_id = $2
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
+	if res.HasBullPastureEntries {
+		records = append(records, "entradas em lotes")
 	}
 
-	if exists {
-		return apiError.DeleteWarningKind(
-			"ReceiverWarning",
-			"Esta vaca é uma receptora de embriões. Deseja continuar?"+DELETE_OBSERVATION,
-		)
-	}
-
-	return nil
-}
-func hasSlaughterEntries(db *sqlx.DB, id string, userId string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from slaughter_entries
-			where deleted_at is null
-				and animal_id = $1
-				and user_id = $2
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.DeleteWarning("Este animal está presente em um registro de abate. Deseja continuar?" + DELETE_OBSERVATION)
-	}
-
-	return nil
-}
-
-func hasInseminationEntries(db *sqlx.DB, id string, userId string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from insemination_entries
-			where deleted_at is null
-				and animal_id = $1
-				and user_id = $2
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.DeleteWarning("Este animal já foi inseminado. Deseja continuar?" + DELETE_OBSERVATION)
-	}
-
-	return nil
-}
-
-func isCalfInLacation(db *sqlx.DB, id string, userId string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from lactations
-			where deleted_at is null
-				and calf_id = $1
-				and user_id = $2
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.DeleteAPIError(`
-			Não é possível deletar animais que sejam bezerros em lactações! Altere as lactações da mãe do animal!
-		` + DELETE_OBSERVATION)
-	}
-
-	return nil
-}
-
-func isEmbryoDonor(db *sqlx.DB, id string, userId string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from embryo_transfer
-			where donor_id = $1
-				and user_id = $2
-				and deleted_at is null
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.DeleteAPIError(`
-			Esta vaca está listada como doadora de embriões. Altere os registros de transferência antes de concluir!
-		` + DELETE_OBSERVATION)
-	}
-
-	return nil
-}
-
-func isReproductionBull(db *sqlx.DB, id string, userId string) *apiError.APIError {
-	query := `
-		select exists (
-			select 1
-			from embryo_transfer
-			where bull_id = $1
-				and user_id = $2
-				and deleted_at is null
-		) or exists (
-			select 1
-			from insemiantion_entries
-			where bull_id = $1
-				and user_id = $2
-				and deleted_at is null
-		) or exists (
-			select 1
-			from natural_mating
-			where bull_id = $1
-				and user_id = $2
-				and deleted_at is null
-		) 
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.DeleteAPIError(`
-			Não é possível apagar um touro de reprodução. Verifique os registros de inseminação,
-			transferência embrionária e cobertura ativa!
-		` + DELETE_OBSERVATION)
-	}
-
-	return nil
-}
-
-func hasBullPastureEntries(db *sqlx.DB, id string, userId string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from pasture_entries pe
-				join animals a on a.id = pe.animal_id
-			where deleted_at is null
-				and animal_type = 'REPRODUCTION_ANIMAL'
-				and animal_id = $1
-				and user_id = $2
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id, userId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.DeleteWarning(`
-			Não é possível excluir um touro com entrada nos Lotes. Corrija os registros
-			de entrada de Lote!
-		` + DELETE_OBSERVATION)
+	if len(records) != 0 {
+		recordStr := strings.Join(records, ", ")
+		warnMsg := fmt.Sprintf("Este animal possui importantes registros de: %s. Deseja exclui-lo mesmo assim?", recordStr)
+		return apiError.DeleteWarning(warnMsg + DELETE_OBSERVATION)
 	}
 
 	return nil

@@ -14,6 +14,7 @@ func InitBirth(app *app.App) {
 
 	app.HandleFunc("PUT /reproduction/births/add", handler.AddBirth)
 	app.HandleFunc("PUT /reproduction/births/update", handler.UpdateBirth)
+	app.HandleFunc("PUT /reproduction/births/replace", handler.ReplaceBirth)
 
 	app.HandleFunc("GET /reproduction/births/dashboard/last-births", handler.GetLastBirths)
 	app.HandleFunc("GET /reproduction/births/dashboard/births-number", handler.GetLastBirthsNumber)

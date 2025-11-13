@@ -69,9 +69,9 @@ func isOnLac(db *sqlx.DB, animalId string, entryDate time.Time, userId string) *
 	}
 
 	if !hasLac {
-		return apiError.IncorrectEntityAPIError(`
-			Esta vaca não está lactando! Inicie uma lactação antes de adicionar marcações de leite!
-		`)
+		return apiError.IncorrectEntityAPIError(
+			"Esta vaca não está lactando! Inicie uma lactação antes de adicionar marcações de leite!", 
+		)
 	}
 
 	return nil

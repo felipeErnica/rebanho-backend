@@ -108,10 +108,10 @@ func invalidStartDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 	}
 
 	if exists {
-		return apiError.IncorrectEntityAPIError(`
-			A data de início informada está em conflito com a data final
-			da lactação anterior. A data final anterior é maior que a data de início informada! 
-		`)
+		return apiError.IncorrectEntityAPIError(
+			"A data de início informada está em conflito com a data final " +
+			"da lactação anterior. A data final anterior é maior que a data de início informada!",
+		)
 	}
 
 	return nil
@@ -141,9 +141,9 @@ func invalidEmptyEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 	}
 
 	if exists {
-		return apiError.IncorrectEntityAPIError(`
-			Não é possível adicionar uma lactação em aberto (sem data final), pois já existe uma lactação posterior!
-		`)
+		return apiError.IncorrectEntityAPIError(
+			"Não é possível adicionar uma lactação em aberto (sem data final), pois já existe uma lactação posterior!",
+		)
 	}
 
 	return nil
@@ -174,10 +174,10 @@ func invalidEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 	}
 
 	if exists {
-		return apiError.IncorrectEntityAPIError(`
-			A data de fim informada está em conflito com a data de início
-			de uma lactação posterior. A data inicial posterior é menor que a data de fim informada! 
-		`)
+		return apiError.IncorrectEntityAPIError(
+			"A data de fim informada está em conflito com a data de início " +
+			"de uma lactação posterior. A data inicial posterior é menor que a data de fim informada!",
+		)
 	}
 
 	return nil
@@ -279,10 +279,10 @@ func invalidUpdateStartDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 	}
 
 	if exists {
-		return apiError.IncorrectEntityAPIError(`
-			A data de início informada está em conflito com a data final
-			da lactação anterior. A data final anterior é maior que a data de início informada! 
-		`)
+		return apiError.IncorrectEntityAPIError(
+			"A data de início informada está em conflito com a data final " +
+			"da lactação anterior. A data final anterior é maior que a data de início informada!",
+		)
 	}
 
 	return nil
@@ -313,9 +313,9 @@ func invalidUpdateEmptyEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIErro
 	}
 
 	if exists {
-		return apiError.IncorrectEntityAPIError(`
-			Não é possível adicionar uma lactação em aberto (sem data final), pois já existe uma lactação posterior!
-		`)
+		return apiError.IncorrectEntityAPIError(
+			"Não é possível adicionar uma lactação em aberto (sem data final), pois já existe uma lactação posterior!",
+		)
 	}
 
 	return nil
@@ -347,10 +347,10 @@ func invalidUpdateEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 	}
 
 	if exists {
-		return apiError.IncorrectEntityAPIError(`
-			A data de fim informada está em conflito com a data de início
-			de uma lactação posterior. A data inicial posterior é menor que a data de fim informada! 
-		`)
+		return apiError.IncorrectEntityAPIError(
+			"A data de fim informada está em conflito com a data de início " +
+			"de uma lactação posterior. A data inicial posterior é menor que a data de fim informada!",
+		)
 	}
 
 	return nil
@@ -375,10 +375,10 @@ func validateDeleteLactation(db *sqlx.DB, id string) *apiError.APIError {
 	}
 
 	if exists {
-		return apiError.DeleteWarning(`
-			Existem marcações de leite relacionadas a esta lactação. Deseja proceder com a exclusão?
-			Caso sim, todas as marcações relacionadas com a lactação também serão excluídas!
-		`)
+		return apiError.DeleteWarning(
+			"Existem marcações de leite relacionadas a esta lactação. Deseja proceder com a exclusão? " +
+			"Caso sim, todas as marcações relacionadas com a lactação também serão excluídas!",
+		)
 	}
 
 	return nil

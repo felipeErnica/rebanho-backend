@@ -147,7 +147,7 @@ func (r *AnimalRepository) SearchAnimals(userId string) (*[]entity.SearchEntity,
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) SearchMother(userId string) (*[]entity.SearchEntity, error) {
+func (r *AnimalRepository) SearchAllMothers(userId string) (*[]entity.SearchEntity, error) {
 	query := `
         select id, concat_ws(' - ', ring_number, name) as label 
             from animals 
@@ -155,6 +155,20 @@ func (r *AnimalRepository) SearchMother(userId string) (*[]entity.SearchEntity, 
             and sex = 'F' 
             and animal_type <> 'OFFSPRING'
             and (name is not null)
+            and deleted_at is null
+        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *AnimalRepository) SearchMother(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+        select id, concat_ws(' - ', ring_number, name) as label 
+		from animals 
+        where user_id = $1 
+            and sex = 'F' 
+            and animal_type not in ('OFFSPRING', 'OUTSIDE_ANIMAL')
+            and name is not null
             and deleted_at is null
         order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
     `
@@ -188,9 +202,9 @@ func (r *AnimalRepository) SearchBull(userId string) (*[]entity.SearchEntity, er
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError {
+func (r *AnimalRepository) Delete(id string, userId string) *apiError.APIError {
 
-	validateErr := validDelete(r.DB, *entry)
+	validateErr := validDelete(r.DB, id, userId)
 	if validateErr != nil {
 		return validateErr
 	}
@@ -200,13 +214,15 @@ func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError 
 		return apiError.InternalServerAPIError(err)
 	}
 
+	defer tx.Rollback()
+
 	query := `
 		update animals
 		set deleted_at = now()
 		where id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, query, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, query, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -217,7 +233,7 @@ func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError 
 		where animal_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, lacQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, lacQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -228,7 +244,7 @@ func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError 
 		where animal_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, milkQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, milkQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -236,21 +252,21 @@ func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError 
 	embryoQuery := `
 		update embryo_transfer
 		set deleted_at = now()
-		where animal_id = $1 and user_id = $2
+		where receiver_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, embryoQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, embryoQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
 	inseminationQuery := `
-		update embryo_transfer
+		update insemination_entries
 		set deleted_at = now()
 		where animal_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, inseminationQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, inseminationQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -261,18 +277,18 @@ func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError 
 		where animal_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, breedingQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, breedingQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
 	pastureQuery := `
-		update natural_breedings
+		update pasture_entries
 		set deleted_at = now()
 		where animal_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, pastureQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, pastureQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -283,7 +299,7 @@ func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError 
 		where animal_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, pregnancyQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, pregnancyQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -294,7 +310,7 @@ func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError 
 		where animal_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, slaughterQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, slaughterQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -305,7 +321,134 @@ func (r *AnimalRepository) Delete(entry *DeleteAnimalStruct) *apiError.APIError 
 		where animal_id = $1 and user_id = $2
 	`
 
-	err = repositoriesUtil.ExecTx(tx, weightQuery, entry.Id, entry.UserId)
+	err = repositoriesUtil.ExecTx(tx, weightQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *AnimalRepository) DeleteNoValidation(id string, userId string) *apiError.APIError {
+
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	defer tx.Rollback()
+
+	query := `
+		update animals
+		set deleted_at = now()
+		where id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, query, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	lacQuery := `
+		update lactations
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, lacQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	milkQuery := `
+		update milk_entries
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, milkQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	embryoQuery := `
+		update embryo_transfer
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, embryoQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	inseminationQuery := `
+		update embryo_transfer
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, inseminationQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	breedingQuery := `
+		update natural_breedings
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, breedingQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	pastureQuery := `
+		update natural_breedings
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, pastureQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	pregnancyQuery := `
+		update pregnancy_tests
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, pregnancyQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	slaughterQuery := `
+		update slaughter_entries
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, slaughterQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	weightQuery := `
+		update weight_entries
+		set deleted_at = now()
+		where animal_id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.ExecTx(tx, weightQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}

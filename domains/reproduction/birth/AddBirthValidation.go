@@ -80,6 +80,10 @@ func doesExist(db *sqlx.DB, entry *BirthEntrySave) *apiError.APIError {
 		return apiError.InternalServerAPIError(err)
 	}
 
+	if exists {
+		return apiError.ConflictAPIWarning("Este nascimento já existe. Deseja substitui-lo?")
+	}
+
 	return nil
 
 }
@@ -91,8 +95,7 @@ func hasValidInterval(db *sqlx.DB, entry *BirthEntrySave) *apiError.APIError {
 	beforeQuery := `
 		select birth_date
 		from animals
-		where mother_id = $1
-			and birth_date <= $2
+		where mother_id = $1 and birth_date < $2
 		order by birth_date desc
 		limit 1
 	`
@@ -106,15 +109,16 @@ func hasValidInterval(db *sqlx.DB, entry *BirthEntrySave) *apiError.APIError {
 	if beforeBirthDate.Valid {
 		interval := entry.BirthDate.Sub(beforeBirthDate.Time)
 		if (interval.Hours() / 24) <= MIN_INTERVAL {
-			return apiError.IncorrectEntityAPIError("O intervalo com o nascimento anterior é muito pequeno!")
+			return apiError.IncorrectEntityAPIError(
+				"O intervalo em relação ao nascimento anterior é muito pequeno. O intervalo deve ser maior que 240 dias!",
+			)
 		}
 	}
 
 	afterQuery := `
 		select birth_date
 		from animals
-		where mother_id = $1
-			and birth_date >= $2
+		where mother_id = $1 and birth_date > $2
 		order by birth_date
 		limit 1
 	`
@@ -125,10 +129,12 @@ func hasValidInterval(db *sqlx.DB, entry *BirthEntrySave) *apiError.APIError {
 		return apiError.InternalServerAPIError(err)
 	}
 
-	if !afterBirthDate.Valid {
+	if afterBirthDate.Valid {
 		interval := afterBirthDate.Time.Sub(entry.BirthDate)
 		if (interval.Hours() / 24) <= MIN_INTERVAL {
-			return apiError.IncorrectEntityAPIError("O intervalo com o nascimento posterior é muito pequeno!")
+			return apiError.IncorrectEntityAPIError(
+				"O intervalo em relação ao nascimento posterior é muito pequeno. O intervalo deve ser maior que 240 dias!",
+			)
 		}
 	}
 

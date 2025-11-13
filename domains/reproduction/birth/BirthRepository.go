@@ -692,6 +692,25 @@ func (r *BirthRepository) UpdateBirth(entry *BirthEntrySave) (*BirthEntry, *apiE
 	return result, nil
 }
 
+func (r *BirthRepository) ReplaceBirth(entry *BirthEntrySave) *apiError.APIError {
+
+	query := `
+		update animals
+		set sex = :sex,
+			father_id = :father_id,
+			observation = :observation
+		where mother_id = :mother_id 
+			and birth_date = :birth_date
+			and user_id = :user_id
+	`
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
 func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
 	
 	validateErr := validateAddBirth(r.DB, entry)
@@ -703,6 +722,8 @@ func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
+
+	defer tx.Rollback()
 
 	birthQuery := `
 		insert into animals(
@@ -746,12 +767,13 @@ func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
 	`
 
 	var pastureId sql.NullString
-	err = repositoriesUtil.GetPrimitive(r.DB, pastureQuery, &pastureId, newId)
+	err = repositoriesUtil.GetPrimitiveTx(tx, pastureQuery, &pastureId, entry.MotherId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
 	if !pastureId.Valid {
+		tx.Commit()
 		return nil
 	}
 
@@ -775,10 +797,6 @@ func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
 		return apiError.InternalServerAPIError(err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
 
 	return nil
 }

@@ -83,11 +83,11 @@ type AnimalFilter struct {
 }
 
 type DeleteAnimalStruct struct {
-	Id                string
-	UserId            string
-	CheckLactation    bool
-	CheckSlaughter    bool
-	CheckInsemination bool
-	CheckBreeding     bool
-	CheckTransfer     bool
+	Id                string `json:"id"`
+	UserId            string `json:"-"`
+	CheckLactation    bool   `json:"checkLactation"`
+	CheckSlaughter    bool   `json:"checkSlaughter"`
+	CheckInsemination bool   `json:"checkInsemination"`
+	CheckBreeding     bool   `json:"checkBreeding"`
+	CheckTransfer     bool   `json:"checkTransfer"`
 }
