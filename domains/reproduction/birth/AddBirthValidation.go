@@ -95,7 +95,9 @@ func hasValidInterval(db *sqlx.DB, entry *BirthEntrySave) *apiError.APIError {
 	beforeQuery := `
 		select birth_date
 		from animals
-		where mother_id = $1 and birth_date < $2
+		where mother_id = $1 
+			and birth_date < $2
+			and deleted_at is null
 		order by birth_date desc
 		limit 1
 	`
@@ -118,7 +120,9 @@ func hasValidInterval(db *sqlx.DB, entry *BirthEntrySave) *apiError.APIError {
 	afterQuery := `
 		select birth_date
 		from animals
-		where mother_id = $1 and birth_date > $2
+		where mother_id = $1 
+			and birth_date > $2
+			and deleted_at is null
 		order by birth_date
 		limit 1
 	`
