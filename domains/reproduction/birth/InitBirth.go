@@ -12,6 +12,7 @@ func InitBirth(app *app.App) {
 	app.HandleFunc("POST /reproduction/births/table/page/footer", handler.FindPageFooter)
 	app.HandleFunc("POST /reproduction/births/table/page", handler.FindPage)
 
+	app.HandleFunc("POST /reproduction/births/add/get-father", handler.GetFather)
 	app.HandleFunc("PUT /reproduction/births/add", handler.AddBirth)
 	app.HandleFunc("PUT /reproduction/births/update", handler.UpdateBirth)
 	app.HandleFunc("PUT /reproduction/births/replace", handler.ReplaceBirth)

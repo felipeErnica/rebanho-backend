@@ -711,8 +711,48 @@ func (r *BirthRepository) ReplaceBirth(entry *BirthEntrySave) *apiError.APIError
 	return nil
 }
 
+func (r *BirthRepository) GetFather(entry *BirthEntrySave) (*BirthEntrySave, *apiError.APIError) {
+	entriesQuery := `
+		with entries_query as (
+			select pasture_id
+			from pasture_entries
+			where deleted_at is null
+				and user_id = $1
+				and animal_id = $2
+				and entry_date <= $3
+				and coalesce(exit_date, now()) > $3
+		),
+		bull_query as (
+			select pe.animal_id
+			from pasture_entries pe
+				cross join entries_query e
+				join animals a on a.id = pe.animal_id
+					and a.animal_type = 'REPRODUCTION_ANIMAL'
+					and a.sex = 'M'
+			where pe.deleted_at is null
+				and pe.user_id = $1
+				and pe.entry_date <= $3
+				and coalesce(pe.exit_date, now()) > $3
+				and pe.pasture_id = e.pasture_id
+			order by (coalesce(pe.exit_date, now()) - pe.entry_date) desc
+			limit 1
+		)
+	`
+	var fatherId sql.NullString
+	err := repositoriesUtil.GetPrimitive(r.DB, entriesQuery, &fatherId, entry.UserId, entry.MotherId, entry.BirthDate)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	if fatherId.Valid {
+		entry.FatherId = &fatherId.String
+	}
+
+	return entry, nil
+}
+
 func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
-	
+
 	validateErr := validateAddBirth(r.DB, entry)
 	if validateErr != nil {
 		return validateErr
@@ -753,7 +793,7 @@ func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
 
 	newId, err := repositoriesUtil.NamedExecReturningIdTx(tx, birthQuery, entry)
 	if err != nil {
-		return  apiError.InternalServerAPIError(err)
+		return apiError.InternalServerAPIError(err)
 	}
 
 	pastureQuery := `
@@ -778,9 +818,9 @@ func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
 	}
 
 	pastureEntry := &pastureEntries.PastureEntry{
-		AnimalId: newId,
+		AnimalId:  newId,
 		EntryDate: entry.BirthDate,
-		UserId: entry.UserId,
+		UserId:    entry.UserId,
 	}
 
 	pastureEntryQuery := `
@@ -796,7 +836,6 @@ func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
-
 
 	return nil
 }

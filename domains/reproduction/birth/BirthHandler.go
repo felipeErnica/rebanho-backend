@@ -266,3 +266,22 @@ func (h *BirthHandler) UpdateBirth(w http.ResponseWriter, r *http.Request) {
 
 	handlersUtil.WriteEntity(w, result)
 }
+
+func (h *BirthHandler) GetFather(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{}); if !ok {
+		return
+	}
+
+	birthEntry.UserId = userId
+	result, err := h.Repository.GetFather(birthEntry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
