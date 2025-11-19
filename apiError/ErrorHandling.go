@@ -7,7 +7,7 @@ import (
 	"github.com/felipeErnica/rebanho-backend/util"
 )
 
-func InternalServerError(w http.ResponseWriter) {
+func WriteInternalServerError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 

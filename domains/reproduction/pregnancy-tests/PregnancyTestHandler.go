@@ -249,3 +249,82 @@ func (h *TestEntryHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.
 
 	handlersUtil.WriteEntity(w, result)
 }
+
+func (h *TestEntryHandler) Add(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &TestEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.Add(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *TestEntryHandler) Replace(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &TestEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.Replace(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteUpdateResponse(w)
+}
+
+func (h *TestEntryHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &TestEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	res, err := h.Repository.Update(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
+}
+
+func (h *TestEntryHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.Delete(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}

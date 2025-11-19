@@ -20,6 +20,15 @@ type InseminationEntry struct {
 	CreatedAt        time.Time  `json:"-" db:"created_at"`
 }
 
+type InseminationEntrySave struct {
+	Id               *string   `json:"id" db:"id"`
+	AnimalId         string    `json:"animalId" db:"animal_id"`
+	InseminationDate time.Time `json:"inseminationDate" db:"insemination_date"`
+	BullId           string    `json:"bullId" db:"bull_id"`
+	Observation      *string   `json:"observation" db:"observation"`
+	UserId           string    `json:"-" db:"user_id"`
+}
+
 type InseminationEntryFilter struct {
 	IsFiltered          bool       `json:"isFiltered"`
 	Animals             *[]string  `json:"animals" db:"animal_id"`
@@ -51,16 +60,6 @@ type InseminationFooter struct {
 type LastEntry struct {
 	InseminationDate time.Time           `json:"inseminationDate"`
 	Entries          []InseminationEntry `json:"entries"`
-}
-
-type InseminationEntrySave struct {
-	Id          string  `json:"id" db:"id"`
-	AnimalId    string  `json:"animal" db:"animal_id"`
-	GroupId     string  `json:"groupId" db:"group_id"`
-	Observation *string `json:"observation" db:"observation"`
-	Status      string  `json:"status" db:"status"`
-	LossId      *string `json:"loss" db:"loss_id"`
-	CalfId      *string `json:"calf" db:"calf_id"`
 }
 
 type InseminationBulls struct {

@@ -158,6 +158,16 @@ func GetOne[E any](db *sqlx.DB, query string, args ...any) (*E, error) {
 	return &object, err
 }
 
+/*Retorna um objeto do banco, dentro de uma transação, de acordo com os parâmetros informados*/
+func GetOneTx[E any](tx *sqlx.Tx, query string, object *E, args ...any) (*E, error) {
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	err := tx.Get(object, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return object, err
+}
+
 /*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/
 func GetPrimitive(db *sqlx.DB, query string, dest any, args ...any) error {
 	t := reflect.TypeOf(dest)

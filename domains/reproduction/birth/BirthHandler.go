@@ -12,42 +12,46 @@ type BirthHandler struct {
 }
 
 func (h *BirthHandler) FindPageFooter(w http.ResponseWriter, r *http.Request) {
-    filter, ok := handlersUtil.DecodeFilter(w, r, BirthEntryFilter{}); if !ok {
-        return
-    }
+	filter, ok := handlersUtil.DecodeFilter(w, r, BirthEntryFilter{})
+	if !ok {
+		return
+	}
 
-    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-        return
-    }
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
 
-    result, err := h.Repository.FindPageFooter(userId, filter)
-    if err != nil {
-        apiError.WriteError(err , w)
-        return
-    }
-    handlersUtil.WriteEntity(w, result)
+	result, err := h.Repository.FindPageFooter(userId, filter)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) FindPage(w http.ResponseWriter, r *http.Request) {
-    sort := r.URL.Query().Get("sort")
-    order := r.URL.Query().Get("order")
-    cursor := r.URL.Query().Get("cursor")
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	cursor := r.URL.Query().Get("cursor")
 
-    filter, ok := handlersUtil.DecodeFilter(w, r, BirthEntryFilter{}); if !ok {
-        return
-    }
+	filter, ok := handlersUtil.DecodeFilter(w, r, BirthEntryFilter{})
+	if !ok {
+		return
+	}
 
-    userId, ok := handlersUtil.GetUserId(w, r); if !ok {
-        return
-    }
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
 
-    result, err := h.Repository.FindPage(userId, sort, order, filter, cursor)
-    if err != nil {
-        apiError.WriteError(err , w)
-        return
-    }
+	result, err := h.Repository.FindPage(userId, sort, order, filter, cursor)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
 
-    handlersUtil.WriteEntity(w, result)
+	handlersUtil.WriteEntity(w, result)
 }
 
 func (h *BirthHandler) GetBestIntervals(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +85,8 @@ func (h *BirthHandler) GetLastBirths(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BirthHandler) GetLastBirthsNumber(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -95,7 +100,8 @@ func (h *BirthHandler) GetLastBirthsNumber(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *BirthHandler) GetYearBirthsNumber(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -109,7 +115,8 @@ func (h *BirthHandler) GetYearBirthsNumber(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *BirthHandler) GetYearDeathsNumber(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
@@ -211,11 +218,13 @@ func (h *BirthHandler) GetYearBySex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BirthHandler) AddBirth(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
-	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{}); if !ok {
+	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{})
+	if !ok {
 		return
 	}
 
@@ -229,12 +238,35 @@ func (h *BirthHandler) AddBirth(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteCreatedResponse(w)
 }
 
-func (h *BirthHandler) ReplaceBirth(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+func (h *BirthHandler) AddBirthNoValidation(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
-	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{}); if !ok {
+	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{})
+	if !ok {
+		return
+	}
+
+	birthEntry.UserId = userId
+	err := h.Repository.AddBirthNoValidation(birthEntry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *BirthHandler) ReplaceBirth(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{})
+	if !ok {
 		return
 	}
 
@@ -249,11 +281,13 @@ func (h *BirthHandler) ReplaceBirth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BirthHandler) UpdateBirth(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
-	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{}); if !ok {
+	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{})
+	if !ok {
 		return
 	}
 
@@ -268,11 +302,13 @@ func (h *BirthHandler) UpdateBirth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BirthHandler) GetFather(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
-	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{}); if !ok {
+	birthEntry, ok := handlersUtil.DecodeEntity(w, r, &BirthEntrySave{})
+	if !ok {
 		return
 	}
 

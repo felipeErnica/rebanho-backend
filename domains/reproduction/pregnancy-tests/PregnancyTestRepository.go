@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
@@ -223,6 +224,8 @@ func (r *TestEntryRepository) GetLastEntries(userId string) (*LastEntries, error
 
 	query := `
         select
+			t.id,
+			t.animal_id,
             concat_ws(' - ', a.ring_number, a.name) animal_info,
             t.test_date,
             t.birth_forecast,
@@ -759,4 +762,125 @@ func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId s
         from count_query
     `
 	return repositoriesUtil.GetOne[TestEntryFoot](r.DB, query, testDate, userId)
+}
+
+func (r *TestEntryRepository) Add(entry *TestEntrySave) *apiError.APIError {
+
+	validateErr := validateAdd(r.DB, entry) 
+	if validateErr != nil {
+		return validateErr
+	}
+	
+	query := `
+		insert into pregnancy_tests (test_date, animal_id, pregnancy_status, birth_forecast, observation, user_id)
+		values (:test_date, :animal_id, :pregnancy_status, :birth_forecast, :observation, :user_id)
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *TestEntryRepository) Replace(entry *TestEntrySave) *apiError.APIError {
+
+	query := `
+		update pregnancy_tests 
+		set pregnancy_status = :pregnancy_status, 
+			birth_forecast = :birth_forecast, 
+			observation = :observation
+		where test_date = :test_date
+			and animal_id = :animal_id
+			and user_id = :user_id
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *TestEntryRepository) Update(entry *TestEntrySave) (*TestEntry, *apiError.APIError) {
+
+	validateErr := validateUpdate(r.DB, entry)
+	if validateErr != nil {
+		return nil, validateErr
+	}
+
+	query := `
+		update pregnancy_tests 
+		set test_date = :test_date,
+			pregnancy_status = :pregnancy_status, 
+			birth_forecast = :birth_forecast, 
+			observation = :observation
+		where id = :id and user_id = :user_id
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	selectQuery := `
+		select
+			t.id,
+			t.test_date,
+			t.animal_id,
+			concat_ws(' - ', a.ring_number, a.name) animal_info,
+			t.birth_forecast,
+			t.pregnancy_status,
+			case
+				when pregnancy_status = 'FAILED' then 'FAILED'
+				when child_name is not null then 'SUCCESS'
+				when age(t.test_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as birth_status,
+			case 
+				when pregnancy_status = 'FAILED' then 'Sem Cria'
+				when child_name is not null then child_name
+				else 'Sem Cria'
+			end as child_information,
+			t.observation
+		from pregnancy_tests t 
+			left join animals a on a.id = t.animal_id
+			left join lateral (
+				select concat_ws(
+					' - ',
+					a.ring_number,
+					coalesce(a.name, a.sex),
+					to_char(a.birth_date, 'DD/MM/YYYY')
+				) as child_name
+				from animals a
+				where a.mother_id = t.animal_id
+					and a.birth_date > t.test_date
+					and age(a.birth_date, t.test_date) <= interval '340 days'
+				limit 1
+			) c on true
+		where t.id = $1 and t.user_id = $2
+	`
+	result, err := repositoriesUtil.GetOne[TestEntry](r.DB, selectQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	return result, nil
+}
+
+func (r *TestEntryRepository) Delete(id string, userId string) *apiError.APIError {
+	query := `
+		update pregnancy_tests
+		set deleted_at = now()
+		where id = $1 and user_id = $2
+	`
+
+	err := repositoriesUtil.Exec(r.DB, query, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
 }

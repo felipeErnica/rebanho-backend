@@ -14,8 +14,6 @@ type TestEntry struct {
 	PregnancyStatus  string     `json:"pregnancyStatus" db:"pregnancy_status"`
 	Observation      *string    `json:"observation" db:"observation"`
 	ChildInformation *string    `json:"childInformation" db:"child_information"`
-	LossId           *string    `json:"lossId" db:"loss_id"`
-	CalfId           *string    `json:"calfId" db:"calf_id"`
 	CreatedAt        time.Time  `json:"-" db:"created_at"`
 	DeletedAt        *time.Time `json:"-" db:"deleted_at"`
 	UserId           string     `json:"-" db:"user_id"`
@@ -39,18 +37,13 @@ type TestEntryFoot struct {
 }
 
 type TestEntrySave struct {
-	Id            string     `json:"id" db:"id"`
-	GroupId       string     `json:"groupId" db:"group_id"`
-	AnimalId      string     `json:"animalId" db:"animal_id"`
-	IsPregnant    bool       `json:"isPregnant" db:"is_pregnant"`
-	BirthForecast *time.Time `json:"birthForecast" db:"birth_forecast"`
-	Observation   *string    `json:"observation" db:"observation"`
-	Status        string     `json:"status" db:"status"`
-	LossId        *string    `json:"lossId" db:"loss_id"`
-	CalfId        *string    `json:"calfId" db:"calf_id"`
-	CreatedAt     time.Time  `json:"createdAt" db:"created_at"`
-	DeletedAt     *time.Time `json:"deletedAt" db:"deleted_at"`
-	UserId        string     `json:"userId" db:"user_id"`
+	Id              string     `json:"id" db:"id"`
+	TestDate        time.Time  `json:"testDate" db:"test_date"`
+	AnimalId        string     `json:"animalId" db:"animal_id"`
+	PregnancyStatus string     `json:"pregnancyStatus" db:"pregnancy_status"`
+	BirthForecast   *time.Time `json:"birthForecast" db:"birth_forecast"`
+	Observation     *string    `json:"observation" db:"observation"`
+	UserId          string     `json:"-" db:"user_id"`
 }
 
 type TestGroups struct {

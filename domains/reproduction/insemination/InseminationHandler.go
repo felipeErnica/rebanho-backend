@@ -218,13 +218,15 @@ func (h *InseminationHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *ht
 }
 
 func (h *InseminationHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
 		return
 	}
 
-    filter, ok := handlersUtil.DecodeFilter(w, r, InseminationEntryFilter{}); if !ok {
-        return
-    }
+	filter, ok := handlersUtil.DecodeFilter(w, r, InseminationEntryFilter{})
+	if !ok {
+		return
+	}
 
 	result, err := h.Repository.GetEntriesFoot(userId, filter)
 	if err != nil {
@@ -248,4 +250,136 @@ func (h *InseminationHandler) SearchInseminationBulls(w http.ResponseWriter, r *
 	}
 
 	handlersUtil.SendList(w, result)
+}
+
+func (h *InseminationHandler) AddInsemination(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &InseminationEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.AddInsemination(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *InseminationHandler) ReplaceInsemination(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &InseminationEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.ReplaceInsemination(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *InseminationHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.Delete(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *InseminationHandler) DeleteNoValidation(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.DeleteNoValidation(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *InseminationHandler) DeleteAndChangeFather(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.DeleteAndChangeFather(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *InseminationHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &InseminationEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	res, err := h.Repository.Update(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
+}
+
+func (h *InseminationHandler) UpdateNoValidation(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &InseminationEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	res, err := h.Repository.UpdateNoValidation(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
 }

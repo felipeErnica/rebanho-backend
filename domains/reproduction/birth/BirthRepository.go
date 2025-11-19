@@ -739,32 +739,92 @@ func (r *BirthRepository) AddBirth(entry *BirthEntrySave) *apiError.APIError {
 
 	defer tx.Rollback()
 
+
 	birthQuery := `
-		insert into animals(
-			ring_number, 
-			sex, 
-			birth_date, 
-			father_id, 
-			mother_id, 
-			animal_type, 
-			observation,
-			user_id
-		)
+		insert into animals (ring_number, sex, birth_date, father_id, mother_id, animal_type, observation, user_id)
+		values (:ring_number, :sex, :birth_date, :father_id, :mother_id, 'OFFSPRING', :observation, :user_id)
+	`
+	if entry.RingNumber == nil {
+		birthQuery = `
+			insert into animals (ring_number, sex, birth_date, father_id, mother_id, animal_type, observation, user_id)
+			values (
+				(select ring_number from animals where id = :mother_id and user_id = :user_id), 
+				:sex, 
+				:birth_date, 
+				:father_id, 
+				:mother_id, 
+				'OFFSPRING', 
+				:observation, 
+				:user_id
+			)
+		`
+	}
+
+	newId, err := repositoriesUtil.NamedExecReturningIdTx(tx, birthQuery, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	pastureQuery := `
+		select pasture_id
+		from pasture_entries
+		where animal_id = $1
+			and exit_date is null
+			and deleted_at is null
+		order by entry_date desc
+		limit 1
+	`
+
+	var pastureId sql.NullString
+	err = repositoriesUtil.GetPrimitiveTx(tx, pastureQuery, &pastureId, entry.MotherId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if !pastureId.Valid {
+		tx.Commit()
+		return nil
+	}
+
+	pastureEntry := &pastureEntries.PastureEntry{
+		AnimalId:  newId,
+		PastureId: pastureId.String,
+		EntryDate: entry.BirthDate,
+		UserId:    entry.UserId,
+	}
+
+	pastureEntryQuery := `
+		insert into pasture_entries (animal_id, pasture_id, entry_date, user_id)
 		values (
-			(
-				select ring_number
-				from animals
-				where id = :mother_id
-			), 
-			:sex, 
-			:birth_date, 
-			:father_id, 
-			:mother_id, 'OFFSPRING', 
-			:observation,
+			:animal_id,
+			:pasture_id,
+			:entry_date,
 			:user_id
 		)
 	`
+	err = repositoriesUtil.NamedExecTx(tx, pastureEntryQuery, pastureEntry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
 
+	tx.Commit()
+	return nil
+}
+
+func (r *BirthRepository) AddBirthNoValidation(entry *BirthEntrySave) *apiError.APIError {
+
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	defer tx.Rollback()
+
+
+	birthQuery := `
+		insert into animals (ring_number, sex, birth_date, father_id, mother_id, animal_type, observation, user_id)
+		values (:ring_number, :sex, :birth_date, :father_id, :mother_id, 'OFFSPRING', :observation, :user_id)
+	`
 	newId, err := repositoriesUtil.NamedExecReturningIdTx(tx, birthQuery, entry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)

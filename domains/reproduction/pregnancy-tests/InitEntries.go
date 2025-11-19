@@ -20,6 +20,10 @@ func InitTests(app *app.App) {
 
 	app.HandleFunc("POST /reproduction/pregnancy-test/entries/page", handler.FindEntriesPage)
 	app.HandleFunc("POST /reproduction/pregnancy-test/entries/page/foot", handler.GetEntriesFoot)
+	app.HandleFunc("PUT /reproduction/pregnancy-test/entries/add", handler.Add)
+	app.HandleFunc("PUT /reproduction/pregnancy-test/entries/replace", handler.Replace)
+	app.HandleFunc("PUT /reproduction/pregnancy-test/entries/update", handler.Update)
+	app.HandleFunc("DELETE /reproduction/pregnancy-test/entries/{id}/delete", handler.Delete)
 
 	app.HandleFunc("GET /reproduction/pregnancy-test/group/page", handler.FindGroups)
 	app.HandleFunc("GET /reproduction/pregnancy-test/group/{testDate}/entries", handler.FindEntriesByGroup)
