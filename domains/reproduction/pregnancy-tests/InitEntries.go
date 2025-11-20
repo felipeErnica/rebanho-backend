@@ -28,6 +28,7 @@ func InitTests(app *app.App) {
 	app.HandleFunc("GET /reproduction/pregnancy-test/group/page", handler.FindGroups)
 	app.HandleFunc("GET /reproduction/pregnancy-test/group/{testDate}/entries", handler.FindEntriesByGroup)
 	app.HandleFunc("GET /reproduction/pregnancy-test/group/{testDate}/entries/foot", handler.GetEntriesByGroupFoot)
+	app.HandleFunc("PUT /reproduction/pregnancy-test/group/{testDate}/update", handler.UpdateBatch)
 
 	util.LogDomainsInit("Entradas de Toque")
 }

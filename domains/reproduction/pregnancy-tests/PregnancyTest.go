@@ -53,6 +53,7 @@ type TestGroups struct {
 	PregnancyComparison float64   `json:"pregnancyComparison" db:"pregnancy_comparison"`
 	BirthRate           float64   `json:"birthRate" db:"birth_rate"`
 	BirthComparison     float64   `json:"birthComparison" db:"birth_comparison"`
+	UserId              string    `json:"-" db:"user_id"`
 }
 
 type LastEntries struct {

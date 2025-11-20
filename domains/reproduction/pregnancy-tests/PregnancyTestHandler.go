@@ -313,6 +313,29 @@ func (h *TestEntryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, res)
 }
 
+func (h *TestEntryHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
+	testDateString := r.PathValue("testDate")
+	testDate, _ := time.Parse(time.RFC3339Nano, testDateString)
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	group, ok := handlersUtil.DecodeEntity(w, r, &TestGroups{})
+	if !ok {
+		return
+	}
+
+	group.UserId = userId
+	response, err := h.Repository.UpdateBatch(testDate, group)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, response)
+}
+
 func (h *TestEntryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userId, ok := handlersUtil.GetUserId(w, r)

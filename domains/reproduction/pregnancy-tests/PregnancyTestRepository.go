@@ -884,3 +884,69 @@ func (r *TestEntryRepository) Delete(id string, userId string) *apiError.APIErro
 
 	return nil
 }
+
+
+func (r *TestEntryRepository) UpdateBatch(testDate time.Time, group *TestGroups) (*TestGroups, *apiError.APIError) {
+
+	validateErr := validateUpdateBatch(r.DB, group)
+	if validateErr != nil {
+		return nil, validateErr
+	}
+
+	query := `
+		update pregnancy_tests
+		set test_date = $1
+		where test_date = $2 and user_id = $3
+	`
+
+	err := repositoriesUtil.Exec(r.DB, query, group.TestDate, testDate, group.UserId)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	returnQuery := `
+        with totals as (
+            select 
+                test_date,
+                count(*) animals_number,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success,
+                count(*) filter (where pregnancy_status = 'SUCCESS' 
+					and exists (
+						select 1
+						from animals a
+						where a.mother_id = t.animal_id
+							and a.birth_date > t.test_date
+							and age(a.birth_date, t.test_date) <= interval '340 days'
+					)
+				) as birth_success
+            from pregnancy_tests t
+            where deleted_at is null 
+				and user_id = $1 
+				and test_date = $2
+            group by 1
+        ),
+        rates as (
+            select
+                g.test_date,
+                g.animals_number,
+                (g.pregnancy_success::float / g.animals_number::float)*100 pregnancy_rate,
+                (g.birth_success::float / g.animals_number::float)*100 birth_rate
+            from totals g
+        )
+        select
+            test_date,
+            animals_number,
+            pregnancy_rate,
+            birth_rate,
+            coalesce((pregnancy_rate / lag(pregnancy_rate) over win) - 1, 0) *100 pregnancy_comparison,
+            coalesce((birth_rate / lag(birth_rate) over win) - 1, 0) * 100 birth_comparison
+        from rates
+		window win as (order by test_date)
+    `
+	response, err :=  repositoriesUtil.GetOne[TestGroups](r.DB, returnQuery, group.UserId, group.TestDate)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	return response, nil
+}
