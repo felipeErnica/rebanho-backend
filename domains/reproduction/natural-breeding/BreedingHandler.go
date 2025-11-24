@@ -1,4 +1,4 @@
-package insemination
+package naturalBreeding
 
 import (
 	"net/http"
@@ -8,11 +8,11 @@ import (
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 )
 
-type InseminationHandler struct {
-	Repository *InseminationRepository
+type BreedingHandler struct {
+	Repository *BreedingRepository
 }
 
-func (h *InseminationHandler) GetBirthRateStats(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) GetBirthRateStats(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -27,7 +27,7 @@ func (h *InseminationHandler) GetBirthRateStats(w http.ResponseWriter, r *http.R
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) GetPregnancyRateStats(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) GetPregnancyRateStats(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -42,13 +42,13 @@ func (h *InseminationHandler) GetPregnancyRateStats(w http.ResponseWriter, r *ht
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) GetInseminationHist(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) GetInseminationHist(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.GetInseminationStats(userId)
+	result, err := h.Repository.GetBreedingStats(userId)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -57,7 +57,7 @@ func (h *InseminationHandler) GetInseminationHist(w http.ResponseWriter, r *http
 	handlersUtil.SendList(w, result)
 }
 
-func (h *InseminationHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -72,7 +72,7 @@ func (h *InseminationHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Re
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) GetFutureBirths(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) GetFutureBirths(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -87,7 +87,7 @@ func (h *InseminationHandler) GetFutureBirths(w http.ResponseWriter, r *http.Req
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -102,7 +102,7 @@ func (h *InseminationHandler) GetLastGroups(w http.ResponseWriter, r *http.Reque
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -117,7 +117,7 @@ func (h *InseminationHandler) GetLastEntries(w http.ResponseWriter, r *http.Requ
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) GetBestBull(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) GetBestBull(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -132,12 +132,12 @@ func (h *InseminationHandler) GetBestBull(w http.ResponseWriter, r *http.Request
 	handlersUtil.SendList(w, result)
 }
 
-func (h *InseminationHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
 	cursor := r.URL.Query().Get("cursor")
 	sort := r.URL.Query().Get("sort")
 	order := r.URL.Query().Get("order")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, InseminationEntryFilter{})
+	filter, ok := handlersUtil.DecodeFilter(w, r, BreedingEntryFilter{})
 	if !ok {
 		return
 	}
@@ -156,10 +156,10 @@ func (h *InseminationHandler) FindEntriesPage(w http.ResponseWriter, r *http.Req
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Request) {
-	queryDate := r.PathValue("inseminationDate")
+func (h *BreedingHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Request) {
+	queryDate := r.PathValue("breedingDate")
 
-	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
+	breedingDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -170,7 +170,7 @@ func (h *InseminationHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.
 		return
 	}
 
-	result, err := h.Repository.FindEntriesByGroup(userId, inseminationDate)
+	result, err := h.Repository.FindEntriesByGroup(userId, breedingDate)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -179,7 +179,7 @@ func (h *InseminationHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.
 	handlersUtil.SendList(w, result)
 }
 
-func (h *InseminationHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -194,9 +194,10 @@ func (h *InseminationHandler) FindGroups(w http.ResponseWriter, r *http.Request)
 	handlersUtil.SendList(w, result)
 }
 
-func (h *InseminationHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Request) {
-	queryDate := r.PathValue("inseminationDate")
-	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
+func (h *BreedingHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Request) {
+	queryDate := r.PathValue("breedingDate")
+
+	breedingDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -207,7 +208,7 @@ func (h *InseminationHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *ht
 		return
 	}
 
-	result, err := h.Repository.GetEntriesByGroupFoot(userId, inseminationDate)
+	result, err := h.Repository.GetEntriesByGroupFoot(userId, breedingDate)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -216,16 +217,14 @@ func (h *InseminationHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *ht
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
+func (h *BreedingHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
 		return
 	}
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, InseminationEntryFilter{})
-	if !ok {
-		return
-	}
+    filter, ok := handlersUtil.DecodeFilter(w, r, BreedingEntryFilter{}); if !ok {
+        return
+    }
 
 	result, err := h.Repository.GetEntriesFoot(userId, filter)
 	if err != nil {
@@ -236,13 +235,13 @@ func (h *InseminationHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Requ
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) SearchInseminationBulls(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) SearchBreedingBulls(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.SearchInseminationBulls(userId)
+	result, err := h.Repository.SearchBreedingBulls(userId)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -251,19 +250,19 @@ func (h *InseminationHandler) SearchInseminationBulls(w http.ResponseWriter, r *
 	handlersUtil.SendList(w, result)
 }
 
-func (h *InseminationHandler) AddInsemination(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) AddBreeding(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	entry, ok := handlersUtil.DecodeEntity(w, r, &InseminationEntrySave{})
+	entry, ok := handlersUtil.DecodeEntity(w, r, &BreedingEntrySave{})
 	if !ok {
 		return
 	}
 
 	entry.UserId = userId
-	err := h.Repository.AddInsemination(entry)
+	err := h.Repository.AddBreeding(entry)
 	if err != nil {
 		apiError.WriteAPIError(err, w)
 		return
@@ -272,19 +271,19 @@ func (h *InseminationHandler) AddInsemination(w http.ResponseWriter, r *http.Req
 	handlersUtil.WriteCreatedResponse(w)
 }
 
-func (h *InseminationHandler) ReplaceInsemination(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) ReplaceBreeding(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	entry, ok := handlersUtil.DecodeEntity(w, r, &InseminationEntrySave{})
+	entry, ok := handlersUtil.DecodeEntity(w, r, &BreedingEntrySave{})
 	if !ok {
 		return
 	}
 
 	entry.UserId = userId
-	err := h.Repository.ReplaceInsemination(entry)
+	err := h.Repository.ReplaceBreeding(entry)
 	if err != nil {
 		apiError.WriteAPIError(err, w)
 		return
@@ -292,8 +291,7 @@ func (h *InseminationHandler) ReplaceInsemination(w http.ResponseWriter, r *http
 
 	handlersUtil.WriteCreatedResponse(w)
 }
-
-func (h *InseminationHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
@@ -309,7 +307,7 @@ func (h *InseminationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteDeleteResponse(w)
 }
 
-func (h *InseminationHandler) DeleteNoValidation(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) DeleteNoValidation(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
@@ -325,7 +323,7 @@ func (h *InseminationHandler) DeleteNoValidation(w http.ResponseWriter, r *http.
 	handlersUtil.WriteDeleteResponse(w)
 }
 
-func (h *InseminationHandler) DeleteAndChangeFather(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) DeleteAndChangeFather(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
@@ -341,13 +339,13 @@ func (h *InseminationHandler) DeleteAndChangeFather(w http.ResponseWriter, r *ht
 	handlersUtil.WriteDeleteResponse(w)
 }
 
-func (h *InseminationHandler) Update(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) Update(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	entry, ok := handlersUtil.DecodeEntity(w, r, &InseminationEntrySave{})
+	entry, ok := handlersUtil.DecodeEntity(w, r, &BreedingEntrySave{})
 	if !ok {
 		return
 	}
@@ -362,13 +360,13 @@ func (h *InseminationHandler) Update(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, res)
 }
 
-func (h *InseminationHandler) UpdateNoValidation(w http.ResponseWriter, r *http.Request) {
+func (h *BreedingHandler) UpdateNoValidation(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	entry, ok := handlersUtil.DecodeEntity(w, r, &InseminationEntrySave{})
+	entry, ok := handlersUtil.DecodeEntity(w, r, &BreedingEntrySave{})
 	if !ok {
 		return
 	}
@@ -383,9 +381,9 @@ func (h *InseminationHandler) UpdateNoValidation(w http.ResponseWriter, r *http.
 	handlersUtil.WriteEntity(w, res)
 }
 
-func (h *InseminationHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
-	queryDate := r.PathValue("inseminationDate")
-	inseminationDate, parseErr := time.Parse(time.RFC3339Nano, queryDate)
+func (h *BreedingHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
+	queryDate := r.PathValue("breedingDate")
+	breedingDate, parseErr := time.Parse(time.RFC3339Nano, queryDate)
 	if parseErr != nil {
 		apiError.WriteError(parseErr, w)
 		return
@@ -396,13 +394,13 @@ func (h *InseminationHandler) UpdateBatch(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	group, ok := handlersUtil.DecodeEntity(w, r, &InseminationGroup{})
+	group, ok := handlersUtil.DecodeEntity(w, r, &BreedingGroup{})
 	if !ok {
 		return
 	}
 
 	group.UserId = userId
-	result, err := h.Repository.UpdateBatch(inseminationDate, group)
+	result, err := h.Repository.UpdateBatch(breedingDate, group)
 	if err != nil {
 		apiError.WriteAPIError(err, w)
 		return
@@ -411,9 +409,9 @@ func (h *InseminationHandler) UpdateBatch(w http.ResponseWriter, r *http.Request
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *InseminationHandler) DeleteBatch(w http.ResponseWriter, r *http.Request) {
-	queryDate := r.PathValue("inseminationDate")
-	inseminationDate, parseErr := time.Parse(time.RFC3339Nano, queryDate)
+func (h *BreedingHandler) DeleteBatch(w http.ResponseWriter, r *http.Request) {
+	queryDate := r.PathValue("breedingDate")
+	breedingDate, parseErr := time.Parse(time.RFC3339Nano, queryDate)
 	if parseErr != nil {
 		apiError.WriteError(parseErr, w)
 		return
@@ -424,7 +422,7 @@ func (h *InseminationHandler) DeleteBatch(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err := h.Repository.DeleteBatch(inseminationDate, userId)
+	err := h.Repository.DeleteBatch(breedingDate, userId)
 	if err != nil {
 		apiError.WriteAPIError(err, w)
 		return

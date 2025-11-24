@@ -31,6 +31,8 @@ func InitInsemination(app *app.App) {
 	app.HandleFunc("GET /reproduction/insemination/groups/page", handler.FindGroups)
 	app.HandleFunc("GET /reproduction/insemination/groups/{inseminationDate}/entries", handler.FindEntriesByGroup)
 	app.HandleFunc("GET /reproduction/insemination/groups/{inseminationDate}/entries/foot", handler.GetEntriesByGroupFoot)
+	app.HandleFunc("PUT /reproduction/insemination/groups/{inseminationDate}/update", handler.UpdateBatch)
+	app.HandleFunc("DELETE /reproduction/insemination/groups/{inseminationDate}/delete", handler.DeleteBatch)
 
 	app.HandleFunc("GET /reproduction/insemination/bulls/search", handler.SearchInseminationBulls)
 	util.LogDomainsInit("Entradas de Inseminação")

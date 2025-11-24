@@ -37,13 +37,13 @@ type TestEntryFoot struct {
 }
 
 type TestEntrySave struct {
-	Id              string     `json:"id" db:"id"`
-	TestDate        time.Time  `json:"testDate" db:"test_date"`
-	AnimalId        string     `json:"animalId" db:"animal_id"`
-	PregnancyStatus string     `json:"pregnancyStatus" db:"pregnancy_status"`
-	BirthForecast   *time.Time `json:"birthForecast" db:"birth_forecast"`
-	Observation     *string    `json:"observation" db:"observation"`
-	UserId          string     `json:"-" db:"user_id"`
+	Id              string    `json:"id" db:"id"`
+	TestDate        time.Time `json:"testDate" db:"test_date"`
+	AnimalId        string    `json:"animalId" db:"animal_id"`
+	PregnancyStatus string    `json:"pregnancyStatus" db:"pregnancy_status"`
+	PregnancyTime   *int      `json:"pregnancyTime" db:"pregnancy_time"`
+	Observation     *string   `json:"observation" db:"observation"`
+	UserId          string    `json:"-" db:"user_id"`
 }
 
 type TestGroups struct {

@@ -1,4 +1,4 @@
-package insemination
+package naturalBreeding
 
 import (
 	"github.com/felipeErnica/rebanho-backend/apiError"
@@ -6,20 +6,40 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func validateUpdateBatch(db *sqlx.DB, group *InseminationGroup) *apiError.APIError {
+func validateUpdate(db *sqlx.DB, oldEntry *BreedingEntrySave, newEntry *BreedingEntrySave) *apiError.APIError {
+
+	err := repeatedInfo(db, newEntry)
+	if err != nil {
+		return err
+	}
+
+	err = hasChildrenError(db, oldEntry)
+	if err != nil {
+		return err
+	}
+
+	err = isPregnantUpdate(db, oldEntry)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateUpdateBatch(db *sqlx.DB, group *BreedingGroup) *apiError.APIError {
 
 	query := `
 		select exists (
 			select 1
-			from insemination_entries
-			where insemination_date = $1
+			from breeding_entries
+			where breeding_date = $1
 				and user_id = $2
 				and deleted_at is null
 		)
 	`
 
 	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, group.InseminationDate, group.UserId)
+	err := repositoriesUtil.GetPrimitive(db, query, &exists, group.BreedingDate, group.UserId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -33,33 +53,13 @@ func validateUpdateBatch(db *sqlx.DB, group *InseminationGroup) *apiError.APIErr
 	return nil
 }
 
-func validateUpdate(db *sqlx.DB, entry *InseminationEntrySave) *apiError.APIError {
-
-	err := repeatedInfo(db, entry)
-	if err != nil {
-		return err
-	}
-
-	err = hasChildrenError(db, entry)
-	if err != nil {
-		return err
-	}
-
-	err = isPregnantUpdate(db, entry)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func repeatedInfo(db *sqlx.DB, entry *InseminationEntrySave) *apiError.APIError {
+func repeatedInfo(db *sqlx.DB, entry *BreedingEntrySave) *apiError.APIError {
 	query := `
 		select exists (
 			select 1
-			from insemination_entries
+			from breeding_entries
 			where animal_id = $1
-				and insemination_date = $2
+				and breeding_date = $2
 				and user_id = $3
 				and id <> $4
 				and deleted_at is null
@@ -67,7 +67,7 @@ func repeatedInfo(db *sqlx.DB, entry *InseminationEntrySave) *apiError.APIError 
 	`
 
 	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.AnimalId, entry.InseminationDate, entry.UserId, entry.Id)
+	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.AnimalId, entry.BreedingDate, entry.UserId, entry.Id)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -79,7 +79,7 @@ func repeatedInfo(db *sqlx.DB, entry *InseminationEntrySave) *apiError.APIError 
 	return nil
 }
 
-func isPregnantUpdate(db *sqlx.DB, entry *InseminationEntrySave) *apiError.APIError {
+func isPregnantUpdate(db *sqlx.DB, entry *BreedingEntrySave) *apiError.APIError {
 
 	query := `
 		select exists (
@@ -104,19 +104,19 @@ func isPregnantUpdate(db *sqlx.DB, entry *InseminationEntrySave) *apiError.APIEr
 	`
 
 	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.AnimalId, entry.InseminationDate, entry.UserId)
-	if err != nil { 
+	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.AnimalId, entry.BreedingDate, entry.UserId)
+	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
 	if exists {
-		return apiError.ConflictAPIWarning("A vaca possui uma prenhez ligada a esta inseminação. Deseja alterar mesmo assim?")
+		return apiError.ConflictAPIWarning("A vaca possui uma prenhez ligada a esta cobertura! Deseja alterar mesmo assim?")
 	}
 
-	return  nil
+	return nil
 }
 
-func hasChildrenError(db *sqlx.DB, entry *InseminationEntrySave) *apiError.APIError {
+func hasChildrenError(db *sqlx.DB, entry *BreedingEntrySave) *apiError.APIError {
 
 	query := `
 		select exists (
@@ -132,16 +132,16 @@ func hasChildrenError(db *sqlx.DB, entry *InseminationEntrySave) *apiError.APIEr
 	`
 
 	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.UserId, entry.AnimalId, entry.InseminationDate, entry.BullId)
-	if err != nil { 
+	err := repositoriesUtil.GetPrimitive(db, query, &exists, entry.UserId, entry.AnimalId, entry.BreedingDate, entry.BullId)
+	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
 	if exists {
 		return apiError.IncorrectEntityAPIError(
-			"A vaca possui uma cria, cujo o pai está ligado a esta inseminação. Altere ou exclua a parição antes de continuar!",
+			"A vaca possui uma cria, cujo o pai está ligado a esta cobertura. Altere ou exclua a parição antes de continuar!",
 		)
 	}
 
-	return  nil
+	return nil
 }

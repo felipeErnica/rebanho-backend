@@ -49,6 +49,7 @@ type InseminationGroup struct {
 	PregnancyRate           float64   `json:"pregnancyRate" db:"pregnancy_rate"`
 	BirthComparisonRate     float64   `json:"birthComparisonRate" db:"birth_comparison_rate"`
 	PregnancyComparisonRate float64   `json:"pregnancyComparisonRate" db:"pregnancy_comparison_rate"`
+	UserId                  string    `json:"-" db:"user_id"`
 }
 
 type InseminationFooter struct {

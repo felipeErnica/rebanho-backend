@@ -211,6 +211,17 @@ func GetList[E any](db *sqlx.DB, query string, args ...any) (*[]E, error) {
 	return &object, err
 }
 
+/*Retorna uma lista de objetos, por transação, de acordo com os parâmetros informados*/
+func GetListTx[E any](tx *sqlx.Tx, query string, dest E, args ...any) (*[]E, error) {
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	list := []E{}
+	err := tx.Select(&list, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return &list, err
+}
+
 /*
 Retorna uma página, contendo uma lista de objetos da Consulta SQL,
 o número total de linhas,

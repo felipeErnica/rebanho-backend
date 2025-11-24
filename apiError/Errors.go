@@ -60,7 +60,7 @@ func InternalServerAPIError(err error) *APIError {
 		Code:    http.StatusInternalServerError,
 		ErrType: ERROR_TYPE,
 		Kind:    INTERNAL_ERROR,
-		Title:   "GRAVE: Erro Interno do Servidor!",
+		Title:   "GRAVE: Erro Interno do Banco de Dados!",
 		Message: fmt.Sprintf("Erro causado por: %s. Consulte o suporte para resolver esta questão.", err.Error()),
 	}
 }

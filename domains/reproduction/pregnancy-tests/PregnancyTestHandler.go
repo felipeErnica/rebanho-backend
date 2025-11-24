@@ -351,3 +351,21 @@ func (h *TestEntryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	handlersUtil.WriteDeleteResponse(w)
 }
+
+func (h *TestEntryHandler) DeleteBatch(w http.ResponseWriter, r *http.Request) {
+	testDateString := r.PathValue("testDate")
+	testDate, _ := time.Parse(time.RFC3339Nano, testDateString)
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.DeleteBatch(testDate, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+

@@ -1,4 +1,4 @@
-package insemination
+package naturalBreeding
 
 import (
 	"database/sql"
@@ -13,44 +13,47 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type InseminationRepository struct {
+type BreedingRepository struct {
 	DB *sqlx.DB
 }
 
-func NewEntryRepository(db *sqlx.DB) *InseminationRepository {
-	return &InseminationRepository{db}
+func NewRepository(db *sqlx.DB) *BreedingRepository {
+	return &BreedingRepository{db}
 }
 
-func (r *InseminationRepository) GetBirthRateStats(userId string) (*BirthRateStats, error) {
+func (r *BreedingRepository) GetBirthRateStats(userId string) (*CardEntry, error) {
 	query := `
-		with totals as (
-			select 
-				i.insemination_date,
-				count(i.*) as total,
-				count(distinct i.id) filter (where a.birth_date is not null) as birth_success
-			from insemination_entries i
-				left join animals a on a.mother_id = i.animal_id
-					and a.birth_date > i.insemination_date
-					and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
-					and not exists (
-						select 1 
-						from pregnancy_tests t
-						where t.animal_id = i.animal_id
-							and t.pregnancy_status = 'FAILED'
-							and t.test_date between i.insemination_date and a.birth_date
-					)
+        with totals as (
+            select 
+                breeding_date,
+                count(*) as total,
+                count(*) filter (where exists (
+					select 1 
+					from animals a
+					where a.mother_id = i.animal_id
+						and a.birth_date > i.breeding_date
+						and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
+						and not exists (
+							select 1
+							from pregnancy_tests t
+							where t.animal_id = a.mother_id
+								and t.test_date between i.breeding_date and a.birth_date
+								and t.pregnancy_status = 'FAILED'
+						)
+				)) birth_success
+            from breeding_entries i
 			where i.user_id = $1 and i.deleted_at is null
 			group by 1
-			order by 1 desc
-			limit 10
-		)
-		select 
-			insemination_date, 
+            order by 1 desc
+            limit 10
+        )
+        select 
+            breeding_date,
 			(birth_success::float / nullif(total, 0)::float) * 100 as birth_rate
-		from totals
+        from totals
 		order by 1
     `
-	result, err := repositoriesUtil.GetList[BirthRateHist](r.DB, query, userId)
+	result, err := repositoriesUtil.GetList[BirthRateEntry](r.DB, query, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +76,7 @@ func (r *InseminationRepository) GetBirthRateStats(userId string) (*BirthRateSta
 		trend = util.CalculatePercentageTrend(currentRate, previousRate)
 	}
 
-	stats := &BirthRateStats{
+	stats := &CardEntry{
 		Hist:    birthRates,
 		Current: currentRate,
 		Trend:   trend,
@@ -82,23 +85,23 @@ func (r *InseminationRepository) GetBirthRateStats(userId string) (*BirthRateSta
 	return stats, nil
 }
 
-func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*CardStats, error) {
+func (r *BreedingRepository) GetPregnancyRateStats(userId string) (*CardEntry, error) {
 	query := `
 		with insemination_status as (
 			select
-				i.insemination_date,
+				i.breeding_date,
 				case
 					when exists (
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-									and t.test_date between i.insemination_date and a.birth_date
+									and t.test_date between i.breeding_date and a.birth_date
 									and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
@@ -106,26 +109,26 @@ func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*CardStat
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-						  and t.test_date > i.insemination_date
-						  and age(t.test_date, i.insemination_date) <= interval '340 days'
-						  and t.pregnancy_status = 'FAILED'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
+							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-						  and t.test_date > i.insemination_date
-						  and age(t.test_date, i.insemination_date) <= interval '340 days'
-						  and t.pregnancy_status = 'SUCCESS'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
+							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as pregnancy_status
-			from insemination_entries i
+			from breeding_entries i
 			where i.user_id = $1 and i.deleted_at is null 
 		),
 		cte as (
 			select
-				t.insemination_date,
+				t.breeding_date,
 				count(t.*) as total,
 				count(t.*) filter (where t.pregnancy_status = 'SUCCESS') as pregnancy_success
 			from insemination_status t
@@ -134,13 +137,13 @@ func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*CardStat
 			limit 10
 		)
 		select 
-			insemination_date,
+			breeding_date,
 			(pregnancy_success::float / nullif(total, 0)) * 100 as pregnancy_rate
 		from cte
 		order by 1
     `
 
-	result, err := repositoriesUtil.GetList[PregnancyRateHist](r.DB, query, userId)
+	result, err := repositoriesUtil.GetList[PregnancyRateEntry](r.DB, query, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +166,7 @@ func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*CardStat
 		trend = util.CalculatePercentageTrend(currentRate, previousRate)
 	}
 
-	stats := &CardStats{
+	stats := &CardEntry{
 		Hist:    pregnancyRates,
 		Current: currentRate,
 		Trend:   trend,
@@ -172,13 +175,13 @@ func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*CardStat
 	return stats, nil
 }
 
-func (r *InseminationRepository) GetAnimalsNumber(userId string) (*CardStats, error) {
+func (r *BreedingRepository) GetAnimalsNumber(userId string) (*CardEntry, error) {
 	query := `
 		with cte as (
 			select
-				insemination_date,
+				breeding_date,
 				count(*) as animals_number
-			from insemination_entries
+			from breeding_entries
 			where user_id = $1 and deleted_at is null
 			group by 1
 			order by 1 desc
@@ -189,7 +192,7 @@ func (r *InseminationRepository) GetAnimalsNumber(userId string) (*CardStats, er
 		order by 1
     `
 
-	result, err := repositoriesUtil.GetList[AnimalsHist](r.DB, query, userId)
+	result, err := repositoriesUtil.GetList[AnimalsNumberEntry](r.DB, query, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +215,7 @@ func (r *InseminationRepository) GetAnimalsNumber(userId string) (*CardStats, er
 		trend = util.CalculatePercentageTrend(currentRate, previousRate)
 	}
 
-	stats := &CardStats{
+	stats := &CardEntry{
 		Hist:    pregnancyRates,
 		Current: currentRate,
 		Trend:   trend,
@@ -221,23 +224,23 @@ func (r *InseminationRepository) GetAnimalsNumber(userId string) (*CardStats, er
 	return stats, nil
 }
 
-func (r *InseminationRepository) GetInseminationStats(userId string) (*[]InseminationHist, error) {
+func (r *BreedingRepository) GetBreedingStats(userId string) (*[]BreedingHist, error) {
 	query := `
         with cte as (
 			select 
-				i.insemination_date,
+				i.breeding_date,
 				case
 					when exists (
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-									and t.test_date between i.insemination_date and a.birth_date
+									and t.test_date between i.breeding_date and a.birth_date
 									and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
@@ -245,88 +248,87 @@ func (r *InseminationRepository) GetInseminationStats(userId string) (*[]Insemin
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-						  and t.test_date > i.insemination_date
-						  and age(t.test_date, i.insemination_date) <= interval '340 days'
-						  and t.pregnancy_status = 'FAILED'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
+							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-						  and t.test_date > i.insemination_date
-						  and age(t.test_date, i.insemination_date) <= interval '340 days'
-						  and t.pregnancy_status = 'SUCCESS'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
+							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as pregnancy_status,
 				case
 					when exists (
-						select 1 from animals a
+						select 1 
+						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-									and t.test_date between i.insemination_date and a.birth_date
-									and t.pregnancy_status = 'FAILED'
+								and t.test_date between i.breeding_date and a.birth_date
+								and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as birth_status
-			from insemination_entries i
+			from breeding_entries i
 			where i.user_id = $1 and i.deleted_at is null
 		),
         totals as (
             select
-                insemination_date,
-                count(*) total,
-                count(*) filter (where birth_status = 'SUCCESS') birth_numbers,
-                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_numbers
+                breeding_date,
+                count(*) animals_number,
+                count(*) filter (where birth_status = 'SUCCESS') births_number,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancies_number
             from cte
             group by 1
             order by 1 desc
             limit 30
         )
-        select * from totals order by insemination_date
+        select * from totals order by breeding_date
     `
-	return repositoriesUtil.GetList[InseminationHist](r.DB, query, userId)
+	return repositoriesUtil.GetList[BreedingHist](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetFutureBirths(userId string) (*[]FutureBirths, error) {
+func (r *BreedingRepository) GetFutureBirths(userId string) (*[]FutureBirths, error) {
 	query := `
 		with upcoming_births as (
-			select 
-				i.id,
-				(t.test_date + interval '1 day'*pregnancy_time) as birth_forecast
-			from insemination_entries i
-				join pregnancy_tests t on t.animal_id = i.animal_id
-					and t.test_date > i.insemination_date
-					and age(t.test_date, i.insemination_date) <= interval '340 days'
-					and t.pregnancy_status = 'SUCCESS'
+			select t.birth_forecast
+			from breeding_entries i
+			join pregnancy_tests t
+				on t.animal_id = i.animal_id
+				and t.test_date > i.breeding_date
+				and age(t.test_date, i.breeding_date) <= interval '340 days'
+				and t.pregnancy_status = 'SUCCESS'
 			where i.user_id = $1
-				and i.deleted_at is null
-				and t.test_date + interval '1 day'*pregnancy_time >= now()  
-				and not exists (
-					select 1
-					from animals a 
-					where a.mother_id = i.animal_id
-						and a.birth_date > i.insemination_date
-						and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
-						and not exists (
-							select 1
-							from pregnancy_tests f
-							where f.animal_id = i.animal_id
-								and f.test_date between i.insemination_date and a.birth_date
-								and f.pregnancy_status = 'FAILED'
-						)
-
-				)
+			  and i.deleted_at is null
+			  and not exists (
+				  select 1
+				  from animals a
+				  where a.mother_id = i.animal_id
+					and a.birth_date > i.breeding_date
+					and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
+					and not exists (
+						select 1
+						from pregnancy_tests t
+						where t.animal_id = a.mother_id
+							and t.test_date between i.breeding_date and a.birth_date
+							and t.pregnancy_status = 'FAILED'
+					)
+			  )
+			  and t.birth_forecast >= now()  
 		)
 		select
 			date_trunc('month', birth_forecast) as birth_forecast,
-			count(distinct id) as births_number
+			count(*) as births_number
 		from upcoming_births
 		group by 1
 		order by 1;
@@ -334,7 +336,7 @@ func (r *InseminationRepository) GetFutureBirths(userId string) (*[]FutureBirths
 	return repositoriesUtil.GetList[FutureBirths](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetBestBull(userId string) (*[]InseminationBulls, error) {
+func (r *BreedingRepository) GetBestBull(userId string) (*[]BestBulls, error) {
 	query := `
 		with status as (
 			select
@@ -344,30 +346,30 @@ func (r *InseminationRepository) GetBestBull(userId string) (*[]InseminationBull
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
-								and t.pregnancy_status = 'FAILED'
+									and t.test_date between i.breeding_date and a.birth_date
+									and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					else 'FAILED'
@@ -377,40 +379,40 @@ func (r *InseminationRepository) GetBestBull(userId string) (*[]InseminationBull
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
+								and t.test_date between i.breeding_date and a.birth_date
 								and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as birth_status
-			from insemination_entries i
-			left join animals b on i.bull_id = b.id 
+			from breeding_entries i
+                left join animals b on i.bull_id = b.id 
 			where i.user_id = $1 and i.deleted_at is null
 		),
-		totals as (
-			select
-				s.bull_name,
-				count(s.*) total,
-				count(s.*) filter (where s.birth_status = 'SUCCESS') birth_success,
-				count(s.*) filter (where s.pregnancy_status = 'SUCCESS') pregnancy_success
-			from status s
-			group by 1
-		),
-		rates as (
-			select 
-				bull_name,
-				total,
-				(birth_success::float / nullif(total, 0)::float) * 100 birth_rate,
-				(pregnancy_success::float / nullif(total, 0)::float) * 100 pregnancy_rate
-			from totals
-		)
-		select
+        totals as (
+            select
+                s.bull_name,
+                count(s.*) total,
+                count(s.*) filter (where s.birth_status = 'SUCCESS') birth_success,
+                count(s.*) filter (where s.pregnancy_status = 'SUCCESS') pregnancy_success
+            from status s
+            group by 1
+        ),
+        rates as (
+            select 
+                bull_name,
+                total,
+                (birth_success::float / nullif(total, 0)::float) * 100 birth_rate,
+                (pregnancy_success::float / nullif(total, 0)::float) * 100 pregnancy_rate
+            from totals
+        )
+        select
 			bull_name,
 			total,
 			birth_rate,
@@ -420,43 +422,43 @@ func (r *InseminationRepository) GetBestBull(userId string) (*[]InseminationBull
 		from rates
 		order by birth_rate desc;
     `
-	return repositoriesUtil.GetList[InseminationBulls](r.DB, query, userId)
+	return repositoriesUtil.GetList[BestBulls](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetLastGroups(userId string) (*[]InseminationGroup, error) {
+func (r *BreedingRepository) GetLastGroups(userId string) (*[]BreedingGroup, error) {
 	query := `
 		with insemination_data as (
 			select
-				i.insemination_date,
+				i.breeding_date,
 				case
 					when exists (
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
-								and t.pregnancy_status = 'FAILED'
+									and t.test_date between i.breeding_date and a.birth_date
+									and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					else 'FAILED'
@@ -466,40 +468,40 @@ func (r *InseminationRepository) GetLastGroups(userId string) (*[]InseminationGr
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
+								and t.test_date between i.breeding_date and a.birth_date
 								and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as birth_status
-			from insemination_entries i
+			from breeding_entries i
 			where i.user_id = $1 and i.deleted_at is null
 		),
 		daily_stats as (
 			select
-				insemination_date,
+				breeding_date,
 				count(*) as cow_number,
 				count(*) filter (where birth_status = 'SUCCESS') as birth_success,
 				count(*) filter (where pregnancy_status = 'SUCCESS') as pregnancy_success
 			from insemination_data
-			group by insemination_date
+			group by breeding_date
 		),
 		rates as (
 			select
-				insemination_date,
+				breeding_date,
 				cow_number,
 				(birth_success::float * 100 / nullif(cow_number, 0)) as birth_rate,
 				(pregnancy_success::float * 100 / nullif(cow_number, 0)) as pregnancy_rate
 			from daily_stats
 		)
 		select
-			insemination_date,
+			breeding_date,
 			cow_number,
 			birth_rate,
 			pregnancy_rate,
@@ -510,18 +512,18 @@ func (r *InseminationRepository) GetLastGroups(userId string) (*[]InseminationGr
 				(pregnancy_rate / nullif(lag(pregnancy_rate) over win, 0) - 1) * 100, 0
 			) as pregnancy_comparison_rate
 		from rates
-		window win as (order by insemination_date)
-		order by insemination_date desc
+		window win as (order by breeding_date)
+		order by breeding_date desc
 		limit 5;
     `
-	return repositoriesUtil.GetList[InseminationGroup](r.DB, query, userId)
+	return repositoriesUtil.GetList[BreedingGroup](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, error) {
+func (r *BreedingRepository) GetLastEntries(userId string) (*LastEntry, error) {
 
 	lastDateQuery := `
-		select max(insemination_date) max_date
-		from insemination_entries 
+		select max(breeding_date) max_date
+		from breeding_entries 
 		where deleted_at is null and user_id = $1
 	`
 
@@ -534,7 +536,7 @@ func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, erro
 	query := `
 		select 
 			i.id,
-			i.insemination_date,
+			i.breeding_date,
 			i.bull_id,
 			concat_ws(' - ', a.ring_number, a.name) as animal_info,
 			b.name as bull_name,
@@ -543,39 +545,39 @@ func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, erro
 					select 1 
 					from animals a
 					where a.mother_id = i.animal_id
-						and a.birth_date > i.insemination_date
-						and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+						and a.birth_date > i.breeding_date
+						and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 						and not exists (
 							select 1
 							from pregnancy_tests t
 							where t.animal_id = a.mother_id
-							and t.test_date between i.insemination_date and a.birth_date
-							and t.pregnancy_status = 'FAILED'
+								and t.test_date between i.breeding_date and a.birth_date
+								and t.pregnancy_status = 'FAILED'
 						)
 				) then 'SUCCESS'
 				when exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'FAILED'
 				) then 'FAILED'
 				when exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'SUCCESS'
 				) then 'SUCCESS'
 				when not exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
-				) and age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+					  and t.test_date > i.breeding_date
+					  and age(t.test_date, i.breeding_date) <= interval '340 days'
+				) and age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as pregnancy_status,
 			case
@@ -583,93 +585,92 @@ func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, erro
 					select 1 
 					from animals a
 					where a.mother_id = i.animal_id
-						and a.birth_date > i.insemination_date
-						and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+						and a.birth_date > i.breeding_date
+						and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 						and not exists (
 							select 1
 							from pregnancy_tests t
 							where t.animal_id = a.mother_id
-							and t.test_date between i.insemination_date and a.birth_date
+							and t.test_date between i.breeding_date and a.birth_date
 							and t.pregnancy_status = 'FAILED'
 						)
 				) then 'SUCCESS'
-				when age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				when age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as birth_status
-		from insemination_entries i
+		from breeding_entries i
 			left join animals a on a.id = i.animal_id
 			left join animals b on b.id = i.bull_id
 		where i.user_id = $1 
-			and i.insemination_date = $2
+			and i.breeding_date = $2
 			and i.deleted_at is null
 		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0);
     `
-	result, err := repositoriesUtil.GetList[InseminationEntry](r.DB, query, userId, lastDate)
+	result, err := repositoriesUtil.GetList[BreedingEntry](r.DB, query, userId, lastDate)
 	if err != nil {
 		return nil, err
 	}
 
 	lastEntry := &LastEntry{
-		InseminationDate: lastDate,
-		Entries:          *result,
+		BreedingDate: lastDate,
+		Entries:    *result,
 	}
 
 	return lastEntry, nil
 }
 
-func (r *InseminationRepository) FindEntriesPage(
+func (r *BreedingRepository) FindEntriesPage(
 	userId string,
-	filter InseminationEntryFilter,
+	filter BreedingEntryFilter,
 	sort string,
 	order string,
 	cursor string,
-) (*entity.Page[InseminationEntry], error) {
+) (*entity.Page[BreedingEntry], error) {
 
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
-		"animal_order":      {Field: "cte.animal_order", Order: "asc"},
-		"animal_name":       {Field: "cte.animal_name", Order: "asc"},
-		"insemination_date": {Field: "coalesce(cte.insemination_date, '-infinity')", Order: "asc"},
-		"id":                {Field: "cte.id", Order: "asc"},
-		"created_at":        {Field: "cte.created_at", Order: "asc"},
+		"animal_order":  {Field: "i.animal_order", Order: "asc"},
+		"animal_name":   {Field: "i.animal_name", Order: "asc"},
+		"breeding_date": {Field: "coalesce(i.breeding_date, '-infinity')", Order: "asc"},
+		"id":            {Field: "i.id", Order: "asc"},
+		"created_at":    {Field: "i.created_at", Order: "asc"},
 	}
 
 	query := `
         with cte as (
 			select 
 				i.id,
-				i.animal_id,
-				a.name as animal_name,
 				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+				a.name as animal_name,
 				concat_ws(' - ', a.ring_number, a.name) animal_info,
-				i.insemination_date,
+				i.breeding_date,
 				i.bull_id,
-				b.name as bull_name,
+				b.name bull_name,
 				case
 					when c.child_name is not null then 'SUCCESS'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					when not exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-						  and t.test_date > i.insemination_date
-						  and age(t.test_date, i.insemination_date) <= interval '340 days'
-					) and age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+						  and t.test_date > i.breeding_date
+						  and age(t.test_date, i.breeding_date) <= interval '340 days'
+					) and age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 					else 'FAILED'
 				end as pregnancy_status,
 				case
@@ -678,11 +679,11 @@ func (r *InseminationRepository) FindEntriesPage(
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-						  and t.test_date > i.insemination_date
-						  and age(t.test_date, i.insemination_date) <= interval '340 days'
-						  and t.pregnancy_status = 'FAILED'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
+							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
-					when age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+					when age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 					else 'FAILED'
 				end as birth_status,
 				case 
@@ -691,7 +692,7 @@ func (r *InseminationRepository) FindEntriesPage(
 				end as child_information,
 				i.observation,
 				i.created_at
-			from insemination_entries i
+			from breeding_entries i
 				left join animals a on a.id = i.animal_id
 				left join animals b on b.id = i.bull_id
 				left join lateral (
@@ -704,25 +705,18 @@ func (r *InseminationRepository) FindEntriesPage(
 					) as child_name
 					from animals a
 					where a.mother_id = i.animal_id
-						and a.birth_date > i.insemination_date
-						and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
-						and not exists (
-							select 1
-							from pregnancy_tests t
-							where t.animal_id = i.animal_id
-								and t.pregnancy_status = 'FAILED'
-								and t.test_date between a.birth_date and i.insemination_date
-						)
+						and a.birth_date > i.breeding_date
+						and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 					order by a.birth_date
 					limit 1
 				) c on true
 			where i.user_id = $1 and i.deleted_at is null
 		)
-		select * from cte
+		select * from cte i
 	`
 	orderExpression := " order by "
 
-	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "i", 2)
 	if err != nil {
 		return nil, err
 	}
@@ -750,13 +744,13 @@ func (r *InseminationRepository) FindEntriesPage(
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
-	return repositoriesUtil.GetPage[InseminationEntry](r.DB, query, sort, 100, args...)
+	return repositoriesUtil.GetPage[BreedingEntry](r.DB, query, sort, 100, args...)
 }
 
-func (r *InseminationRepository) GetEntriesFoot(
+func (r *BreedingRepository) GetEntriesFoot(
 	userId string,
-	filter InseminationEntryFilter,
-) (*InseminationFooter, error) {
+	filter BreedingEntryFilter,
+) (*BreedingFoot, error) {
 
 	statusQuery := `
 		with cte as  (
@@ -767,30 +761,30 @@ func (r *InseminationRepository) GetEntriesFoot(
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
-								and t.pregnancy_status = 'FAILED'
+									and t.test_date between i.breeding_date and a.birth_date
+									and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					else 'FAILED'
@@ -800,19 +794,19 @@ func (r *InseminationRepository) GetEntriesFoot(
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
+								and t.test_date between i.breeding_date and a.birth_date
 								and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as birth_status
-			from insemination_entries i
+			from breeding_entries i
 			where i.user_id = $1 and i.deleted_at is null
 		)
 		select pregnancy_status, birth_status
@@ -851,43 +845,41 @@ func (r *InseminationRepository) GetEntriesFoot(
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 
-	return repositoriesUtil.GetOne[InseminationFooter](r.DB, query, args...)
+	return repositoriesUtil.GetOne[BreedingFoot](r.DB, query, args...)
 }
 
-func (r *InseminationRepository) FindEntriesByGroup(userId string, date time.Time) (*[]InseminationEntry, error) {
+func (r *BreedingRepository) FindEntriesByGroup(userId string, date time.Time) (*[]BreedingEntry, error) {
 
 	query := `
         select 
             i.id,
-			i.animal_id,
-			i.bull_id,
 			concat_ws(' - ', b.ring_number, b.name) as bull_name,
-            concat_ws(' - ', a.ring_number, a.name) as animal_info,
+            concat_ws(' - ', a.ring_number, a.name) animal_info,
 			case
 				when c.child_name is not null then 'SUCCESS'
 				when exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'FAILED'
 				) then 'FAILED'
 				when exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'SUCCESS'
 				) then 'SUCCESS'
 				when not exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-					  and t.test_date > i.insemination_date
-					  and age(t.test_date, i.insemination_date) <= interval '340 days'
-				) and age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+					  and t.test_date > i.breeding_date
+					  and age(t.test_date, i.breeding_date) <= interval '340 days'
+				) and age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as pregnancy_status,
 			case
@@ -896,11 +888,11 @@ func (r *InseminationRepository) FindEntriesByGroup(userId string, date time.Tim
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'FAILED'
 				) then 'FAILED'
-				when age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				when age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as birth_status,
 			case
@@ -908,7 +900,7 @@ func (r *InseminationRepository) FindEntriesByGroup(userId string, date time.Tim
 				else child_name
 			end as child_information,
             i.observation
-        from insemination_entries i
+        from breeding_entries i
             left join animals a on a.id = i.animal_id
             left join animals b on b.id = i.bull_id
 			left join lateral (
@@ -921,25 +913,18 @@ func (r *InseminationRepository) FindEntriesByGroup(userId string, date time.Tim
 				) as child_name
 				from animals a
 				where a.mother_id = i.animal_id
-					and a.birth_date > i.insemination_date
-					and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
-					and not exists (
-						select 1
-						from pregnancy_tests t
-						where t.animal_id = i.animal_id
-							and t.pregnancy_status = 'FAILED'
-							and t.test_date between a.birth_date and i.insemination_date
-					)
+					and  a.birth_date > i.breeding_date
+					and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 				order by a.birth_date
 				limit 1
 			) c on true
-		where i.user_id = $1 and i.deleted_at is null and i.insemination_date = $2
+		where i.user_id = $1 and i.deleted_at is null and i.breeding_date = $2
         order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
 	`
-	return repositoriesUtil.GetList[InseminationEntry](r.DB, query, userId, date)
+	return repositoriesUtil.GetList[BreedingEntry](r.DB, query, userId, date)
 }
 
-func (r *InseminationRepository) GetEntriesByGroupFoot(userId string, date time.Time) (*InseminationFooter, error) {
+func (r *BreedingRepository) GetEntriesByGroupFoot(userId string, date time.Time) (*BreedingFoot, error) {
 	query := `
 		with status as (
 			select
@@ -948,13 +933,13 @@ func (r *InseminationRepository) GetEntriesByGroupFoot(userId string, date time.
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-									and t.test_date between i.insemination_date and a.birth_date
+									and t.test_date between i.breeding_date and a.birth_date
 									and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
@@ -962,16 +947,16 @@ func (r *InseminationRepository) GetEntriesByGroupFoot(userId string, date time.
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					else 'FAILED'
@@ -981,21 +966,21 @@ func (r *InseminationRepository) GetEntriesByGroupFoot(userId string, date time.
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
+								and t.test_date between i.breeding_date and a.birth_date
 								and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as birth_status
-			from insemination_entries i
+			from breeding_entries i
 			where i.user_id = $1 
-				and i.insemination_date = $2
+				and i.breeding_date = $2
 				and i.deleted_at is null
 		),
         counting as (
@@ -1007,30 +992,30 @@ func (r *InseminationRepository) GetEntriesByGroupFoot(userId string, date time.
         )
         select 
             totals,
-            (birth_success::float / nullif(totals, 0)) * 100 average_birth_rate,
-            (pregnancy_success::float / nullif(totals, 0)) * 100 average_pregnancy_rate
+            coalesce(birth_success::float / nullif(totals, 0), 0) * 100 average_birth_rate,
+            coalesce(pregnancy_success::float / nullif(totals, 0), 0) * 100 average_pregnancy_rate
         from counting
     `
-	return repositoriesUtil.GetOne[InseminationFooter](r.DB, query, userId, date)
+	return repositoriesUtil.GetOne[BreedingFoot](r.DB, query, userId, date)
 }
 
-func (r *InseminationRepository) FindGroups(userId string) (*[]InseminationGroup, error) {
+func (r *BreedingRepository) FindGroups(userId string) (*[]BreedingGroup, error) {
 	query := `
 		with status as (
 			select
-				i.insemination_date,
+				i.breeding_date,
 				case
 					when exists (
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-									and t.test_date between i.insemination_date and a.birth_date
+									and t.test_date between i.breeding_date and a.birth_date
 									and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
@@ -1038,16 +1023,16 @@ func (r *InseminationRepository) FindGroups(userId string) (*[]InseminationGroup
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					else 'FAILED'
@@ -1057,40 +1042,40 @@ func (r *InseminationRepository) FindGroups(userId string) (*[]InseminationGroup
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
+								and t.test_date between i.breeding_date and a.birth_date
 								and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as birth_status
-			from insemination_entries i
+			from breeding_entries i
 			where i.user_id = $1 and i.deleted_at is null
 		),
         totals as (
             select 
-                insemination_date,
+                breeding_date,
 				count(*) cow_number,
                 count(*) filter (where birth_status = 'SUCCESS') birth_success,
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
             from status i
-            group by insemination_date
+            group by breeding_date
         ),
         rates as (
             select
-                insemination_date,
+                breeding_date,
                 cow_number,
                 (birth_success::float / cow_number::float)*100 birth_rate,
                 (pregnancy_success::float / cow_number::float)*100 pregnancy_rate
             from totals
         )
         select 
-            s.insemination_date,
+            s.breeding_date,
             s.cow_number,
             s.birth_rate,
             s.pregnancy_rate,
@@ -1101,17 +1086,17 @@ func (r *InseminationRepository) FindGroups(userId string) (*[]InseminationGroup
 				(s.pregnancy_rate / nullif(lag(s.pregnancy_rate) over win, 0)) - 1, 0
 			) * 100 as pregnancy_comparison_rate
         from rates s
-		window win as (order by s.insemination_date)
-        order by s.insemination_date desc
+		window win as (order by s.breeding_date)
+        order by s.breeding_date desc
     `
-	return repositoriesUtil.GetList[InseminationGroup](r.DB, query, userId)
+	return repositoriesUtil.GetList[BreedingGroup](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) SearchInseminationBulls(userId string) (*[]entity.SearchEntity, error) {
+func (r *BreedingRepository) SearchBreedingBulls(userId string) (*[]entity.SearchEntity, error) {
 	query := `
-        select a.id, a.name as label
+        select a.id, a.name label
         from animals a 
-        where a.is_insemination_bull = true
+        where a.is_breeding_bull = true
 			and a.user_id = $1 
 			and a.deleted_at is null 
         order by a.name
@@ -1119,54 +1104,15 @@ func (r *InseminationRepository) SearchInseminationBulls(userId string) (*[]enti
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) AddInsemination(entry *InseminationEntrySave) *apiError.APIError {
-
-	validateErr := inseminationExists(r.DB, entry)
-	if validateErr != nil {
-		return validateErr
-	}
-
-	query := `
-		insert into insemination_entries (animal_id, bull_id, insemination_date, observation, user_id)
-		values (:animal_id, :bull_id, :insemination_date, :observation, :user_id)
-    `
-
-	err := repositoriesUtil.NamedExec(r.DB, query, entry)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	return nil
-}
-
-func (r *InseminationRepository) ReplaceInsemination(entry *InseminationEntrySave) *apiError.APIError {
-
-	query := `
-		update insemination_entries
-		set bull_id = :bull_id,
-			observation = :observation
-		where animal_id = :animal_id
-			and insemination_date = :insemination_date
-			and user_id = :user_id
-    `
-
-	err := repositoriesUtil.NamedExec(r.DB, query, entry)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	return nil
-}
-
-func (r *InseminationRepository) Delete(id string, userId string) *apiError.APIError {
+func (r *BreedingRepository) Delete(id string, userId string) *apiError.APIError {
 
 	oldQuery := `
-		select id, animal_id, bull_id, insemination_date, user_id
-		from insemination_entries
+		select id, animal_id, bull_id, breeding_date, user_id
+		from breeding_entries
 		where id = $1 and user_id = $2
 	`
 
-	oldEntry, err := repositoriesUtil.GetOne[InseminationEntrySave](r.DB, oldQuery, id, userId)
+	oldEntry, err := repositoriesUtil.GetOne[BreedingEntrySave](r.DB, oldQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -1177,7 +1123,7 @@ func (r *InseminationRepository) Delete(id string, userId string) *apiError.APIE
 	}
 
 	query := `
-		update insemination_entries
+		update breeding_entries
 		set deleted_at = now()
 		where id = :id and and user_id = :user_id
     `
@@ -1190,10 +1136,10 @@ func (r *InseminationRepository) Delete(id string, userId string) *apiError.APIE
 	return nil
 }
 
-func (r *InseminationRepository) DeleteNoValidation(id string, userId string) *apiError.APIError {
+func (r *BreedingRepository) DeleteNoValidation(id string, userId string) *apiError.APIError {
 
 	query := `
-		update insemination_entries
+		update breeding_entries
 		set deleted_at = now()
 		where id = :id and and user_id = :user_id
     `
@@ -1206,7 +1152,7 @@ func (r *InseminationRepository) DeleteNoValidation(id string, userId string) *a
 	return nil
 }
 
-func (r *InseminationRepository) DeleteAndChangeFather(id string, userId string) *apiError.APIError {
+func (r *BreedingRepository) DeleteAndChangeFather(id string, userId string) *apiError.APIError {
 
 	tx, err := r.DB.Beginx()
 	if err != nil {
@@ -1216,18 +1162,18 @@ func (r *InseminationRepository) DeleteAndChangeFather(id string, userId string)
 	defer tx.Rollback()
 
 	oldQuery := `
-		select id, animal_id, bull_id, insemination_date, user_id
-		from insemination_entries
+		select id, animal_id, bull_id, breeding_date, user_id
+		from breeding_entries
 		where id = $1 and user_id = $2
 	`
 
-	oldEntry, err := repositoriesUtil.GetOneTx(tx, oldQuery, &InseminationEntrySave{}, id, userId)
+	oldEntry, err := repositoriesUtil.GetOneTx(tx, oldQuery, &BreedingEntrySave{}, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
 	query := `
-		update insemination_entries
+		update breeding_entries
 		set deleted_at = now()
 		where id = :id and user_id = :user_id
     `
@@ -1282,7 +1228,7 @@ func (r *InseminationRepository) DeleteAndChangeFather(id string, userId string)
 		entriesQuery,
 		&fatherId,
 		oldEntry.AnimalId,
-		oldEntry.InseminationDate,
+		oldEntry.BreedingDate,
 		oldEntry.UserId,
 	)
 
@@ -1305,37 +1251,89 @@ func (r *InseminationRepository) DeleteAndChangeFather(id string, userId string)
 			and user_id = $5
 			and deleted_at is null
 	`
-	err = repositoriesUtil.ExecTx(tx, fatherQuery, fatherId.String, oldEntry.AnimalId, oldEntry.BullId, oldEntry.InseminationDate, oldEntry.UserId)
+	err = repositoriesUtil.ExecTx(
+		tx, 
+		fatherQuery, 
+		fatherId.String, 
+		oldEntry.AnimalId, 
+		oldEntry.BullId, 
+		oldEntry.BreedingDate, 
+		oldEntry.UserId,
+	)
+
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
 	return nil
 }
 
-func (r *InseminationRepository) Update(newEntry *InseminationEntrySave) (*InseminationEntry, *apiError.APIError) {
+func (r *BreedingRepository) AddBreeding(entry *BreedingEntrySave) *apiError.APIError {
+
+	validateErr := breedingExists(r.DB, entry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	query := `
+		insert into breeding_entries (animal_id, bull_id, breeding_date, observation, user_id)
+		values (:animal_id, :bull_id, :breeding_date, :observation, :user_id)
+    `
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *BreedingRepository) ReplaceBreeding(entry *BreedingEntrySave) *apiError.APIError {
+
+	query := `
+		update breeding_entries
+		set bull_id = :bull_id,
+			observation = :observation
+		where animal_id = :animal_id
+			and breeding_date = :breeding_date
+			and user_id = :user_id
+    `
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *BreedingRepository) Update(newEntry *BreedingEntrySave) (*BreedingEntry, *apiError.APIError) {
 
 	oldQuery := `
-		select id, animal_id, bull_id, insemination_date, observation, user_id
-		from insemination_entries
+		select id, animal_id, bull_id, breeding_date, observation, user_id
+		from breeding_entries
 		where id = $1 and user_id = $2
 	`
 
-	oldEntry, err := repositoriesUtil.GetOne[InseminationEntrySave](r.DB, oldQuery, newEntry.Id, newEntry.UserId)
+	oldEntry, err := repositoriesUtil.GetOne[BreedingEntrySave](r.DB, oldQuery, newEntry.Id, newEntry.UserId)
 	if err != nil {
 		return nil, apiError.InternalServerAPIError(err)
 	}
 
-	validateErr := validateUpdate(r.DB, oldEntry)
+	validateErr := validateUpdate(r.DB, oldEntry, newEntry)
 	if validateErr != nil {
 		return nil, validateErr
 	}
 
 	query := `
-		update insemination_entries
+		update breeding_entries
 		set bull_id = :bull_id, 
-	 		insemination_date = :insemination_date, 
+	 		breeding_date = :breeding_date, 
 			observation = :observation
 		where id = :id and user_id = :user_id
 	`
@@ -1350,7 +1348,7 @@ func (r *InseminationRepository) Update(newEntry *InseminationEntrySave) (*Insem
 			i.id,
 			i.animal_id,
 			concat_ws(' - ', a.ring_number, a.name) animal_info,
-			i.insemination_date,
+			i.breeding_date,
 			i.bull_id,
 			b.name as bull_name,
 			case
@@ -1359,25 +1357,25 @@ func (r *InseminationRepository) Update(newEntry *InseminationEntrySave) (*Insem
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'FAILED'
 				) then 'FAILED'
 				when exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'SUCCESS'
 				) then 'SUCCESS'
 				when not exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-					  and t.test_date > i.insemination_date
-					  and age(t.test_date, i.insemination_date) <= interval '340 days'
-				) and age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+					  and t.test_date > i.breeding_date
+					  and age(t.test_date, i.breeding_date) <= interval '340 days'
+				) and age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as pregnancy_status,
 			case
@@ -1386,11 +1384,11 @@ func (r *InseminationRepository) Update(newEntry *InseminationEntrySave) (*Insem
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'FAILED'
 				) then 'FAILED'
-				when age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				when age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as birth_status,
 			case 
@@ -1398,7 +1396,7 @@ func (r *InseminationRepository) Update(newEntry *InseminationEntrySave) (*Insem
 				else c.child_name
 			end as child_information,
 			i.observation
-		from insemination_entries i
+		from breeding_entries i
 			left join animals a on a.id = i.animal_id
 			left join animals b on b.id = i.bull_id
 			left join lateral (
@@ -1411,14 +1409,14 @@ func (r *InseminationRepository) Update(newEntry *InseminationEntrySave) (*Insem
 				) as child_name
 				from animals a
 				where a.mother_id = i.animal_id
-					and a.birth_date > i.insemination_date
-					and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+					and a.birth_date > i.breeding_date
+					and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 					and not exists (
 						select 1
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
 							and t.pregnancy_status = 'FAILED'
-							and t.test_date between a.birth_date and i.insemination_date
+							and t.test_date between a.birth_date and i.breeding_date
 					)
 				order by a.birth_date
 				limit 1
@@ -1428,7 +1426,7 @@ func (r *InseminationRepository) Update(newEntry *InseminationEntrySave) (*Insem
 			and i.deleted_at is null
 	`
 
-	res, err := repositoriesUtil.GetOne[InseminationEntry](r.DB, selectQuery, newEntry.Id, newEntry.UserId)
+	res, err := repositoriesUtil.GetOne[BreedingEntry](r.DB, selectQuery, newEntry.Id, newEntry.UserId)
 	if err != nil {
 		return nil, apiError.InternalServerAPIError(err)
 	}
@@ -1436,16 +1434,15 @@ func (r *InseminationRepository) Update(newEntry *InseminationEntrySave) (*Insem
 	return res, nil
 }
 
-func (r *InseminationRepository) UpdateNoValidation(entry *InseminationEntrySave) (*InseminationEntry, *apiError.APIError) {
+func (r *BreedingRepository) UpdateNoValidation(entry *BreedingEntrySave) (*BreedingEntry, *apiError.APIError) {
 
 	query := `
-		update insemination_entries 
+		update breeding_entries 
 		set bull_id = :bull_id, 
-	 		insemination_date = :insemination_date, 
+	 		breeding_date = :breeding_date, 
 			observation = :observation
 		where id = :id and user_id = :user_id
 	`
-
 	err := repositoriesUtil.NamedExec(r.DB, query, entry)
 	if err != nil {
 		return nil, apiError.InternalServerAPIError(err)
@@ -1456,7 +1453,7 @@ func (r *InseminationRepository) UpdateNoValidation(entry *InseminationEntrySave
 			i.id,
 			i.animal_id,
 			concat_ws(' - ', a.ring_number, a.name) animal_info,
-			i.insemination_date,
+			i.breeding_date,
 			i.bull_id,
 			b.name as bull_name,
 			case
@@ -1465,25 +1462,25 @@ func (r *InseminationRepository) UpdateNoValidation(entry *InseminationEntrySave
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'FAILED'
 				) then 'FAILED'
 				when exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'SUCCESS'
 				) then 'SUCCESS'
 				when not exists (
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-					  and t.test_date > i.insemination_date
-					  and age(t.test_date, i.insemination_date) <= interval '340 days'
-				) and age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+					  and t.test_date > i.breeding_date
+					  and age(t.test_date, i.breeding_date) <= interval '340 days'
+				) and age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as pregnancy_status,
 			case
@@ -1492,11 +1489,11 @@ func (r *InseminationRepository) UpdateNoValidation(entry *InseminationEntrySave
 					select 1 
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
-						and t.test_date > i.insemination_date
-						and age(t.test_date, i.insemination_date) <= interval '340 days'
+						and t.test_date > i.breeding_date
+						and age(t.test_date, i.breeding_date) <= interval '340 days'
 						and t.pregnancy_status = 'FAILED'
 				) then 'FAILED'
-				when age(i.insemination_date) < interval '340 days' then 'STAND_BY'
+				when age(i.breeding_date) < interval '340 days' then 'STAND_BY'
 				else 'FAILED'
 			end as birth_status,
 			case 
@@ -1504,7 +1501,7 @@ func (r *InseminationRepository) UpdateNoValidation(entry *InseminationEntrySave
 				else c.child_name
 			end as child_information,
 			i.observation
-		from insemination_entries i
+		from breeding_entries i
 			left join animals a on a.id = i.animal_id
 			left join animals b on b.id = i.bull_id
 			left join lateral (
@@ -1517,14 +1514,14 @@ func (r *InseminationRepository) UpdateNoValidation(entry *InseminationEntrySave
 				) as child_name
 				from animals a
 				where a.mother_id = i.animal_id
-					and a.birth_date > i.insemination_date
-					and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+					and a.birth_date > i.breeding_date
+					and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 					and not exists (
 						select 1
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
 							and t.pregnancy_status = 'FAILED'
-							and t.test_date between a.birth_date and i.insemination_date
+							and t.test_date between a.birth_date and i.breeding_date
 					)
 				order by a.birth_date
 				limit 1
@@ -1533,7 +1530,7 @@ func (r *InseminationRepository) UpdateNoValidation(entry *InseminationEntrySave
 			and i.user_id = $2
 			and i.deleted_at is null
 	`
-	res, err := repositoriesUtil.GetOne[InseminationEntry](r.DB, selectQuery, entry.Id, entry.UserId)
+	res, err := repositoriesUtil.GetOne[BreedingEntry](r.DB, selectQuery, entry.Id, entry.UserId)
 	if err != nil {
 		return nil, apiError.InternalServerAPIError(err)
 	}
@@ -1541,7 +1538,7 @@ func (r *InseminationRepository) UpdateNoValidation(entry *InseminationEntrySave
 	return res, nil
 }
 
-func (r *InseminationRepository) UpdateBatch(date time.Time, group *InseminationGroup) (*InseminationGroup, *apiError.APIError) {
+func (r *BreedingRepository) UpdateBatch(date time.Time, group *BreedingGroup) (*BreedingGroup, *apiError.APIError) {
 
 	validateErr := validateUpdateBatch(r.DB, group)
 	if validateErr != nil {
@@ -1549,12 +1546,12 @@ func (r *InseminationRepository) UpdateBatch(date time.Time, group *Insemination
 	}
 
 	mainQuery := `
-		update insemination_entries
-		set insemination_date = $1
-		where insemination_date = $2 and user_id = $3
+		update breeding_entries
+		set breeding_date = $1
+		where breeding_date = $2 and user_id = $3
 	`
 
-	err := repositoriesUtil.Exec(r.DB, mainQuery, group.InseminationDate, date, group.UserId)
+	err := repositoriesUtil.Exec(r.DB, mainQuery, group.BreedingDate, date, group.UserId)
 	if err != nil {
 		return nil, apiError.InternalServerAPIError(err)
 	}
@@ -1562,19 +1559,19 @@ func (r *InseminationRepository) UpdateBatch(date time.Time, group *Insemination
 	responseQuery := `
 		with status as (
 			select
-				i.insemination_date,
+				i.breeding_date,
 				case
 					when exists (
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-									and t.test_date between i.insemination_date and a.birth_date
+									and t.test_date between i.breeding_date and a.birth_date
 									and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
@@ -1582,16 +1579,16 @@ func (r *InseminationRepository) UpdateBatch(date time.Time, group *Insemination
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'FAILED'
 					) then 'FAILED'
 					when exists (
 						select 1 
 						from pregnancy_tests t
 						where t.animal_id = i.animal_id
-							and t.test_date > i.insemination_date
-							and age(t.test_date, i.insemination_date) <= interval '340 days'
+							and t.test_date > i.breeding_date
+							and age(t.test_date, i.breeding_date) <= interval '340 days'
 							and t.pregnancy_status = 'SUCCESS'
 					) then 'SUCCESS'
 					else 'FAILED'
@@ -1601,42 +1598,42 @@ func (r *InseminationRepository) UpdateBatch(date time.Time, group *Insemination
 						select 1 
 						from animals a
 						where a.mother_id = i.animal_id
-							and a.birth_date > i.insemination_date
-							and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+							and a.birth_date > i.breeding_date
+							and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 							and not exists (
 								select 1
 								from pregnancy_tests t
 								where t.animal_id = a.mother_id
-								and t.test_date between i.insemination_date and a.birth_date
+								and t.test_date between i.breeding_date and a.birth_date
 								and t.pregnancy_status = 'FAILED'
 							)
 					) then 'SUCCESS'
 					else 'FAILED'
 				end as birth_status
-			from insemination_entries i
-			where i.insemination_date = $1 
+			from breeding_entries i
+			where i.breeding_date = $1 
 				and i.user_id = $2 
 				and i.deleted_at is null
 		),
         totals as (
             select 
-                insemination_date,
+                breeding_date,
 				count(*) cow_number,
                 count(*) filter (where birth_status = 'SUCCESS') birth_success,
                 count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
             from status i
-            group by insemination_date
+            group by breeding_date
         ),
         rates as (
             select
-                insemination_date,
+                breeding_date,
                 cow_number,
                 (birth_success::float / cow_number::float)*100 birth_rate,
                 (pregnancy_success::float / cow_number::float)*100 pregnancy_rate
             from totals
         )
         select 
-            s.insemination_date,
+            s.breeding_date,
             s.cow_number,
             s.birth_rate,
             s.pregnancy_rate,
@@ -1647,10 +1644,10 @@ func (r *InseminationRepository) UpdateBatch(date time.Time, group *Insemination
 				(s.pregnancy_rate / nullif(lag(s.pregnancy_rate) over win, 0)) - 1, 0
 			) * 100 as pregnancy_comparison_rate
         from rates s
-		window win as (order by s.insemination_date)
+		window win as (order by s.breeding_date)
     `
 
-	response, err := repositoriesUtil.GetOne[InseminationGroup](r.DB, responseQuery, group.InseminationDate, group.UserId)
+	response, err := repositoriesUtil.GetOne[BreedingGroup](r.DB, responseQuery, group.BreedingDate, group.UserId)
 	if err != nil {
 		return nil, apiError.InternalServerAPIError(err)
 	}
@@ -1658,7 +1655,7 @@ func (r *InseminationRepository) UpdateBatch(date time.Time, group *Insemination
 	return response, nil
 }
 
-func (r *InseminationRepository) DeleteBatch(date time.Time, userId string) *apiError.APIError {
+func (r *BreedingRepository) DeleteBatch(date time.Time, userId string) *apiError.APIError {
 
 	tx, err := r.DB.Beginx()
 	if err != nil {
@@ -1668,9 +1665,9 @@ func (r *InseminationRepository) DeleteBatch(date time.Time, userId string) *api
 	defer tx.Rollback()
 
 	mainQuery := `
-		update insemination_entries
+		update breeding_entries
 		set deleted_at = now()
-		where insemination_date = $1 and user_id = $2
+		where breeding_date = $1 and user_id = $2
 	`
 
 	err = repositoriesUtil.ExecTx(tx, mainQuery, date, userId)
@@ -1684,20 +1681,20 @@ func (r *InseminationRepository) DeleteBatch(date time.Time, userId string) *api
 			birth_date,
 			mother_id,
 			user_id
-		from insemination_entries i
+		from breeding_entries i
 			join animals a on a.mother_id = i.animal_id
-				and a.birth_date > i.insemination_date
-				and age(a.birth_date, i.insemination_date) between interval '240 days' and interval '340 days'
+				and a.birth_date > i.breeding_date
+				and age(a.birth_date, i.breeding_date) between interval '240 days' and interval '340 days'
 				and not exists (
 					select 1
 					from pregnancy_tests t
 					where t.animal_id = i.animal_id
 						and t.pregnancy_status = 'FAILED'
-						and t.test_date between a.birth_date and i.insemination_date
+						and t.test_date between a.birth_date and i.breeding_date
 				)
 		where i.user_id = $1 
 			and i.deleted_at is null
-			and i.insemination_date = $2
+			and i.breeding_date = $2
 	`
 
 	children, err := repositoriesUtil.GetListTx(tx, selectQuery, animalTable.AnimalSave{}, userId, date)

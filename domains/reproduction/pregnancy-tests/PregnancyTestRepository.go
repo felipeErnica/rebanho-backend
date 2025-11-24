@@ -228,7 +228,7 @@ func (r *TestEntryRepository) GetLastEntries(userId string) (*LastEntries, error
 			t.animal_id,
             concat_ws(' - ', a.ring_number, a.name) animal_info,
             t.test_date,
-            t.birth_forecast,
+            test_date + (pregnancy_time*interval '1 day') as birth_forecast,
             t.pregnancy_status,
 			case
 				when pregnancy_status = 'FAILED' then 'FAILED'
@@ -313,13 +313,13 @@ func (r *TestEntryRepository) GetLastGroups(userId string) (*[]TestGroups, error
 func (r *TestEntryRepository) GetNextBirths(userId string) (*[]NextBirths, error) {
 	query := `
         select 
-            date_trunc('month', birth_forecast) birth_forecast,
+            date_trunc('month', t.test_date + (t.pregnancy_time * interval '1 day')) as birth_forecast,
             count(*) birth_numbers
         from pregnancy_tests t
         where 
             deleted_at is null 
             and user_id = $1
-            and birth_forecast > now()
+            and t.test_date + (t.pregnancy_time * interval '1 day') > now()
             and pregnancy_status = 'SUCCESS'
             and age(t.test_date) < interval '340 days'
 			and not exists (
@@ -514,7 +514,7 @@ func (r *TestEntryRepository) FindEntriesPage(
 				a.name as animal_name,
 				concat_ws(' - ', a.ring_number, a.name) animal_info,
 				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-				t.birth_forecast,
+				t.test_date + (t.pregnancy_time*interval '1 day') as birth_forecast,
 				t.pregnancy_status,
 				case
 					when pregnancy_status = 'FAILED' then 'FAILED'
@@ -694,7 +694,7 @@ func (r *TestEntryRepository) FindEntriesByGroup(
             t.animal_id,
             concat_ws(' - ', a.ring_number, a.name) as animal_info,
             coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
-            t.birth_forecast,
+            t.test_date + (t.pregnancy_time * interval '1 day') as birth_forecast,
             t.pregnancy_status,
 			case
 				when pregnancy_status = 'FAILED' then 'FAILED'
@@ -766,14 +766,14 @@ func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId s
 
 func (r *TestEntryRepository) Add(entry *TestEntrySave) *apiError.APIError {
 
-	validateErr := validateAdd(r.DB, entry) 
+	validateErr := validateAdd(r.DB, entry)
 	if validateErr != nil {
 		return validateErr
 	}
-	
+
 	query := `
-		insert into pregnancy_tests (test_date, animal_id, pregnancy_status, birth_forecast, observation, user_id)
-		values (:test_date, :animal_id, :pregnancy_status, :birth_forecast, :observation, :user_id)
+		insert into pregnancy_tests (test_date, animal_id, pregnancy_status, pregnancy_time, observation, user_id)
+		values (:test_date, :animal_id, :pregnancy_status, :pregnancy_time, :observation, :user_id)
 	`
 
 	err := repositoriesUtil.NamedExec(r.DB, query, entry)
@@ -789,7 +789,7 @@ func (r *TestEntryRepository) Replace(entry *TestEntrySave) *apiError.APIError {
 	query := `
 		update pregnancy_tests 
 		set pregnancy_status = :pregnancy_status, 
-			birth_forecast = :birth_forecast, 
+			pregnancy_time = :pregnancy_time, 
 			observation = :observation
 		where test_date = :test_date
 			and animal_id = :animal_id
@@ -815,7 +815,7 @@ func (r *TestEntryRepository) Update(entry *TestEntrySave) (*TestEntry, *apiErro
 		update pregnancy_tests 
 		set test_date = :test_date,
 			pregnancy_status = :pregnancy_status, 
-			birth_forecast = :birth_forecast, 
+			birth_forecast = :pregnancy_time, 
 			observation = :observation
 		where id = :id and user_id = :user_id
 	`
@@ -831,7 +831,7 @@ func (r *TestEntryRepository) Update(entry *TestEntrySave) (*TestEntry, *apiErro
 			t.test_date,
 			t.animal_id,
 			concat_ws(' - ', a.ring_number, a.name) animal_info,
-			t.birth_forecast,
+			t.test_date + (interval '1 day' * t.pregnancy_time) as t.birth_forecast,
 			t.pregnancy_status,
 			case
 				when pregnancy_status = 'FAILED' then 'FAILED'
@@ -884,7 +884,6 @@ func (r *TestEntryRepository) Delete(id string, userId string) *apiError.APIErro
 
 	return nil
 }
-
 
 func (r *TestEntryRepository) UpdateBatch(testDate time.Time, group *TestGroups) (*TestGroups, *apiError.APIError) {
 
@@ -943,10 +942,25 @@ func (r *TestEntryRepository) UpdateBatch(testDate time.Time, group *TestGroups)
         from rates
 		window win as (order by test_date)
     `
-	response, err :=  repositoriesUtil.GetOne[TestGroups](r.DB, returnQuery, group.UserId, group.TestDate)
+	response, err := repositoriesUtil.GetOne[TestGroups](r.DB, returnQuery, group.UserId, group.TestDate)
 	if err != nil {
 		return nil, apiError.InternalServerAPIError(err)
 	}
 
 	return response, nil
+}
+
+func (r *TestEntryRepository) DeleteBatch(testDate time.Time, userId string) *apiError.APIError {
+	query := `
+		update pregnancy_tests
+		set deleted_at = now()
+		where test_date = $1 and user_id = $2
+	`
+
+	err := repositoriesUtil.Exec(r.DB, query, testDate, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
 }
