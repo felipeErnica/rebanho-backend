@@ -251,6 +251,37 @@ func (h *InseminationHandler) SearchInseminationBulls(w http.ResponseWriter, r *
 	handlersUtil.SendList(w, result)
 }
 
+func (h *InseminationHandler) SearchNonInseminationBulls(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchNonInseminationBulls(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
+}
+
+func (h *InseminationHandler) SetAsInseminationBulls(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SetAsInseminationBull(id, userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
+}
+
 func (h *InseminationHandler) AddInsemination(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {

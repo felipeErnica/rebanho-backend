@@ -34,6 +34,8 @@ func InitBreeding(app *app.App) {
 	app.HandleFunc("PUT /reproduction/breeding/groups/{breedingDate}/update", handler.UpdateBatch)
 	app.HandleFunc("DELETE /reproduction/breeding/groups/{breedingDate}/delete", handler.DeleteBatch)
 
+	app.HandleFunc("GET /reproduction/breeding/bulls/search-non-breeding", handler.SearchNonBreedingBulls)
 	app.HandleFunc("GET /reproduction/breeding/bulls/search", handler.SearchBreedingBulls)
-	util.LogDomainsInit("Monta Natural")
+	app.HandleFunc("GET /reproduction/breeding/bulls/add/{id}", handler.AddBreedingBull)
+	util.LogDomainsInit("Cobertura")
 }

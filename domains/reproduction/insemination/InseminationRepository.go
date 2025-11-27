@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/apiError"
-	animalTable "github.com/felipeErnica/rebanho-backend/domains/animals/animal-table"
+	"github.com/felipeErnica/rebanho-backend/domains/animals"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -1119,6 +1119,29 @@ func (r *InseminationRepository) SearchInseminationBulls(userId string) (*[]enti
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
+func (r *InseminationRepository) SearchNonInseminationBulls(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+        select a.id, a.name as label
+        from animals a 
+        where a.is_insemination_bull = false
+			and a.sex = 'M'
+			and a.animal_type = 'REPRODUCTION_ANIMAL'
+			and a.user_id = $1 
+			and a.deleted_at is null 
+        order by a.name
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *InseminationRepository) SetAsInseminationBull(id string, userId string) (*[]entity.SearchEntity, error) {
+	query := `
+		update animals
+		set is_insemination_bull = true
+		where id = $1 and user_id = $2
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, id, userId)
+}
+
 func (r *InseminationRepository) AddInsemination(entry *InseminationEntrySave) *apiError.APIError {
 
 	validateErr := inseminationExists(r.DB, entry)
@@ -1700,7 +1723,7 @@ func (r *InseminationRepository) DeleteBatch(date time.Time, userId string) *api
 			and i.insemination_date = $2
 	`
 
-	children, err := repositoriesUtil.GetListTx(tx, selectQuery, animalTable.AnimalSave{}, userId, date)
+	children, err := repositoriesUtil.GetListTx(tx, selectQuery, animals.AnimalSave{}, userId, date)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}

@@ -1,4 +1,4 @@
-package animalTable
+package animals
 
 import (
 	"fmt"

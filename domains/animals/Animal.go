@@ -1,10 +1,9 @@
-package animalTable
+package animals
 
 import "time"
 
 type Animal struct {
 	Id                   string     `json:"id" db:"id"`
-	OldId                int        `json:"oldId" db:"old_id"`
 	Name                 *string    `json:"name" db:"name"`
 	RingNumber           *string    `json:"ringNumber" db:"ring_number"`
 	AnimalOrder          int        `json:"animalOrder" db:"animal_order"`
@@ -22,36 +21,38 @@ type Animal struct {
 	FarmId               *string    `json:"farmId" db:"farm_id"`
 	FarmName             *string    `json:"farmName" db:"farm_name"`
 	AnimalType           string     `json:"animalType" db:"animal_type"`
-	Isr                  *float64   `json:"isr" db:"isr"`
+	IsBreedingBull       bool       `json:"isBreedingBull" db:"is_breeding_bull"`
+	IsInseminationBull   bool       `json:"isInseminationBull" db:"is_insemination_bull"`
+	IsTransferBull       bool       `json:"isTransferBull" db:"is_transfer_bull"`
+	IsEmbryoDonor        bool       `json:"isEmbryoDonor" db:"is_embryo_donor"`
+	IsOutsideAnimal      bool       `json:"isOutsideAnimal" db:"is_outside_animal"`
 	AverageProd          *float64   `json:"averageProd" db:"average_prod"`
 	AverageProdInterval  *float64   `json:"averageProdInterval" db:"average_prod_interval"`
 	AverageBirthInterval *float64   `json:"averageBirthInterval" db:"average_birth_interval"`
 	AveragePeak          *float64   `json:"averagePeak" db:"average_peak"`
-	CreatedAt            time.Time  `json:"createdAt" db:"created_at"`
-	DeletedAt            *time.Time `json:"deletedAt" db:"deleted_at"`
-	UserId               string     `json:"userId" db:"user_id"`
+	Observation          *string    `json:"observation" db:"observation"`
+	UserId               string     `json:"-" db:"user_id"`
 }
 
 type AnimalSave struct {
-	Id                   *string    `json:"id" db:"id"`
-	Name                 *string    `json:"name" db:"name"`
-	WeightBirth          *float64   `json:"weightBirth" db:"weight_birth"`
-	RingNumber           *string    `json:"ringNumber" db:"ring_number"`
-	Sex                  *string    `json:"sex" db:"sex"`
-	WeaningDate          *time.Time `json:"weaningDate" db:"weaning_date"`
-	FatherId             *string    `json:"fatherId" db:"father_id"`
-	MotherId             *string    `json:"motherId" db:"mother_id"`
-	BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
-	DeathDate            *time.Time `json:"deathDate" db:"death_date"`
-	PastureId            *string    `json:"pasture" db:"pasture_id"`
-	AnimalType           string     `json:"animalType" db:"animal_type"`
-	Isr                  float64    `json:"isr" db:"isr"`
-	AverageProd          float64    `json:"averageProd" db:"average_prod"`
-	AverageProdInterval  float64    `json:"averageProdInterval" db:"average_prod_interval"`
-	AverageBirthInterval float64    `json:"averageBirthInterval" db:"average_birth_interval"`
-	AveragePeak          *float64   `json:"averagePeak" db:"average_peak"`
-	DeletedAt            *time.Time `json:"deletedAt" db:"deleted_at"`
-	UserId               string     `json:"userId" db:"user_id"`
+	Id                 *string    `json:"id" db:"id"`
+	Name               *string    `json:"name" db:"name"`
+	WeightBirth        *float64   `json:"weightBirth" db:"weight_birth"`
+	RingNumber         string     `json:"ringNumber" db:"ring_number"`
+	Sex                string     `json:"sex" db:"sex"`
+	WeaningDate        *time.Time `json:"weaningDate" db:"weaning_date"`
+	FatherId           *string    `json:"fatherId" db:"father_id"`
+	MotherId           *string    `json:"motherId" db:"mother_id"`
+	BirthDate          time.Time  `json:"birthDate" db:"birth_date"`
+	DeathDate          *time.Time `json:"deathDate" db:"death_date"`
+	AnimalType         string     `json:"animalType" db:"animal_type"`
+	IsBreedingBull     bool       `json:"isBreedingBull" db:"is_breeding_bull"`
+	IsInseminationBull bool       `json:"isInseminationBull" db:"is_insemination_bull"`
+	IsTransferBull     bool       `json:"isTransferBull" db:"is_transfer_bull"`
+	IsEmbryoDonor      bool       `json:"isEmbryoDonor" db:"is_embryo_donor"`
+	IsOutsideAnimal    bool       `json:"isOutsideAnimal" db:"is_outside_animal"`
+	Observation        *string    `json:"observation" db:"observation"`
+	UserId             string     `json:"-" db:"user_id"`
 }
 
 type AnimalFilter struct {
@@ -90,4 +91,50 @@ type DeleteAnimalStruct struct {
 	CheckInsemination bool   `json:"checkInsemination"`
 	CheckBreeding     bool   `json:"checkBreeding"`
 	CheckTransfer     bool   `json:"checkTransfer"`
+}
+
+type TotalBySex struct {
+	TotalAnimals int `json:"totalAnimals" db:"total_animals"`
+	TotalMales   int `json:"totalMales" db:"total_males"`
+	TotalFemales int `json:"totalFemales" db:"total_females"`
+}
+
+type AnimalsByAgeAndFarm struct {
+	FarmId        *string `json:"farmId" db:"farm_id"`
+	FarmName      *string `json:"farmName" db:"farm_name"`
+	NewbornMale   int     `json:"newbornMale" db:"newborn_male"`
+	NewbornFemale int     `json:"newbornFemale" db:"newborn_female"`
+	BabyMale      int     `json:"babyMale" db:"baby_male"`
+	BabyFemale    int     `json:"babyFemale" db:"baby_female"`
+	ChildMale     int     `json:"childMale" db:"child_male"`
+	ChildFemale   int     `json:"childFemale" db:"child_female"`
+	YoungMale     int     `json:"youngMale" db:"young_male"`
+	YoungFemale   int     `json:"youngFemale" db:"young_female"`
+	AdultMale     int     `json:"adultMale" db:"adult_male"`
+	AdultFemale   int     `json:"adultFemale" db:"adult_female"`
+	OldMale       int     `json:"oldMale" db:"old_male"`
+	OldFemale     int     `json:"oldFemale" db:"old_female"`
+	TotalMale     int     `json:"totalMale" db:"total_male"`
+	TotalFemale   int     `json:"totalFemale" db:"total_female"`
+	Total         int     `json:"total" db:"total"`
+}
+
+type AnimalsByAge struct {
+	AgeCategory  string     `json:"ageCategory" db:"age_category"`
+	MinBirthDate *time.Time `json:"minBirthDate" db:"min_birth_date"`
+	MaxBirthDate *time.Time `json:"maxBirthDate" db:"max_birth_date"`
+	Male         int        `json:"male" db:"male"`
+	Female       int        `json:"female" db:"female"`
+}
+
+type TotalByYear struct {
+	Year         int `json:"year" db:"year"`
+	TotalAnimals int `json:"totalAnimals" db:"total_animals"`
+}
+
+type AnimalByType struct {
+	BeefCattle          int `json:"beefCattle" db:"beef_cattle"`
+	DairyCattle         int `json:"dairyCattle" db:"dairy_cattle"`
+	ReproductionAnimals int `json:"reproductionAnimals" db:"reproduction_animals"`
+	Offspring           int `json:"offspring" db:"offspring"`
 }

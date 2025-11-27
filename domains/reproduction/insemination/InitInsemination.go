@@ -35,5 +35,7 @@ func InitInsemination(app *app.App) {
 	app.HandleFunc("DELETE /reproduction/insemination/groups/{inseminationDate}/delete", handler.DeleteBatch)
 
 	app.HandleFunc("GET /reproduction/insemination/bulls/search", handler.SearchInseminationBulls)
+	app.HandleFunc("GET /reproduction/insemination/bulls/search-non-insemination", handler.SearchNonInseminationBulls)
+	app.HandleFunc("GET /reproduction/insemination/bulls/add/{id}", handler.SetAsInseminationBulls)
 	util.LogDomainsInit("Entradas de Inseminação")
 }

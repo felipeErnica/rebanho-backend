@@ -110,7 +110,7 @@ func (h *BreedingHandler) GetLastEntries(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetLastEntries(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteAPIError(err, w)
 		return
 	}
 
@@ -248,6 +248,37 @@ func (h *BreedingHandler) SearchBreedingBulls(w http.ResponseWriter, r *http.Req
 	}
 
 	handlersUtil.SendList(w, result)
+}
+
+func (h *BreedingHandler) SearchNonBreedingBulls(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchNonBreedingBulls(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
+}
+
+func (h *BreedingHandler) AddBreedingBull(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.AddBreedingBull(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteUpdateResponse(w)
 }
 
 func (h *BreedingHandler) AddBreeding(w http.ResponseWriter, r *http.Request) {

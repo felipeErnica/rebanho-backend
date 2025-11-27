@@ -21,6 +21,7 @@ const INTERNAL_ERROR = "InternalError"
 const CONFLICT_ERROR = "ConflictError"
 const INFO_INCORRET_ERROR = "IncorretInfoError"
 const DELETE_ERROR = "DeleteError"
+const EMPTY_ERROR = "EmptyError"
 
 const CONFLICT_WARNING = "ConflictWarning"
 const TRANSFER_WARNING = "TransferWarning"
@@ -42,6 +43,16 @@ func ConflictAPIError(message string) *APIError {
 		Kind:    CONFLICT_ERROR,
 		Title:   "ERRO: Informação já existe!",
 		Message: message,
+	}
+}
+
+func EmptyAPIError() *APIError {
+	return &APIError{
+		Code:    http.StatusConflict,
+		ErrType: ERROR_TYPE,
+		Kind:    CONFLICT_ERROR,
+		Title:   "ERRO: Sem informações!",
+		Message: "Não há informações disponíveis para essa requisição.",
 	}
 }
 

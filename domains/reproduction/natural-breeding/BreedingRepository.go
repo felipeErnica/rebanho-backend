@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/felipeErnica/rebanho-backend/apiError"
-	animalTable "github.com/felipeErnica/rebanho-backend/domains/animals/animal-table"
+	"github.com/felipeErnica/rebanho-backend/domains/animals"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -301,7 +301,7 @@ func (r *BreedingRepository) GetBreedingStats(userId string) (*[]BreedingHist, e
 func (r *BreedingRepository) GetFutureBirths(userId string) (*[]FutureBirths, error) {
 	query := `
 		with upcoming_births as (
-			select t.birth_forecast
+			select t.test_date + (t.pregnancy_time * interval '1 day') as birth_forecast
 			from breeding_entries i
 			join pregnancy_tests t
 				on t.animal_id = i.animal_id
@@ -324,7 +324,7 @@ func (r *BreedingRepository) GetFutureBirths(userId string) (*[]FutureBirths, er
 							and t.pregnancy_status = 'FAILED'
 					)
 			  )
-			  and t.birth_forecast >= now()  
+			  and t.test_date + (t.pregnancy_time * interval '1 day') >= now()  
 		)
 		select
 			date_trunc('month', birth_forecast) as birth_forecast,
@@ -519,7 +519,7 @@ func (r *BreedingRepository) GetLastGroups(userId string) (*[]BreedingGroup, err
 	return repositoriesUtil.GetList[BreedingGroup](r.DB, query, userId)
 }
 
-func (r *BreedingRepository) GetLastEntries(userId string) (*LastEntry, error) {
+func (r *BreedingRepository) GetLastEntries(userId string) (*LastEntry, *apiError.APIError) {
 
 	lastDateQuery := `
 		select max(breeding_date) max_date
@@ -527,10 +527,10 @@ func (r *BreedingRepository) GetLastEntries(userId string) (*LastEntry, error) {
 		where deleted_at is null and user_id = $1
 	`
 
-	var lastDate time.Time
+	var lastDate sql.NullTime
 	err := repositoriesUtil.GetPrimitive(r.DB, lastDateQuery, &lastDate, userId)
 	if err != nil {
-		return nil, err
+		return nil, apiError.InternalServerAPIError(err)
 	}
 
 	query := `
@@ -608,12 +608,16 @@ func (r *BreedingRepository) GetLastEntries(userId string) (*LastEntry, error) {
     `
 	result, err := repositoriesUtil.GetList[BreedingEntry](r.DB, query, userId, lastDate)
 	if err != nil {
-		return nil, err
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	if !lastDate.Valid {
+		return nil, apiError.EmptyAPIError()
 	}
 
 	lastEntry := &LastEntry{
-		BreedingDate: lastDate,
-		Entries:    *result,
+		BreedingDate: lastDate.Time,
+		Entries:      *result,
 	}
 
 	return lastEntry, nil
@@ -1094,7 +1098,9 @@ func (r *BreedingRepository) FindGroups(userId string) (*[]BreedingGroup, error)
 
 func (r *BreedingRepository) SearchBreedingBulls(userId string) (*[]entity.SearchEntity, error) {
 	query := `
-        select a.id, a.name label
+        select 
+			a.id, 
+			concat_ws(' - ', a.ring_number, a.name) as label
         from animals a 
         where a.is_breeding_bull = true
 			and a.user_id = $1 
@@ -1102,6 +1108,39 @@ func (r *BreedingRepository) SearchBreedingBulls(userId string) (*[]entity.Searc
         order by a.name
     `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *BreedingRepository) SearchNonBreedingBulls(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+        select 
+			a.id, 
+			concat_ws(' - ', a.ring_number, a.name) as label
+        from animals a 
+        where a.user_id = $1 
+			and a.deleted_at is null 
+			and sex = 'M'
+			and animal_type = 'REPRODUCTION_ANIMAL'
+			and is_breeding_bull = false
+        order by a.name
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *BreedingRepository) AddBreedingBull(id string, userId string) *apiError.APIError {
+
+	query := `
+		update animals
+		set is_breeding_bull = true
+		where user_id = $1 and id = $2
+    `
+
+	err := repositoriesUtil.Exec(r.DB, query, userId, id)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+
 }
 
 func (r *BreedingRepository) Delete(id string, userId string) *apiError.APIError {
@@ -1125,7 +1164,7 @@ func (r *BreedingRepository) Delete(id string, userId string) *apiError.APIError
 	query := `
 		update breeding_entries
 		set deleted_at = now()
-		where id = :id and and user_id = :user_id
+		where id = :id and user_id = :user_id
     `
 
 	err = repositoriesUtil.NamedExec(r.DB, query, oldEntry)
@@ -1252,12 +1291,12 @@ func (r *BreedingRepository) DeleteAndChangeFather(id string, userId string) *ap
 			and deleted_at is null
 	`
 	err = repositoriesUtil.ExecTx(
-		tx, 
-		fatherQuery, 
-		fatherId.String, 
-		oldEntry.AnimalId, 
-		oldEntry.BullId, 
-		oldEntry.BreedingDate, 
+		tx,
+		fatherQuery,
+		fatherId.String,
+		oldEntry.AnimalId,
+		oldEntry.BullId,
+		oldEntry.BreedingDate,
 		oldEntry.UserId,
 	)
 
@@ -1697,7 +1736,7 @@ func (r *BreedingRepository) DeleteBatch(date time.Time, userId string) *apiErro
 			and i.breeding_date = $2
 	`
 
-	children, err := repositoriesUtil.GetListTx(tx, selectQuery, animalTable.AnimalSave{}, userId, date)
+	children, err := repositoriesUtil.GetListTx(tx, selectQuery, animals.AnimalSave{}, userId, date)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
