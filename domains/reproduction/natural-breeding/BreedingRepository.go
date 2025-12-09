@@ -301,7 +301,7 @@ func (r *BreedingRepository) GetBreedingStats(userId string) (*[]BreedingHist, e
 func (r *BreedingRepository) GetFutureBirths(userId string) (*[]FutureBirths, error) {
 	query := `
 		with upcoming_births as (
-			select t.test_date + (t.pregnancy_time * interval '1 day') as birth_forecast
+			select t.test_date + 310 - (t.pregnancy_time * interval '1 day') as birth_forecast
 			from breeding_entries i
 			join pregnancy_tests t
 				on t.animal_id = i.animal_id
@@ -324,7 +324,7 @@ func (r *BreedingRepository) GetFutureBirths(userId string) (*[]FutureBirths, er
 							and t.pregnancy_status = 'FAILED'
 					)
 			  )
-			  and t.test_date + (t.pregnancy_time * interval '1 day') >= now()  
+			  and t.test_date + (310 - t.pregnancy_time * interval '1 day') >= now()  
 		)
 		select
 			date_trunc('month', birth_forecast) as birth_forecast,

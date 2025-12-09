@@ -3,25 +3,33 @@ package embryoTransfer
 import "time"
 
 type EmbryoTransfer struct {
-	Id               string     `json:"id" db:"id"`
-	ReceiverId       string     `json:"receiverId" db:"receiver_id"`
-	ReceiverOrder    int        `json:"receiverOrder" db:"receiver_order"`
-	ReceiverName     string     `json:"receiverName" db:"receiver_name"`
-	ReceiverInfo     string     `json:"-" db:"receiver_info"`
-	DonorId          string     `json:"donorId" db:"donor_id"`
-	DonorOrder       int        `json:"donorOrder" db:"donor_order"`
-	DonorName        string     `json:"donorName" db:"donor_name"`
-	DonorInfo        string     `json:"donorInfo" db:"donor_info"`
-	BullId           string     `json:"bullId" db:"bull_id"`
-	BullName         string     `json:"bullName" db:"bull_name"`
-	TransferDate     time.Time  `json:"transferDate" db:"transfer_date"`
-	BirthStatus      string     `json:"birthStatus" db:"birth_status"`
-	PregnancyStatus  string     `json:"pregnancyStatus" db:"pregnancy_status"`
-	Observation      *string    `json:"observation" db:"observation"`
-	ChildInformation *string    `json:"childInformation" db:"child_information"`
-	CreatedAt        time.Time  `json:"-" db:"created_at"`
-	DeletedAt        *time.Time `json:"-" db:"deleted_at"`
-	UserId           string     `json:"-" db:"user_id"`
+	Id               string    `json:"id" db:"id"`
+	ReceiverId       string    `json:"receiverId" db:"receiver_id"`
+	ReceiverOrder    int       `json:"-" db:"receiver_order"`
+	ReceiverName     string    `json:"-" db:"receiver_name"`
+	ReceiverInfo     string    `json:"receiverInfo" db:"receiver_info"`
+	DonorId          string    `json:"donorId" db:"donor_id"`
+	DonorOrder       int       `json:"-" db:"donor_order"`
+	DonorName        string    `json:"-" db:"donor_name"`
+	DonorInfo        string    `json:"donorInfo" db:"donor_info"`
+	BullId           string    `json:"bullId" db:"bull_id"`
+	BullName         string    `json:"bullName" db:"bull_name"`
+	TransferDate     time.Time `json:"transferDate" db:"transfer_date"`
+	BirthStatus      string    `json:"birthStatus" db:"birth_status"`
+	PregnancyStatus  string    `json:"pregnancyStatus" db:"pregnancy_status"`
+	Observation      *string   `json:"observation" db:"observation"`
+	ChildInformation *string   `json:"childInformation" db:"child_information"`
+	CreatedAt        time.Time `json:"-" db:"created_at"`
+}
+
+type EmbryoTransferSave struct {
+	Id           string    `json:"id" db:"id"`
+	ReceiverId   string    `json:"receiverId" db:"receiver_id"`
+	DonorId      string    `json:"donorId" db:"donor_id"`
+	BullId       string    `json:"bullId" db:"bull_id"`
+	TransferDate time.Time `json:"transferDate" db:"transfer_date"`
+	Observation  *string   `json:"observation" db:"observation"`
+	UserId       string    `json:"-" db:"user_id"`
 }
 
 type TransferEntryFilter struct {
@@ -74,7 +82,7 @@ type FutureBirths struct {
 }
 
 type BestAnimals struct {
-	AnimalName                string  `json:"animalName" db:"animal_name"`
+	AnimalName              string  `json:"animalName" db:"animal_name"`
 	Total                   int     `json:"total" db:"total"`
 	BirthRate               float64 `json:"birthRate" db:"birth_rate"`
 	PregnancyRate           float64 `json:"pregnancyRate" db:"pregnancy_rate"`
@@ -89,6 +97,7 @@ type TransferGroup struct {
 	PregnancyRate           float64   `json:"pregnancyRate" db:"pregnancy_rate"`
 	BirthComparisonRate     float64   `json:"birthComparisonRate" db:"birth_comparison_rate"`
 	PregnancyComparisonRate float64   `json:"pregnancyComparisonRate" db:"pregnancy_comparison_rate"`
+	UserId                  string    `json:"-" db:"user_id"`
 }
 
 type LastEntry struct {

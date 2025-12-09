@@ -3,6 +3,7 @@ package slaughter
 import (
 	"time"
 
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -13,7 +14,7 @@ type SlaughterRepository struct {
 	DB *sqlx.DB
 }
 
-func NewRepository(db *sqlx.DB) *SlaughterRepository {
+func NewSlaughterRepository(db *sqlx.DB) *SlaughterRepository {
 	return &SlaughterRepository{db}
 }
 
@@ -266,7 +267,7 @@ func (r *SlaughterRepository) GetBestSlaughterhouses(userId string) (*[]TableRat
 	query := `
 		with cte as (
 			select 
-				slaughterhouse_id,
+				butcher_id,
 				count(*) animals_number,
 				avg(weight) avg_weight,
 				avg((dead_weight / nullif(weight * (1 - discount_rate), 0))*100) avg_rate
@@ -287,7 +288,7 @@ func (r *SlaughterRepository) GetBestSlaughterhouses(userId string) (*[]TableRat
 			c.avg_rate,
 			((c.avg_rate / nullif(g.gn_avg_rate, 0)) - 1) * 100 rate_comparison,
 			c.animals_number
-		from gn_stats g, cte c join slaughterhouses s on s.id = c.slaughterhouse_id
+		from gn_stats g, cte c join butchers s on s.id = c.butcher_id
 		where c.avg_rate >= 20
 		order by c.avg_rate desc
 		limit 10
@@ -300,7 +301,7 @@ func (r *SlaughterRepository) GetLastGroups(userId string) (*[]SlaughterGroup, e
 		with cte as (
 			select 
 				entry_date,
-				slaughterhouse_id,
+				butcher_id,
 				count(animal_id) animals_number,
 				avg(dead_weight) avg_weight,
 				avg((dead_weight / nullif(weight * (1 - discount_rate), 0))*100) avg_rate
@@ -310,14 +311,14 @@ func (r *SlaughterRepository) GetLastGroups(userId string) (*[]SlaughterGroup, e
 		)
 		select 
 			c.entry_date,
-			s.name slaughterhouse,
+			s.name butcher,
 			c.avg_weight,
 			coalesce(((c.avg_weight / lag(nullif(c.avg_weight, 0)) over (order by c.entry_date)) - 1) * 100, 0) weight_variation,
 			c.avg_rate,
 			coalesce(((c.avg_rate / lag(nullif(c.avg_rate, 0)) over (order by c.entry_date)) - 1) * 100, 0) rate_variation,
 			c.animals_number
 		from cte c 
-			join slaughterhouses s on s.id = c.slaughterhouse_id
+			join butchers s on s.id = c.butcher_id
 		order by c.entry_date desc
 		limit 10
 	`
@@ -337,7 +338,7 @@ func (r *SlaughterRepository) GetLastEntries(userId string) (*[]SlaughterEntry, 
 				a.ring_number, 
 				coalesce(a.name, concat_ws(' - ', a.sex, to_char(a.birth_date, 'DD/MM/YYYY')))
 			) animal_info,
-			h.name slaughterhouse,
+			h.name butcher,
 			s.entry_date,
 			s.weight,
 			s.discount_rate,
@@ -347,7 +348,7 @@ func (r *SlaughterRepository) GetLastEntries(userId string) (*[]SlaughterEntry, 
 		from slaughter_entries s
 			cross join last_date l
 			left join animals a on a.id = s.animal_id
-			join slaughterhouses h on h.id = s.slaughterhouse_id
+			join butchers h on h.id = s.butcher_id
 		where s.entry_date = l.max_date
 			and s.user_id = $1 
 			and s.deleted_at is null
@@ -381,7 +382,7 @@ func (r *SlaughterRepository) FindEntriesPage(
 		select 
 			s.id,
 			s.animal_id,
-			s.slaughterhouse_id,
+			s.butcher_id,
 			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
 			a.name as animal_name, 
 			concat_ws(
@@ -393,7 +394,7 @@ func (r *SlaughterRepository) FindEntriesPage(
 			a.birth_date,
 			concat_ws(' - ', f.ring_number, f.name) father_name,
 			concat_ws(' - ', m.ring_number, m.name) mother_name,
-			h.name slaughterhouse,
+			h.name butcher,
 			s.entry_date,
 			s.discount_rate*100 discount_rate,
 			s.weight,
@@ -402,7 +403,7 @@ func (r *SlaughterRepository) FindEntriesPage(
 			coalesce(s.dead_weight / nullif(s.weight*(1 - s.discount_rate), 0) * 100, 0) performance_rate,
 			s.created_at
 		from slaughter_entries s
-			join slaughterhouses h on h.id = s.slaughterhouse_id
+			join butchers h on h.id = s.butcher_id
 			left join animals a on a.id = s.animal_id
 			left join animals f on f.id = a.father_id
 			left join animals m on m.id = a.mother_id
@@ -482,7 +483,7 @@ func (r *SlaughterRepository) FindGroups(order string, userId string) (*[]Slaugh
 		with cte as (
 			select 
 				entry_date,
-				slaughterhouse_id,
+				butcher_id,
 				count(*) as animals_number,
 				avg(weight) as avg_weight,
 				avg(dead_weight) as avg_dead_weight,
@@ -493,7 +494,7 @@ func (r *SlaughterRepository) FindGroups(order string, userId string) (*[]Slaugh
 		)
 		select 
 			c.entry_date,
-			s.name slaughterhouse,
+			s.name butcher,
 			c.avg_weight,
 			c.avg_dead_weight,
 			coalesce((c.avg_weight / lag(nullif(c.avg_weight, 0)) over win) - 1, 0) * 100 as weight_variation, 
@@ -502,7 +503,7 @@ func (r *SlaughterRepository) FindGroups(order string, userId string) (*[]Slaugh
 			coalesce((c.avg_rate / lag(nullif(c.avg_rate, 0)) over win) - 1, 0) * 100 as rate_variation,
 			c.animals_number
 		from cte c 
-			join slaughterhouses s on s.id = c.slaughterhouse_id
+			join butchers s on s.id = c.butcher_id
 		window win as (order by c.entry_date)
 		order by c.entry_date
 	`
@@ -530,7 +531,7 @@ func (r *SlaughterRepository) FindEntriesByDate(
 		select 
 			s.id,
 			s.animal_id,
-			s.slaughterhouse_id,
+			s.butcher_id,
 			a.name as animal_name,
 			concat_ws(
 				' - ', 
@@ -579,14 +580,226 @@ func (r *SlaughterRepository) GetEntriesByDateFoot(entryDate time.Time, userId s
 	return repositoriesUtil.GetOne[SlaughterFoot](r.DB, query, entryDate, userId)
 }
 
-func (r *SlaughterRepository) SearchSlaughterhouses(userId string) (*[]entity.SearchEntity, error) {
+func (r *SlaughterRepository) Delete(id string, userId string) *apiError.APIError {
+	
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	defer tx.Rollback()
+
+	entryQuery := `
+		select
+			id,
+			animal_id,
+			butcher_id,
+			entry_date,
+			weight,
+			dead_weight,
+			discount_rate,
+			user_id
+		from slaughter_entries
+		where id = $1 and user_id = $2
+	`
+	entry, err := repositoriesUtil.GetOneTx(tx, entryQuery, &SlaughterEntrySave{}, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	deleteQuery := `
+		update slaughter_entries 
+		set deleted_at = now()
+		where id = :id and user_id = :user_id
+	`
+
+	err = repositoriesUtil.NamedExecTx(tx, deleteQuery, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	animalQuery := `
+		update animals 
+		set death_date = null,
+		where id = :animal_id
+			and user_id = :user_id
+			and death_date = :entry_date
+	`
+	err = repositoriesUtil.NamedExecTx(tx, animalQuery, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *SlaughterRepository) Update(entry *SlaughterEntrySave) (*SlaughterEntry, *apiError.APIError) {
+
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	defer tx.Rollback()
+
+	oldQuery := `
+		select
+			id,
+			animal_id,
+			butcher_id,
+			entry_date,
+			weight,
+			dead_weight,
+			discount_rate,
+			user_id
+		from slaughter_entries
+		where id = $1 and user_id = $2
+	`
+	oldEntry, err := repositoriesUtil.GetOneTx(tx, oldQuery, &SlaughterEntrySave{}, entry.Id, entry.UserId)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	validateErr := validateUpdate(tx, entry)
+	if validateErr != nil {
+		return nil, validateErr
+	}
 
 	query := `
-		select
-			s.id,
-			s.name as label
-		from slaughterhouses s
-		where s.user_id = $1 and s.deleted_at is null
+		update slaughter_entries 
+		set entry_date = :entry_date,
+			discount_rate = :discount_rate,
+			weight = :weight,
+			dead_weight = :dead_weight,
+			butcher_id = :butcher_id
+		where id = :id and user_id = :user_id
 	`
-	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+
+	err = repositoriesUtil.NamedExecTx(tx, query, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	animalQuery := `
+		update animals 
+		set death_date = $1,
+		where id = $2
+			and user_id = $3
+			and death_date = $4
+	`
+	err = repositoriesUtil.ExecTx(tx, animalQuery, entry.EntryDate, entry.AnimalId, entry.UserId, oldEntry.EntryDate)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	selectQuery := `
+		select 
+			s.id,
+			s.animal_id,
+			s.butcher_id,
+			concat_ws(
+				' - ', 
+				a.ring_number, 
+				coalesce(a.name, a.sex),
+				to_char(a.birth_date, 'DD/MM/YYYY')
+			) as animal_info,
+			a.birth_date,
+			concat_ws(' - ', f.ring_number, f.name) father_name,
+			concat_ws(' - ', m.ring_number, m.name) mother_name,
+			h.name butcher,
+			s.entry_date,
+			s.discount_rate * 100 as discount_rate,
+			s.weight,
+			s.weight * (1 - s.discount_rate) as discount_weight,
+			s.dead_weight,
+			coalesce(s.dead_weight / nullif(s.weight*(1 - s.discount_rate), 0) * 100, 0) performance_rate
+		from slaughter_entries s
+			join butchers h on h.id = s.butcher_id
+			left join animals a on a.id = s.animal_id
+			left join animals f on f.id = a.father_id
+			left join animals m on m.id = a.mother_id
+		where id = :id and user_id = :user_id
+	`
+
+	result, err := repositoriesUtil.NamedGetTx(tx, selectQuery, SlaughterEntry{}, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	return result, nil
 }
+
+func (r *SlaughterRepository) Add(entry *SlaughterEntrySave) *apiError.APIError {
+	
+	validateErr := validateAdd(r.DB, entry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	query := `
+		insert into slaughter_entries (
+			animal_id, 
+			butcher_id, 
+			entry_date, 
+			discount_rate, 
+			weight, 
+			dead_weight,
+			user_id
+		)
+		values (
+			:animal_id,
+			:butcher_id,
+			:entry_date,
+			:discount_rate,
+			:weight,
+			:dead_weight,
+			:user_id
+		)
+	`
+	
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *SlaughterRepository) Replace(entry *SlaughterEntrySave) *apiError.APIError {
+	
+	validateErr := validateAdd(r.DB, entry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	query := `
+		update slaughter_entries 
+		set butcher_id = :butcher_id, 
+			entry_date = :entry_date, 
+			discount_rate = :discount_rate, 
+			weight = :weight, 
+			dead_weight = :dead_weight,
+		where entry_date = :entry_date
+			and animal_id = :animal_id
+			and user_id = :user_id
+			and deleted_at is null
+	`
+	
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+

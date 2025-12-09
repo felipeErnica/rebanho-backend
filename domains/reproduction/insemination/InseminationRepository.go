@@ -299,7 +299,7 @@ func (r *InseminationRepository) GetFutureBirths(userId string) (*[]FutureBirths
 		with upcoming_births as (
 			select 
 				i.id,
-				(t.test_date + interval '1 day'*pregnancy_time) as birth_forecast
+				t.test_date + (310 - interval '1 day' * t.pregnancy_time) as birth_forecast
 			from insemination_entries i
 				join pregnancy_tests t on t.animal_id = i.animal_id
 					and t.test_date > i.insemination_date
@@ -307,7 +307,7 @@ func (r *InseminationRepository) GetFutureBirths(userId string) (*[]FutureBirths
 					and t.pregnancy_status = 'SUCCESS'
 			where i.user_id = $1
 				and i.deleted_at is null
-				and t.test_date + interval '1 day'*pregnancy_time >= now()  
+				and t.test_date + (310 - interval '1 day' * pregnancy_time) >= now()  
 				and not exists (
 					select 1
 					from animals a 

@@ -3,25 +3,36 @@ package slaughter
 import "time"
 
 type SlaughterEntry struct {
-	Id               string     `json:"id" db:"id"`
-	AnimalId         *string    `json:"animalId" db:"animal_id"`
-	AnimalName       *string    `json:"-" db:"animal_name"`
-	AnimalInfo       *string    `json:"animalInfo" db:"animal_info"`
-	FatherName       *string    `json:"fatherName" db:"father_name"`
-	BirthDate        *time.Time `json:"-" db:"birth_date"`
-	MotherName       *string    `json:"motherName" db:"mother_name"`
-	AnimalOrder      *string    `json:"-" db:"animal_order"`
-	EntryDate        *time.Time `json:"entryDate" db:"entry_date"`
-	DiscountRate     *float64   `json:"discountRate" db:"discount_rate"`
-	SlaughterhouseId string     `json:"slaughterhouseId" db:"slaughterhouse_id"`
-	Slaughterhouse   string     `json:"slaughterhouse" db:"slaughterhouse"`
-	Weight           float64    `json:"weight" db:"weight"`
-	DiscountWeight   float64    `json:"discountWeight" db:"discount_weight"`
-	DeadWeight       float64    `json:"deadWeight" db:"dead_weight"`
-	PerformanceRate  float64    `json:"performanceRate" db:"performance_rate"`
-	CreatedAt        time.Time  `json:"-" db:"created_at"`
-	DeletedAt        *time.Time `json:"-" db:"deleted_at"`
-	UserId           string     `json:"-" db:"user_id"`
+	Id              string     `json:"id" db:"id"`
+	AnimalId        *string    `json:"animalId" db:"animal_id"`
+	AnimalName      *string    `json:"-" db:"animal_name"`
+	AnimalInfo      *string    `json:"animalInfo" db:"animal_info"`
+	FatherName      *string    `json:"fatherName" db:"father_name"`
+	BirthDate       *time.Time `json:"-" db:"birth_date"`
+	MotherName      *string    `json:"motherName" db:"mother_name"`
+	AnimalOrder     *string    `json:"-" db:"animal_order"`
+	EntryDate       *time.Time `json:"entryDate" db:"entry_date"`
+	DiscountRate    *float64   `json:"discountRate" db:"discount_rate"`
+	ButcherId       string     `json:"butcherId" db:"butcher_id"`
+	Butcher         string     `json:"butcher" db:"butcher"`
+	Weight          float64    `json:"weight" db:"weight"`
+	DiscountWeight  float64    `json:"discountWeight" db:"discount_weight"`
+	DeadWeight      float64    `json:"deadWeight" db:"dead_weight"`
+	PerformanceRate float64    `json:"performanceRate" db:"performance_rate"`
+	CreatedAt       time.Time  `json:"-" db:"created_at"`
+	DeletedAt       *time.Time `json:"-" db:"deleted_at"`
+	UserId          string     `json:"-" db:"user_id"`
+}
+
+type SlaughterEntrySave struct {
+	Id           string     `json:"id" db:"id"`
+	AnimalId     *string    `json:"animalId" db:"animal_id"`
+	EntryDate    *time.Time `json:"entryDate" db:"entry_date"`
+	DiscountRate *float64   `json:"discountRate" db:"discount_rate"`
+	ButcherId    string     `json:"butcherId" db:"butcher_id"`
+	Weight       float64    `json:"weight" db:"weight"`
+	DeadWeight   float64    `json:"deadWeight" db:"dead_weight"`
+	UserId       string     `json:"-" db:"user_id"`
 }
 
 type SlaughterEntryFilter struct {
@@ -29,7 +40,7 @@ type SlaughterEntryFilter struct {
 	Animals         *[]string  `json:"animals" db:"animal_id"`
 	Fathers         *[]string  `json:"fathers" db:"father_id" table:"a"`
 	Mothers         *[]string  `json:"mothers" db:"mother_id" table:"a"`
-	Slaughterhouses *[]string  `json:"slaughterhouses" db:"slaughterhouse_id"`
+	Slaughterhouses *[]string  `json:"slaughterhouses" db:"butcher_id"`
 	MinAnimalBirth  *time.Time `json:"minAnimalBirth" db:"birth_date" table:"a"`
 	MaxAnimalBirth  *time.Time `json:"maxAnimalBirth" db:"birth_date" table:"a"`
 	MinEntryDate    *time.Time `json:"minEntryDate" db:"entry_date"`
@@ -49,7 +60,7 @@ type SlaughterFoot struct {
 
 type SlaughterGroup struct {
 	EntryDate           time.Time `json:"entryDate" db:"entry_date"`
-	Slaughterhouse      string    `json:"slaughterhouse" db:"slaughterhouse"`
+	Butcher             string    `json:"butcher" db:"butcher"`
 	AnimalsNumber       int       `json:"animalsNumber" db:"animals_number"`
 	AverageWeight       float64   `json:"averageWeight" db:"avg_weight"`
 	AverageDeadWeight   float64   `json:"averageDeadWeight" db:"avg_dead_weight"`

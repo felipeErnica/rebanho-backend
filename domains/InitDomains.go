@@ -21,4 +21,5 @@ func InitDomains(app *app.App) {
     reproduction.InitReproduction(app)
 	weight.InitWeight(app)
     slaughter.InitSlaughter(app)
+    slaughter.InitButcher(app)
 }

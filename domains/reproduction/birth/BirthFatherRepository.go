@@ -167,7 +167,7 @@ func getTransferFather(db *sqlx.DB, entry *BirthEntrySave) (string, *apiError.AP
 			from embryo_transfer i
 			where i.deleted_at is null
 				and i.user_id = $1
-				and i.donor_id = $2
+				and i.receiver_id = $2
 				and i.transfer_date < $3
 				and age($3, i.transfer_date) between interval '240 days' and '340 days'
 				and not exists (
@@ -196,7 +196,7 @@ func getTransferFather(db *sqlx.DB, entry *BirthEntrySave) (string, *apiError.AP
 		from embryo_transfer
 		where deleted_at is null
 			and user_id = $1 
-			and donor_id = $2
+			and receiver_id = $2
 			and transfer_date < $3
 		order by transfer_date desc
 		limit 1

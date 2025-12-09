@@ -187,9 +187,9 @@ func (h *TransferHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request
 }
 
 func (h *TransferHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Request) {
-	queryDate := r.PathValue("inseminationDate")
+	queryDate := r.PathValue("transferDate")
 
-	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
+	transferDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -200,7 +200,7 @@ func (h *TransferHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	result, err := h.Repository.FindEntriesByGroup(userId, inseminationDate)
+	result, err := h.Repository.FindEntriesByGroup(userId, transferDate)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -225,9 +225,9 @@ func (h *TransferHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TransferHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Request) {
-	queryDate := r.PathValue("inseminationDate")
+	queryDate := r.PathValue("transferDate")
 
-	inseminationDate, err := time.Parse(time.RFC3339Nano, queryDate)
+	transferDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -238,7 +238,7 @@ func (h *TransferHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	result, err := h.Repository.GetEntriesByGroupFoot(userId, inseminationDate)
+	result, err := h.Repository.GetEntriesByGroupFoot(userId, transferDate)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return
@@ -280,4 +280,200 @@ func (h *TransferHandler) SearchTransferBulls(w http.ResponseWriter, r *http.Req
 	}
 
 	handlersUtil.SendList(w, result)
+}
+
+func (h *TransferHandler) SearchNonTransferBulls(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchNonTransferBulls(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
+}
+
+func (h *TransferHandler) UpdateAsTransferBulls(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.UpdateAsTransferBulls(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteUpdateResponse(w)
+}
+
+func (h *TransferHandler) SearchEmbryoDonors(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchEmbryoDonors(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
+}
+
+func (h *TransferHandler) SearchNonEmbryoDonors(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.SearchNonEmbryoDonors(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.SendList(w, result)
+}
+
+func (h *TransferHandler) UpdateAsEmbryoDonors(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.UpdateAsEmbryoDonors(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteUpdateResponse(w)
+}
+
+func (h *TransferHandler) AddTransfer(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &EmbryoTransferSave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.AddTransfer(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *TransferHandler) Replace(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &EmbryoTransferSave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.Replace(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteUpdateResponse(w)
+}
+
+func (h *TransferHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.Delete(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *TransferHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &EmbryoTransferSave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	res, err := h.Repository.Update(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
+}
+
+func (h *TransferHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
+	dateStr := r.PathValue("transferDate")
+	transferDate, _ := time.Parse(time.RFC3339Nano, dateStr)
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.DeleteGroup(transferDate, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *TransferHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
+	dateStr := r.PathValue("transferDate")
+	transferDate, _ := time.Parse(time.RFC3339Nano, dateStr)
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &TransferGroup{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	res, err := h.Repository.UpdateGroup(transferDate, entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
 }

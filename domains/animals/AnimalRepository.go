@@ -16,7 +16,7 @@ type AnimalRepository struct {
 func NewRepository(db *sqlx.DB) *AnimalRepository {
 	selectQuery := `
         select animals.*, 
-            coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+            coalesce(nullif(regexp_replace(animals.ring_number, '[^0-9]', '', 'g'), '')::int, 0) as animal_order,
             concat_ws(' - ', father.ring_number, father.name) as father_name, 
             concat_ws(' - ', mother.ring_number, mother.name) as mother_name,
             pastures.name as pasture_name,
@@ -269,7 +269,7 @@ func (r *AnimalRepository) FindPage(
 		"death_date":             {Field: "coalesce(animals.death_date, '-infinity')", Order: "asc"},
 		"weaning_date":           {Field: "coalesce(animals.weaning_date, '-infinity')", Order: "asc"},
 		"birth_date":             {Field: "coalesce(animals.birth_date, '-infinity')", Order: "asc"},
-		"animal_order":           {Field: "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"animal_order":           {Field: "coalesce(nullif(regexp_replace(animals.ring_number, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
 	}
 
 	whereExpression := "where animals.deleted_at is null and animals.user_id = $1"
@@ -376,10 +376,10 @@ func (r *AnimalRepository) SearchFather(userId string) (*[]entity.SearchEntity, 
             from animals 
         where user_id = $1 
             and sex = 'M' 
-            and animal_type <> 'OFFSPRING'
+            and animal_type = 'REPRODUCTION_ANIMAL'
             and (name is not null)
             and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), coalesce(name, '')
+        order by coalesce(nullif(regexp_replace(ring_number, '[^0-9]', '', 'g'), '')::int, 0), coalesce(name, '')
     `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, queryInput, userId)
 }
@@ -388,7 +388,12 @@ func (r *AnimalRepository) FindMaleOffspring(id string, userId string) (*[]entit
 	queryInput := `
         select 
 			id, 
-			concat_ws(' - ', sex, coalesce(to_char(birth_date, 'DD/MM/YYYY'), 'Desconhecido')) as label 
+			concat_ws(
+				' - ', 
+				sex, 
+				coalesce(to_char(birth_date, 'DD/MM/YYYY'), 'Desconhecido'),
+				case death_date is not null then 'Morto'
+			) as label 
 		from animals 
         where mother_id = $1
             and sex = 'M' 
@@ -405,12 +410,16 @@ func (r *AnimalRepository) FindFemaleOffspring(id string, userId string) (*[]ent
 	queryInput := `
         select 
 			id, 
-			concat_ws(' - ', sex, coalesce(to_char(birth_date, 'DD/MM/YYYY'), 'Desconhecido')) as label 
+			concat_ws(
+				' - ', 
+				sex, 
+				coalesce(to_char(birth_date, 'DD/MM/YYYY'), 'Desconhecido'),
+				case death_date is not null then 'Morto'
+			) as label 
 		from animals 
         where mother_id = $1
             and sex = 'F' 
             and animal_type = 'OFFSPRING'
-			and death_date is null
 			and user_id = $2
             and deleted_at is null
         order by birth_date desc
@@ -422,13 +431,19 @@ func (r *AnimalRepository) SearchAnimals(userId string) (*[]entity.SearchEntity,
 	query := `
         select 
 			id, 
-			concat_ws(' - ', ring_number, name, to_char(birth_date, 'DD/MM/YYYY')) as label 
+			concat_ws(
+				' - ', 
+				ring_number, 
+				name, 
+				to_char(birth_date, 'DD/MM/YYYY'),
+				case death_date is not null then 'Morto'
+			) as label 
 		from animals 
         where user_id = $1 
-            and animal_type <> 'OUTSIDE_ANIMAL'
+            and is_outside_animal = false
             and deleted_at is null
         order by 
-			coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), 
+			coalesce(nullif(regexp_replace(ring_number, '[^0-9]', '', 'g'), '')::int, 0), 
 			coalesce(name, ''), 
 			coalesce(birth_date, '-infinity')
     `
@@ -437,14 +452,21 @@ func (r *AnimalRepository) SearchAnimals(userId string) (*[]entity.SearchEntity,
 
 func (r *AnimalRepository) SearchAllMothers(userId string) (*[]entity.SearchEntity, error) {
 	query := `
-        select id, concat_ws(' - ', ring_number, name) as label 
+        select 
+			id, 
+			concat_ws(
+				' - ', 
+				ring_number, 
+				name,
+				case death_date is not null then 'Morto'
+			) as label 
             from animals 
         where user_id = $1 
             and sex = 'F' 
             and animal_type in ('REPRODUCTION_ANIMAL', 'DAIRY_ANIMAL') 
             and name is not null
             and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
+        order by coalesce(nullif(regexp_replace(ring_number, '[^0-9]', '', 'g'), '')::int, 0), label
     `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
@@ -459,7 +481,7 @@ func (r *AnimalRepository) SearchMother(userId string) (*[]entity.SearchEntity, 
 			and name is not null 
 			and is_outside_animal = false
 			and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), label
+        order by coalesce(nullif(regexp_replace(ring_number, '[^0-9]', '', 'g'), '')::int, 0), label
     `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
@@ -472,7 +494,7 @@ func (r *AnimalRepository) SearchDairyAnimals(userId string) (*[]entity.SearchEn
             and sex = 'F' 
             and animal_type = 'DAIRY_ANIMAL'
             and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), name
+        order by coalesce(nullif(regexp_replace(ring_number, '[^0-9]', '', 'g'), '')::int, 0), name
     `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
@@ -486,7 +508,9 @@ func (r *AnimalRepository) SearchBull(userId string) (*[]entity.SearchEntity, er
 			and animal_type = 'REPRODUCTION_ANIMAL'
             and name is not null
             and deleted_at is null
-        order by coalesce(regexp_replace(ring_number, '[^0-9]' ,'', 'g')::int, 0), name
+        order by 
+			coalesce(nullif(regexp_replace(ring_number, '[^0-9]' ,'', 'g'), '')::int, 0), 
+			name
     `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }

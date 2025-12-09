@@ -269,17 +269,82 @@ func (h *SlaughterHandler) GetEntriesByDateFoot(w http.ResponseWriter, r *http.R
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *SlaughterHandler) SearchSlaughterhouses(w http.ResponseWriter, r *http.Request) {
+func (h *SlaughterHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.SearchSlaughterhouses(userId)
+	err := h.Repository.Delete(id, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *SlaughterHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &SlaughterEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	result, err := h.Repository.Update(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
 		return
 	}
 
 	handlersUtil.WriteEntity(w, result)
 }
+
+func (h *SlaughterHandler) Add(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &SlaughterEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.Add(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteCreatedResponse(w)
+}
+
+func (h *SlaughterHandler) Replace(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &SlaughterEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.Replace(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteUpdateResponse(w)
+}
+

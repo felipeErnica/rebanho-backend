@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -254,7 +255,7 @@ func (r *TransferRepository) GetTransferHist(userId string) (*[]TransferHist, er
 func (r *TransferRepository) GetFutureBirths(userId string) (*[]FutureBirths, error) {
 	query := `
 		with upcoming_births as (
-			select t.birth_forecast
+			select (t.test_date + 310 - t.pregnancy_time * interval '1 day') as birth_forecast
 			from embryo_transfer et
 			join pregnancy_tests t
 				on t.animal_id = et.receiver_id
@@ -269,8 +270,15 @@ func (r *TransferRepository) GetFutureBirths(userId string) (*[]FutureBirths, er
 				  where a.mother_id = et.donor_id
 					and a.birth_date > et.transfer_date
 					and age(a.birth_date, et.transfer_date) between interval '240 days' and interval '340 days'
+					and not exists (
+						select 1
+						from pregnancy_tests t
+						where t.animal_id = a.mother_id
+							and t.test_date between et.transfer_date and a.birth_date
+							and t.pregnancy_status = 'FAILED'
+					)
 			  )
-			  and t.birth_forecast >= now()  
+			  and t.test_date + (310 - t.pregnancy_time * interval '1 day') >= now()  
 		)
 		select
 			date_trunc('month', birth_forecast) as birth_forecast,
@@ -571,9 +579,7 @@ func (r *TransferRepository) GetLastEntries(userId string) (*LastEntry, error) {
 			et.id,
 			et.transfer_date,
 			et.bull_id,
-			r.name as receiver_name,
 			concat_ws(' - ', r.ring_number, r.name) as receiver_info,
-			d.name as donor_name,
 			concat_ws(' - ', d.ring_number, d.name) as donor_info,
 			b.name as bull_name,
 			case
@@ -627,7 +633,7 @@ func (r *TransferRepository) GetLastEntries(userId string) (*LastEntry, error) {
 		where et.user_id = $1 
 			and et.transfer_date = $2
 			and et.deleted_at is null
-		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0);
+		order by coalesce(regexp_replace(r.ring_number, '[^0-9]', '', 'g')::int, 0);
     `
 	result, err := repositoriesUtil.GetList[EmbryoTransfer](r.DB, query, userId, lastDate)
 	if err != nil {
@@ -856,6 +862,9 @@ func (r *TransferRepository) FindEntriesByGroup(userId string, date time.Time) (
 	query := `
         select 
             et.id,
+			et.bull_id,
+			et.receiver_id,
+			et.donor_id,
 			concat_ws(' - ', b.ring_number, b.name) as bull_name,
             concat_ws(' - ', r.ring_number, r.name) receiver_info,
             concat_ws(' - ', d.ring_number, d.name) donor_info,
@@ -1047,11 +1056,383 @@ func (r *TransferRepository) FindGroups(userId string) (*[]TransferGroup, error)
 
 func (r *TransferRepository) SearchTransferBulls(userId string) (*[]entity.SearchEntity, error) {
 	query := `
-        select distinct a.id, a.name label
-        from animals a 
-			join embryo_transfer et on et.bull_id = a.id
-        where et.user_id = $1 and et.deleted_at is null 
-        order by a.name
+        select id, name as label
+        from animals 
+        where is_transfer_bull = true
+			and user_id = $1
+			and deleted_at is null 
+        order by name
     `
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *TransferRepository) SearchNonTransferBulls(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+        select id, name as label
+        from animals 
+        where is_transfer_bull = false
+			and sex = 'M'
+			and animal_type = 'REPRODUCTION_ANIMAL'
+			and user_id = $1
+			and deleted_at is null 
+        order by name
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *TransferRepository) UpdateAsTransferBulls(id string, userId string) *apiError.APIError {
+	query := `
+		update animals
+		set is_transfer_bull = true
+		where id = $1 and user_id = $2
+    `
+	err := repositoriesUtil.Exec(r.DB, query, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *TransferRepository) SearchEmbryoDonors(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+        select id, name as label
+        from animals 
+        where is_embryo_donor = true
+			and user_id = $1
+			and deleted_at is null 
+        order by name
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *TransferRepository) SearchNonEmbryoDonors(userId string) (*[]entity.SearchEntity, error) {
+	query := `
+        select id, name as label
+        from animals 
+        where is_embryo_donor = false
+			and sex = 'F'
+			and animal_type in ('DAIRY_ANIMAL', 'REPRODUCTION_ANIMAL')
+			and user_id = $1
+			and deleted_at is null 
+        order by name
+    `
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
+}
+
+func (r *TransferRepository) UpdateAsEmbryoDonors(id string, userId string) *apiError.APIError {
+	query := `
+		update animals
+		set is_embryo_donor = true
+		where id = $1 and user_id = $2
+    `
+	err := repositoriesUtil.Exec(r.DB, query, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *TransferRepository) AddTransfer(entry *EmbryoTransferSave) *apiError.APIError {
+
+	validateErr := validateAdd(r.DB, entry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	query := `
+		insert into embryo_transfer (
+			receiver_id, 
+			donor_id, 
+			bull_id, 
+			transfer_date, 
+			observation, 
+			user_id
+		)
+		values (
+			:receiver_id, 
+			:donor_id, 
+			:bull_id, 
+			:transfer_date, 
+			:observation, 
+			:user_id
+		)
+    `
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *TransferRepository) Replace(entry *EmbryoTransferSave) *apiError.APIError {
+
+	query := `
+		update embryo_transfer 
+		set donor_id = :donor_id, 
+			bull_id = :bull_id, 
+			observation = :observation, 
+		where receiver_id = :receiver_id 
+			and transfer_date = :transfer_date
+			and user_id = :user_id
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *TransferRepository) Delete(id string, userId string) *apiError.APIError {
+
+	oldQuery := `
+		select
+			id,
+			donor_id,
+			receiver_id,
+			bull_id,
+			transfer_date,
+			observation,
+			user_id
+		from embryo_transfer
+		where id = $1 and user_id = $2
+	`
+
+	oldEntry, err := repositoriesUtil.GetOne[EmbryoTransferSave](r.DB, oldQuery, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	validateErr := validateDelete(r.DB, oldEntry)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	query := `
+		update embryo_transfer
+		set deleted_at = now()
+		where id = $1 and user_id = $2
+	`
+
+	err = repositoriesUtil.Exec(r.DB, query, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *TransferRepository) Update(entry *EmbryoTransferSave) (*EmbryoTransfer, *apiError.APIError) {
+
+	validateErr := validateUpdate(r.DB, entry)
+	if validateErr != nil {
+		return nil, validateErr
+	}
+
+	query := `
+		update embryo_transfer
+		set donor_id = :donor_id,
+			receiver_id = :receiver_id,
+			bull_id = :bull_id,
+			transfer_date = :transfer_date,
+			observation = :observation
+		where id = :id and user_id = :user_id
+	`
+
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	selectQuery := `
+		select 
+			et.id,
+			et.receiver_id,
+			et.donor_id,
+			concat_ws(' - ', r.ring_number, r.name) as receiver_info,
+			concat_ws(' - ', d.ring_number, d.name) as donor_info,
+			et.transfer_date,
+			et.bull_id,
+			b.name as bull_name,
+			case
+				when c.child_name is not null then 'SUCCESS'
+				when exists (
+					select 1 
+					from pregnancy_tests t
+					where t.animal_id = et.receiver_id
+					  and t.test_date > et.transfer_date
+					  and age(t.test_date, et.transfer_date) <= interval '340 days'
+					  and t.pregnancy_status = 'SUCCESS'
+				) then 'SUCCESS'
+				when not exists (
+					select 1 
+					from pregnancy_tests t
+					where t.animal_id = et.receiver_id
+					  and t.test_date > et.transfer_date
+					  and age(t.test_date, et.transfer_date) <= interval '340 days'
+				) and age(et.transfer_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as pregnancy_status,
+			case
+				when c.child_name is not null then 'SUCCESS'
+				when exists (
+					select 1 
+					from pregnancy_tests t
+					where t.animal_id = et.receiver_id
+					  and t.test_date > et.transfer_date
+					  and age(t.test_date, et.transfer_date) <= interval '340 days'
+					  and t.pregnancy_status = 'FAILED'
+				) then 'FAILED'
+				when age(et.transfer_date) < interval '340 days' then 'STAND_BY'
+				else 'FAILED'
+			end as birth_status,
+			case 
+				when c.child_name is null then 'Sem Cria'
+				else c.child_name
+			end as child_information,
+			et.observation
+		from embryo_transfer et
+			left join animals r on r.id = et.receiver_id
+			left join animals d on d.id = et.donor_id
+			left join animals b on b.id = et.bull_id
+			left join lateral (
+				select
+				concat_ws(
+					' - ', 
+					a.ring_number, 
+					coalesce(a.name, a.sex), 
+					to_char(a.birth_date, 'DD/MM/YYYY')
+				) as child_name
+				from animals a
+				where a.mother_id = et.donor_id
+					and a.birth_date > et.transfer_date
+					and age(a.birth_date, et.transfer_date) between interval '240 days' and interval '340 days'
+				order by a.birth_date
+				limit 1
+			) c on true
+		where et.id = $1 and et.user_id = $2
+	`
+
+	response, err := repositoriesUtil.GetOne[EmbryoTransfer](r.DB, selectQuery, entry.Id, entry.UserId)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	return response, nil
+
+}
+
+func (r *TransferRepository) UpdateGroup(transferDate time.Time, entry *TransferGroup) (*TransferGroup, *apiError.APIError) {
+
+	validateErr := validateUpdateGroups(r.DB, entry)
+	if validateErr != nil {
+		return nil, validateErr
+	}
+
+	query := `
+		update embryo_transfer
+		set transfer_date = $1
+		where transfer_date = $2 and user_id = $3 and deleted_at is null
+	`
+
+	err := repositoriesUtil.Exec(r.DB, query, entry.TransferDate, transferDate, entry.UserId)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	returnQuery := `
+		with status as (
+			select
+				et.transfer_date,
+				case
+					when exists (
+						select 1
+						from animals a
+						where a.mother_id = et.donor_id
+							and a.birth_date > et.transfer_date
+							and age(a.birth_date, et.transfer_date) between interval '240 days' and interval '340 days'
+					) then 'SUCCESS'
+					when exists (
+						select 1 
+						from pregnancy_tests t
+						where t.animal_id = et.receiver_id
+						  and t.test_date > et.transfer_date
+						  and age(t.test_date, et.transfer_date) <= interval '340 days'
+						  and t.pregnancy_status = 'SUCCESS'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as pregnancy_status,
+				case
+					when exists (
+						select 1
+						from animals a
+						where a.mother_id = et.donor_id
+							and a.birth_date > et.transfer_date
+							and age(a.birth_date, et.transfer_date) between interval '240 days' and interval '340 days'
+					) then 'SUCCESS'
+					else 'FAILED'
+				end as birth_status
+			from embryo_transfer et
+			where et.user_id = $1 
+				and et.transfer_date = $2
+				and et.deleted_at is null
+		),
+        totals as (
+            select 
+                transfer_date,
+				count(*) cow_number,
+                count(*) filter (where birth_status = 'SUCCESS') birth_success,
+                count(*) filter (where pregnancy_status = 'SUCCESS') pregnancy_success
+            from status s
+            group by transfer_date
+        ),
+        rates as (
+            select
+                transfer_date,
+                cow_number,
+                coalesce(birth_success::float / nullif(cow_number, 0), 0) * 100 birth_rate,
+                coalesce(pregnancy_success::float / nullif(cow_number, 0), 0) * 100 pregnancy_rate
+            from totals
+        )
+        select 
+            s.transfer_date,
+            s.cow_number,
+            s.birth_rate,
+            s.pregnancy_rate,
+            coalesce(
+				(s.birth_rate / nullif(lag(s.birth_rate) over win, 0)) - 1, 0
+			) * 100 as birth_comparison_rate,
+            coalesce(
+				(s.pregnancy_rate / nullif(lag(s.pregnancy_rate) over win, 0)) - 1, 0
+			) * 100 as pregnancy_comparison_rate
+        from rates s
+		window win as (order by s.transfer_date)
+    `
+
+	response, err := repositoriesUtil.GetOne[TransferGroup](r.DB, returnQuery, entry.UserId, entry.TransferDate)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	return response, nil
+}
+
+func (r *TransferRepository) DeleteGroup(transferDate time.Time, userId string) *apiError.APIError {
+
+	query := `
+		delete from embryo_transfer
+		where transfer_date = $1 and user_id = $2
+	`
+
+	err := repositoriesUtil.Exec(r.DB, query, transferDate, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
 }

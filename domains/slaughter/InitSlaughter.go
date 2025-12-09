@@ -6,7 +6,7 @@ import (
 )
 
 func InitSlaughter(app *app.App) {
-	repository := NewRepository(app.DBconn)
+	repository := NewSlaughterRepository(app.DBconn)
 	handler := SlaughterHandler{repository}
 	
 	app.HandleFunc("GET /slaughter/dashboard/last-weight", handler.GetLastAverageWeight)
@@ -20,13 +20,28 @@ func InitSlaughter(app *app.App) {
 	app.HandleFunc("GET /slaughter/dashboard/last-entries", handler.GetLastEntries)
 	app.HandleFunc("GET /slaughter/dashboard/last-groups", handler.GetLastGroups)
 
-	app.HandleFunc("POST /slaughter/info/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("POST /slaughter/info/entries/page/foot", handler.GetEntriesPageFoot)
-	app.HandleFunc("GET /slaughter/info/groups", handler.FindGroups)
-	app.HandleFunc("GET /slaughter/info/groups/{entryDate}/entries", handler.FindEntriesByDate)
-	app.HandleFunc("GET /slaughter/info/groups/{entryDate}/entries/foot", handler.GetEntriesByDateFoot)
+	app.HandleFunc("POST /slaughter/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("POST /slaughter/entries/page/foot", handler.GetEntriesPageFoot)
+	app.HandleFunc("DELETE /slaughter/entries/{id}/delete", handler.Delete)
+	app.HandleFunc("PUT /slaughter/entries/update", handler.Update)
+	app.HandleFunc("PUT /slaughter/entries/add", handler.Add)
+	app.HandleFunc("PUT /slaughter/entries/replace", handler.Replace)
 
-	app.HandleFunc("GET /slaughter/search/slaughterhouses", handler.SearchSlaughterhouses)
+	app.HandleFunc("GET /slaughter/groups", handler.FindGroups)
+	app.HandleFunc("GET /slaughter/groups/{entryDate}/entries", handler.FindEntriesByDate)
+	app.HandleFunc("GET /slaughter/groups/{entryDate}/entries/foot", handler.GetEntriesByDateFoot)
 
 	util.LogDomainsInit("Entradas de Abate")
+}
+
+func InitButcher(app *app.App) {
+	repository := newButcherRepository(app.DBconn)
+	handler := ButcherHandler{repository}
+	
+	app.HandleFunc("PUT /slaughter/butchers/add", handler.Add)
+	app.HandleFunc("PUT /slaughter/butchers/replace", handler.Replace)
+	app.HandleFunc("GET /slaughter/butchers/search", handler.Search)
+	app.HandleFunc("GET /slaughter/butchers/find-all", handler.FindAll)
+
+	util.LogDomainsInit("Frigoríficos")
 }

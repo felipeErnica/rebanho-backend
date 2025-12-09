@@ -22,11 +22,23 @@ func InitTransfer(app *app.App) {
 
 	app.HandleFunc("POST /reproduction/embryo-transfer/entries/page", handler.FindEntriesPage)
 	app.HandleFunc("POST /reproduction/embryo-transfer/entries/page/foot", handler.GetEntriesFoot)
+	app.HandleFunc("PUT /reproduction/embryo-transfer/entries/add", handler.AddTransfer)
+	app.HandleFunc("PUT /reproduction/embryo-transfer/entries/replace", handler.Replace)
+	app.HandleFunc("PUT /reproduction/embryo-transfer/entries/update", handler.Update)
+	app.HandleFunc("DELETE /reproduction/embryo-transfer/entries/{id}/delete", handler.Delete)
 
 	app.HandleFunc("GET /reproduction/embryo-transfer/groups/page", handler.FindGroups)
-	app.HandleFunc("GET /reproduction/embryo-transfer/groups/{inseminationDate}/entries", handler.FindEntriesByGroup)
-	app.HandleFunc("GET /reproduction/embryo-transfer/groups/{inseminationDate}/entries/foot", handler.GetEntriesByGroupFoot)
+	app.HandleFunc("GET /reproduction/embryo-transfer/groups/{transferDate}/entries", handler.FindEntriesByGroup)
+	app.HandleFunc("GET /reproduction/embryo-transfer/groups/{transferDate}/entries/foot", handler.GetEntriesByGroupFoot)
+	app.HandleFunc("PUT /reproduction/embryo-transfer/groups/{transferDate}/update", handler.UpdateGroup)
+	app.HandleFunc("DELETE /reproduction/embryo-transfer/groups/{transferDate}/delete", handler.DeleteGroup)
 
 	app.HandleFunc("GET /reproduction/embryo-transfer/bulls/search", handler.SearchTransferBulls)
-	util.LogDomainsInit("Monta Natural")
+	app.HandleFunc("GET /reproduction/embryo-transfer/bulls/search-non-transfer", handler.SearchNonTransferBulls)
+	app.HandleFunc("PUT /reproduction/embryo-transfer/bulls/{id}/add", handler.UpdateAsTransferBulls)
+
+	app.HandleFunc("GET /reproduction/embryo-transfer/donors/search", handler.SearchEmbryoDonors)
+	app.HandleFunc("GET /reproduction/embryo-transfer/donors/search-non-embryo", handler.SearchNonEmbryoDonors)
+	app.HandleFunc("PUT /reproduction/embryo-transfer/donors/{id}/add", handler.UpdateAsEmbryoDonors)
+	util.LogDomainsInit("Transferência Embrionária")
 }
