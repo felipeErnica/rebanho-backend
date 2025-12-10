@@ -169,41 +169,41 @@ func GetOneTx[E any](tx *sqlx.Tx, query string, object *E, args ...any) (*E, err
 }
 
 /*Retorna um objeto do banco, dentro de uma transação, de acordo com o objeto enviado*/
-func NamedGetTx[E any, F any](tx *sqlx.Tx, query string, object E, arg F) (*E, error) {
+func NamedGetTx[E any](tx *sqlx.Tx, query string, object E, arg any) (*E, error) {
 	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
 	rows, err := tx.NamedQuery(query, arg)
 	if err != nil {
 		return nil, err
 	}
 
-	var result *E
+	var result E
 	if rows.Next() {
-		err := rows.StructScan(result)
+		err := rows.StructScan(&result)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return result, err
+	return &result, err
 }
 
 /*Retorna um objeto do banco, dentro de uma transação, de acordo com o objeto enviado*/
-func NamedGet[E any, F any](db *sqlx.DB, query string, object E, arg F) (*E, error) {
+func NamedGet[E any](db *sqlx.DB, query string, object E, arg any) (*E, error) {
 	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
 	rows, err := db.NamedQuery(query, arg)
 	if err != nil {
 		return nil, err
 	}
 
-	var result *E
+	var result E
 	if rows.Next() {
-		err := rows.StructScan(result)
+		err := rows.StructScan(&result)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return result, err
+	return &result, err
 }
 
 /*Retorna uma list do banco, dentro de uma transação, de acordo com o objeto enviado*/
@@ -247,6 +247,7 @@ func NamedQuery[E any, F any](db *sqlx.DB, query string, object E, arg F) (*[]E,
 
 	return &list, err
 }
+
 /*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/
 func GetPrimitive(db *sqlx.DB, query string, dest any, args ...any) error {
 	t := reflect.TypeOf(dest)
@@ -258,6 +259,29 @@ func GetPrimitive(db *sqlx.DB, query string, dest any, args ...any) error {
 	err := db.Get(dest, query, args...)
 	if err != nil && err != sql.ErrNoRows {
 		return err
+	}
+
+	return nil
+}
+
+/*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/
+func NamedPrimitive(db *sqlx.DB, query string, dest any, arg any) error {
+	t := reflect.TypeOf(dest)
+	if t.Kind() != reflect.Pointer {
+		return errors.New("A variável deve ser um ponteiro")
+	}
+
+	util.LogInfo(strings.Join(strings.Fields(query), " "), true)
+	rows, err := db.NamedQuery(query, arg)
+	if err != nil {
+		return err
+	}
+
+	if rows.Next() {
+		err = rows.Scan(dest)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

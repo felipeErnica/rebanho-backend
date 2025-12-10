@@ -39,9 +39,11 @@ func InitButcher(app *app.App) {
 	handler := ButcherHandler{repository}
 	
 	app.HandleFunc("PUT /slaughter/butchers/add", handler.Add)
+	app.HandleFunc("PUT /slaughter/butchers/update", handler.Update)
 	app.HandleFunc("PUT /slaughter/butchers/replace", handler.Replace)
 	app.HandleFunc("GET /slaughter/butchers/search", handler.Search)
 	app.HandleFunc("GET /slaughter/butchers/find-all", handler.FindAll)
+	app.HandleFunc("DELETE /slaughter/butchers/{id}/delete", handler.Delete)
 
 	util.LogDomainsInit("Frigoríficos")
 }
