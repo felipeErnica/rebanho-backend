@@ -134,16 +134,17 @@ func hasValidInterval(db *sqlx.DB, entry *BirthEntrySave) *apiError.APIError {
 	beforeQuery := `
 		select birth_date
 		from animals
-		where mother_id = $1 
-			and birth_date < $2
-			and user_id = $3
+		where mother_id = :mother_id
+			and birth_date < :birth_date
+			and user_id = :user_id
+			and id <> :id
 			and deleted_at is null
 		order by birth_date desc
 		limit 1
 	`
 
 	var beforeBirthDate sql.NullTime
-	err := repositoriesUtil.GetPrimitive(db, beforeQuery, &beforeBirthDate, entry.MotherId, entry.BirthDate, entry.UserId)
+	err := repositoriesUtil.NamedPrimitive(db, beforeQuery, &beforeBirthDate, entry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -160,16 +161,17 @@ func hasValidInterval(db *sqlx.DB, entry *BirthEntrySave) *apiError.APIError {
 	afterQuery := `
 		select birth_date
 		from animals
-		where mother_id = $1 
-			and birth_date > $2
-			and user_id = $3
+		where mother_id = :mother_id
+			and birth_date > :birth_date
+			and user_id = :user_id
+			and id <> :id
 			and deleted_at is null
 		order by birth_date
 		limit 1
 	`
 
 	var afterBirthDate sql.NullTime
-	err = repositoriesUtil.GetPrimitive(db, afterQuery, &afterBirthDate, entry.MotherId, entry.BirthDate, entry.UserId)
+	err = repositoriesUtil.NamedPrimitive(db, afterQuery, &afterBirthDate, entry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}

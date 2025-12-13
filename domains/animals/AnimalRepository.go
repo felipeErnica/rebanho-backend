@@ -392,7 +392,9 @@ func (r *AnimalRepository) FindMaleOffspring(id string, userId string) (*[]entit
 				' - ', 
 				sex, 
 				coalesce(to_char(birth_date, 'DD/MM/YYYY'), 'Desconhecido'),
-				case death_date is not null then 'Morto'
+				case 
+					when death_date is not null then 'Morto'
+				end
 			) as label 
 		from animals 
         where mother_id = $1
@@ -414,7 +416,9 @@ func (r *AnimalRepository) FindFemaleOffspring(id string, userId string) (*[]ent
 				' - ', 
 				sex, 
 				coalesce(to_char(birth_date, 'DD/MM/YYYY'), 'Desconhecido'),
-				case death_date is not null then 'Morto'
+				case 
+					when death_date is not null then 'Morto'
+				end
 			) as label 
 		from animals 
         where mother_id = $1
@@ -436,7 +440,9 @@ func (r *AnimalRepository) SearchAnimals(userId string) (*[]entity.SearchEntity,
 				ring_number, 
 				name, 
 				to_char(birth_date, 'DD/MM/YYYY'),
-				case death_date is not null then 'Morto'
+				case 
+					when death_date is not null then 'Morto'
+				end
 			) as label 
 		from animals 
         where user_id = $1 
@@ -458,7 +464,9 @@ func (r *AnimalRepository) SearchAllMothers(userId string) (*[]entity.SearchEnti
 				' - ', 
 				ring_number, 
 				name,
-				case death_date is not null then 'Morto'
+				case 	
+					when death_date is not null then 'Morto'
+				end
 			) as label 
             from animals 
         where user_id = $1 
