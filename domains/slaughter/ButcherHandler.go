@@ -41,6 +41,52 @@ func (h *ButcherHandler) Search(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, result)
 }
 
+func (h *ButcherHandler) FindPage(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	butcherId := r.PathValue("id")
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	cursor := r.URL.Query().Get("cursor")
+
+	filter, ok := handlersUtil.DecodeEntity(w, r, &SlaughterEntryFilter{})
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindEntriesPage(sort, order, cursor, *filter, butcherId, userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
+func (h *ButcherHandler) FindPageFoot(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	butcherId := r.PathValue("id")
+	filter, ok := handlersUtil.DecodeEntity(w, r, &SlaughterEntryFilter{})
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindEntriesPageFoot(*filter, butcherId, userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
 func (h *ButcherHandler) Add(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {

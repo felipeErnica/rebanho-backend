@@ -27,7 +27,7 @@ func InitSlaughter(app *app.App) {
 	app.HandleFunc("PUT /slaughter/entries/add", handler.Add)
 	app.HandleFunc("PUT /slaughter/entries/replace", handler.Replace)
 
-	app.HandleFunc("GET /slaughter/groups", handler.FindGroups)
+	app.HandleFunc("GET /slaughter/groups/page", handler.FindGroups)
 	app.HandleFunc("GET /slaughter/groups/{entryDate}/entries", handler.FindEntriesByDate)
 	app.HandleFunc("GET /slaughter/groups/{entryDate}/entries/foot", handler.GetEntriesByDateFoot)
 
@@ -44,6 +44,9 @@ func InitButcher(app *app.App) {
 	app.HandleFunc("GET /slaughter/butchers/search", handler.Search)
 	app.HandleFunc("GET /slaughter/butchers/find-all", handler.FindAll)
 	app.HandleFunc("DELETE /slaughter/butchers/{id}/delete", handler.Delete)
+
+	app.HandleFunc("POST /slaughter/butchers/{id}/entries/page", handler.FindPage)
+	app.HandleFunc("POST /slaughter/butchers/{id}/entries/page/foot", handler.FindPageFoot)
 
 	util.LogDomainsInit("Frigoríficos")
 }

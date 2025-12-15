@@ -57,6 +57,136 @@ func (r *ButcherRepository) Search(userId string) (*[]entity.SearchEntity, error
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
+func (r *ButcherRepository) FindEntriesPage(
+	sort string,
+	order string,
+	cursor string,
+	filter SlaughterEntryFilter,
+	butcherId string,
+	userId string,
+) (*entity.Page[SlaughterEntry], error) {
+
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"entry_date":       {Field: "s.entry_date", Order: "desc"},
+		"animal_order":     {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"animal_name":      {Field: "coalesce(a.name, '')", Order: "asc"},
+		"birth_date":       {Field: "coalesce(a.birth_date, '-infinity')", Order: "desc"},
+		"weight":           {Field: "s.weight", Order: "asc"},
+		"dead_weight":      {Field: "s.dead_weight", Order: "asc"},
+		"performance_rate": {Field: "coalesce(s.dead_weight / nullif(s.weight*(1 - s.discount_rate), 0) * 100, 0)", Order: "asc"},
+		"id":               {Field: "s.id", Order: "asc"},
+		"created_at":       {Field: "s.created_at", Order: "asc"},
+	}
+
+	query := `
+		select 
+			s.id,
+			s.animal_id,
+			s.butcher_id,
+			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
+			a.name as animal_name, 
+			concat_ws(
+				' - ', 
+				a.ring_number, 
+				coalesce(a.name, a.sex),
+				to_char(a.birth_date, 'DD/MM/YYYY')
+			) as animal_info,
+			a.birth_date,
+			concat_ws(' - ', f.ring_number, f.name) father_name,
+			concat_ws(' - ', m.ring_number, m.name) mother_name,
+			h.name butcher,
+			s.entry_date,
+			s.discount_rate * 100 as discount_rate,
+			s.weight,
+			s.weight * (1 - s.discount_rate) discount_weight,
+			s.dead_weight,
+			coalesce(s.dead_weight / nullif(s.weight*(1 - s.discount_rate), 0) * 100, 0) performance_rate,
+			s.created_at
+		from slaughter_entries s
+			join butchers h on h.id = s.butcher_id
+			left join animals a on a.id = s.animal_id
+			left join animals f on f.id = a.father_id
+			left join animals m on m.id = a.mother_id
+	`
+
+	whereExpression := `
+		where s.user_id = $1 
+			and s.butcher_id = $2
+			and s.deleted_at is null
+		`
+
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "s", 3)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
+
+	if cursorExpression != "" {
+		whereExpression += " and " + cursorExpression
+	}
+
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+	orderExpression := " order by " + sortExpression
+	query += whereExpression + orderExpression
+
+	args := []any{userId, butcherId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+	return repositoriesUtil.GetPage[SlaughterEntry](r.DB, query, sort, 200, args...)
+}
+
+func (r *ButcherRepository) FindEntriesPageFoot(
+	filter SlaughterEntryFilter,
+	butcherId string,
+	userId string,
+) (*SlaughterFoot, error) {
+
+	query := `
+		select 
+			count(s.*) as animals_number,
+			avg(s.weight) as avg_weight,
+			avg(s.dead_weight) as avg_dead_weight,
+			avg((s.dead_weight / nullif(weight * (1 - s.discount_rate), 0)) * 100) as avg_rate
+		from slaughter_entries s
+	`
+
+	whereExpression := " where s.user_id = $1 and s.butcher_id = $2 and s.deleted_at is null"
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "s", 3)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		whereExpression += " and " + filterExpression
+	}
+
+	args := []any{userId, butcherId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+	query += whereExpression
+
+	return repositoriesUtil.GetOne[SlaughterFoot](r.DB, query, args...)
+}
+
 func (r *ButcherRepository) Add(entry *ButcherSave) *apiError.APIError {
 
 	validateErr := validateButcherAdd(r.DB, entry)
@@ -166,7 +296,7 @@ func (r *ButcherRepository) Update(entry *ButcherSave) (*ButcherEntry, *apiError
 }
 
 func (r *ButcherRepository) Delete(id string, userId string) *apiError.APIError {
-	
+
 	validateErr := validateButcherDelete(r.DB, id, userId)
 	if validateErr != nil {
 		return validateErr
@@ -185,4 +315,3 @@ func (r *ButcherRepository) Delete(id string, userId string) *apiError.APIError 
 
 	return nil
 }
-
