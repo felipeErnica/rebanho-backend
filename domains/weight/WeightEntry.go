@@ -20,6 +20,14 @@ type WeightEntry struct {
 	UserId          string     `json:"-" db:"user_id"`
 }
 
+type WeightEntrySave struct {
+	Id        string    `json:"id" db:"id"`
+	AnimalId  string    `json:"animalId" db:"animal_id"`
+	EntryDate time.Time `json:"entryDate" db:"entry_date"`
+	Weight    float64   `json:"weight" db:"weight"`
+	UserId    string    `json:"-" db:"user_id"`
+}
+
 type WeightFilter struct {
 	IsFiltered   bool       `json:"isFiltered"`
 	Animals      *[]string  `json:"animals" db:"animal_id"`

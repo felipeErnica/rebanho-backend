@@ -336,8 +336,9 @@ func (r *SlaughterRepository) GetLastEntries(userId string) (*[]SlaughterEntry, 
 			concat_ws(
 				' - ', 
 				a.ring_number, 
-				coalesce(a.name, concat_ws(' - ', a.sex, to_char(a.birth_date, 'DD/MM/YYYY')))
-			) animal_info,
+				coalesce(a.name, a.sex),
+				to_char(a.birth_date, 'DD/MM/YYYY')
+			) as animal_info,
 			h.name butcher,
 			s.entry_date,
 			s.weight,

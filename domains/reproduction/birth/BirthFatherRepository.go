@@ -108,18 +108,18 @@ func getBreedingsFather(db *sqlx.DB, entry *BirthEntrySave) (string, *apiError.A
 	existsQuery := `
 		select exists (
 			select 1
-			from natural_breedings i
+			from breeding_entries i
 			where i.deleted_at is null
 				and i.user_id = $1
 				and i.animal_id = $2
-				and i.mating_date < $3
-				and age($3, i.mating_date) between interval '240 days' and '340 days'
+				and i.breeding_date < $3
+				and age($3, i.breeding_date) between interval '240 days' and '340 days'
 				and not exists (
 					select 1
 					from pregnancy_tests t
 					where t.deleted_at is null
 						and t.pregnancy_status = 'FAILED'
-						and t.test_date between i.mating_date and $3
+						and t.test_date between i.breeding_date and $3
 						and t.animal_id = $2
 				)
 		)
@@ -137,12 +137,12 @@ func getBreedingsFather(db *sqlx.DB, entry *BirthEntrySave) (string, *apiError.A
 
 	fatherQuery := `
 		select bull_id
-		from natural_breedings
+		from breeding_entries
 		where deleted_at is null
 			and user_id = $1 
 			and animal_id = $2
-			and mating_date < $3
-		order by mating_date desc
+			and breeding_date < $3
+		order by breeding_date desc
 		limit 1
 	`
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/entity"
 	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
@@ -182,7 +183,12 @@ func (r *WeightRepository) GetLastEntries(userId string) (*[]WeightEntry, error)
 		select 
 			w.id,
 			w.animal_id,
-			concat_ws(' - ', a.ring_number, coalesce(a.name, to_char(a.birth_date, 'DD/MM/YYYY')), a.sex) animal_name,
+			concat_ws(
+				' - ',
+				a.ring_number,
+				coalesce(a.name, a.sex),
+				to_char(a.birth_date, 'DD/MM/YYYY')
+			) as animal_info,
 			a.birth_date,
 			w.entry_date,
 			w.weight,
@@ -604,4 +610,83 @@ func (r *WeightRepository) GetEntriesByDateFoot(entryDate time.Time, userId stri
 		from cte
 	`
 	return repositoriesUtil.GetOne[WeightFoot](r.DB, query, entryDate, userId)
+}
+
+func (r *WeightRepository) Delete(id string, userId string) *apiError.APIError {
+	query := `
+		update weight_entries
+		set deleted_at = now()
+		where id = $1 and user_id = $2
+	`
+	err := repositoriesUtil.Exec(r.DB, query, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	return nil
+}
+
+func (r *WeightRepository) Update(entry *WeightEntrySave) (*WeightEntry, *apiError.APIError) {
+
+	validateErr := validateUpdate(r.DB, entry)
+	if validateErr != nil {
+		return nil, validateErr
+	}
+
+	query := `
+		update weight_entries
+		set entry_date = :entry_date,
+			weight = :weight
+		where id = :id and user_id = :user_id
+	`
+	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	selectQuery := `
+		with stats as (
+			select
+				w.id,
+				coalesce(
+					(w.weight - coalesce(lag(w.weight) over win, 38)) /
+					nullif(extract(day from (w.entry_date - coalesce(lag(w.entry_date) over win, a.birth_date))), 0),
+					0
+				) weight_gain,
+				coalesce(w.weight - lag(w.weight) over win, 0) as weight_variation
+			from weight_entries w 
+				left join animals a on a.id = w.animal_id
+			where w.user_id = $1 and w.deleted_at is null
+			window win as (partition by w.animal_id order by w.entry_date)
+		)
+		select
+			w.id,
+			w.animal_id,
+			concat_ws(
+				' - ',
+				a.ring_number,
+				coalesce(a.name, a.sex),
+				to_char(a.birth_date, 'DD/MM/YYYY')
+			) as animal_info,
+			a.birth_date,
+			concat_ws(' - ', f.ring_number, f.name) as father_name,
+			concat_ws(' - ', m.ring_number, m.name) as mother_name,
+			s.weight_gain,
+			s.weight_variation,
+			w.entry_date,
+			w.weight
+		from weight_entries w 
+			join stats s on s.id = w.id
+			left join animals a on a.id = w.animal_id
+			left join animals m on m.id = a.mother_id
+			left join animals f on f.id = a.father_id
+		where id = :id and user_id = :user_id
+	`
+
+	response, err := repositoriesUtil.NamedGet(r.DB, selectQuery, WeightEntry{}, entry)
+	if err != nil {
+		return nil, apiError.InternalServerAPIError(err)
+	}
+
+	return response, nil
 }

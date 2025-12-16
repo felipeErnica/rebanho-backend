@@ -222,3 +222,38 @@ func (h *WeightHandler) GetEntriesByDateFoot(w http.ResponseWriter, r *http.Requ
 
 	handlersUtil.WriteEntity(w, result)
 }
+
+func (h *WeightHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	err := h.Repository.Delete(id, userId)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteDeleteResponse(w)
+}
+
+func (h *WeightHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r); if !ok {
+		return
+	}
+
+	entry, ok := handlersUtil.DecodeEntity(w, r, &WeightEntrySave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	response, err := h.Repository.Update(entry)
+	if err != nil {
+		apiError.WriteAPIError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, response)
+}
