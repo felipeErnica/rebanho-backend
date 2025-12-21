@@ -707,10 +707,7 @@ func (r *TestEntryRepository) FindEntriesByGroup(
 				when child_name is not null then child_name
 				else 'Sem Cria'
 			end as child_information,
-            t.observation,
-            t.loss_id,
-            t.calf_id,
-            t.created_at
+            t.observation
         from pregnancy_tests t 
 			left join animals a on a.id = t.animal_id
 			left join lateral (
