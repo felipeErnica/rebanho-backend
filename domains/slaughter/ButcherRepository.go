@@ -45,6 +45,23 @@ func (r *ButcherRepository) FindAll(userId string) (*[]ButcherEntry, error) {
 	return repositoriesUtil.GetList[ButcherEntry](r.DB, query, userId)
 }
 
+func (r *ButcherRepository) FindById(id string, userId string) (*ButcherEntry, error) {
+
+	query := `
+		select 
+			id,
+			name,
+			cnpj,
+			discount * 100 as discount,
+			address
+		from butchers 
+		where id = $1 
+			and user_id = $2 
+			and deleted_at is null
+	`
+	return repositoriesUtil.GetOne[ButcherEntry](r.DB, query, id, userId)
+}
+
 func (r *ButcherRepository) Search(userId string) (*[]entity.SearchEntity, error) {
 
 	query := `

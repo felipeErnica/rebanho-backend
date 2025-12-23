@@ -10,6 +10,87 @@ type AnimalHandler struct {
 	Repository *AnimalRepository
 }
 
+func (h *AnimalHandler) GetDairyHist(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	res, err := h.Repository.GetDairyHist(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
+}
+
+func (h *AnimalHandler) GetBirthHist(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	res, err := h.Repository.GetBirthHist(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
+}
+
+func (h *AnimalHandler) GetDeathHist(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	res, err := h.Repository.GetDeathHist(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
+}
+
+func (h *AnimalHandler) GetSlaughterHist(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	res, err := h.Repository.GetSlaughterHist(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
+}
+
+func (h *AnimalHandler) GetAnimalTypes(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	res, err := h.Repository.GetAnimalTypes(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, res)
+}
+
+
+
+
+
+
+//---------------------------------------------------- Link Legado ------------------------------------------------------------//
 func (h *AnimalHandler) GroupByYear(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
@@ -450,3 +531,8 @@ func (h *AnimalHandler) Replace(w http.ResponseWriter, r *http.Request) {
 
 	handlersUtil.WriteUpdateResponse(w)
 }
+
+//---------------------------------------------------- Link Legado ------------------------------------------------------------//
+
+
+

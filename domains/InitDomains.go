@@ -18,6 +18,7 @@ func InitDomains(app *app.App) {
     auth.InitAuth(app)
     farmArea.InitFarmArea(app)
 	lactation.InitLactationArea(app)
+	lactation.InitMilk(app)
     reproduction.InitReproduction(app)
 	weight.InitWeight(app)
     slaughter.InitSlaughter(app)

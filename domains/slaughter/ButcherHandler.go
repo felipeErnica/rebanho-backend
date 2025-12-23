@@ -26,6 +26,22 @@ func (h *ButcherHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, result)
 }
 
+func (h *ButcherHandler) FindById(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindById(id, userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
 func (h *ButcherHandler) Search(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {

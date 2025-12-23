@@ -355,31 +355,3 @@ func invalidUpdateEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
 
 	return nil
 }
-
-func validateDeleteLactation(db *sqlx.DB, id string) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from milk_entries m
-				join lactations l on m.animal_id = l.animal_id
-					and m.entry_date between l.start_date and coalesce(l.end_date, now())
-			where l.id = $1
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, id)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.DeleteWarning(
-			"Existem marcações de leite relacionadas a esta lactação. Deseja proceder com a exclusão? " +
-			"Caso sim, todas as marcações relacionadas com a lactação também serão excluídas!",
-		)
-	}
-
-	return nil
-}

@@ -9,6 +9,17 @@ func InitAnimal(app *app.App) {
 	repository := NewRepository(app.DBconn)
 	handler := AnimalHandler{repository}
 
+	app.HandleFunc("GET /animals/dashboard/dairy-hist", handler.GetDairyHist)
+	app.HandleFunc("GET /animals/dashboard/birth-hist", handler.GetBirthHist)
+	app.HandleFunc("GET /animals/dashboard/death-hist", handler.GetDeathHist)
+	app.HandleFunc("GET /animals/dashboard/slaughter-hist", handler.GetSlaughterHist)
+	app.HandleFunc("GET /animals/dashboard/animal-types", handler.GetAnimalTypes)
+
+
+
+
+
+//-------------------------------------------- Links Legados ------------------------------------------------------------------//
     app.HandleFunc("POST /animals/dashboard/total-general", handler.TotalBySex)
     app.HandleFunc("POST /animals/dashboard/types", handler.TotalByType)
     app.HandleFunc("POST /animals/dashboard/group-age-farm", handler.GroupByAgeAndFarm)
@@ -41,6 +52,9 @@ func InitAnimal(app *app.App) {
 	app.HandleFunc("GET /animals/info/search/bull", handler.SearchBull)
 	app.HandleFunc("GET /animals/info/search/animal", handler.SearchAnimal)
 	app.HandleFunc("GET /animals/info/search/dairy-animal", handler.SearchDairyAnimal)
+//-------------------------------------------------------------------------------------------------------------------------------------------------//
+
+
 
 	util.LogDomainsInit("Animais")
 }

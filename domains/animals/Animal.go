@@ -83,6 +83,17 @@ type AnimalFilter struct {
 	MaxChildrenQuantity     *int       `json:"maxChildrenQuantity" db:"children_quantity"`
 }
 
+type CardEntry struct {
+	Current int     `json:"current"`
+	Trend   float64 `json:"trend"`
+	Hist    any     `json:"hist"`
+}
+
+type AnimalsNumberHist struct {
+	EntryDate     time.Time `json:"entryDate" db:"entry_date"`
+	AnimalsNumber int       `json:"animalsNumber" db:"animals_number"`
+}
+
 type DeleteAnimalStruct struct {
 	Id                string `json:"id"`
 	UserId            string `json:"-"`
@@ -133,8 +144,8 @@ type TotalByYear struct {
 }
 
 type AnimalByType struct {
-	BeefCattle          int `json:"beefCattle" db:"beef_cattle"`
-	DairyCattle         int `json:"dairyCattle" db:"dairy_cattle"`
+	BeefAnimals         int `json:"beefAnimals" db:"beef_animals"`
+	DairyAnimals        int `json:"dairyAnimals" db:"dairy_animals"`
 	ReproductionAnimals int `json:"reproductionAnimals" db:"reproduction_animals"`
 	Offspring           int `json:"offspring" db:"offspring"`
 }

@@ -3,6 +3,7 @@ package animals
 import (
 	"github.com/felipeErnica/rebanho-backend/apiError"
 	"github.com/felipeErnica/rebanho-backend/entity"
+	"github.com/felipeErnica/rebanho-backend/util"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -30,6 +31,266 @@ func NewRepository(db *sqlx.DB) *AnimalRepository {
 	return &AnimalRepository{selectQuery, "animals", db}
 }
 
+func (r *AnimalRepository) GetBirthHist(userId string) (*CardEntry, error) {
+
+	query := `
+		with cte as (
+			select
+				date_trunc('month', birth_date) as entry_date,
+				count(*) as animals_number
+			from animals
+			where user_id = $1 
+				and deleted_at is null
+				and birth_date is not null
+			group by 1
+			order by 1 desc
+			limit 12
+		)
+		select * from cte order by entry_date
+	`
+
+	hist, err := repositoriesUtil.GetList[AnimalsNumberHist](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var current, past, trend int
+
+	histEntries := *hist
+	switch lenght := len(histEntries); lenght {
+	case 0:
+		current = 0
+		past = 0
+		trend = 0
+	case 1:
+		current = histEntries[0].AnimalsNumber
+		past = 0
+		trend = 0
+	default:
+		current = histEntries[lenght-1].AnimalsNumber
+		past = histEntries[lenght-2].AnimalsNumber
+		trend = current - past
+	}
+
+	cardEntry := &CardEntry{
+		Current: current,
+		Trend:   float64(trend),
+		Hist:    histEntries,
+	}
+
+	return cardEntry, nil
+}
+
+func (r *AnimalRepository) GetDairyHist(userId string) (*CardEntry, error) {
+
+	query := `
+		with calendar as (
+			select generate_series(
+				date_trunc('month', max(end_date) - interval '12 months'),
+				date_trunc('month', max(end_date)),
+				interval '1 month'
+			) as entry_date
+			from lactations
+		)
+		select
+			c.entry_date,
+			count(*) as animals_number
+		from lactations 
+			join calendar c on start_date <= c.entry_date
+				and c.entry_date <= coalesce(end_date, now())
+		where user_id = $1 and deleted_at is null
+		group by 1
+		order by 1
+	`
+
+	hist, err := repositoriesUtil.GetList[AnimalsNumberHist](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var current, past int
+	var trend float64
+
+	histEntries := *hist
+	switch lenght := len(histEntries); lenght {
+	case 0:
+		current = 0
+		past = 0
+		trend = 0
+	case 1:
+		current = histEntries[0].AnimalsNumber
+		past = 0
+		trend = 0
+	default:
+		current = histEntries[lenght-1].AnimalsNumber
+		past = histEntries[lenght-2].AnimalsNumber
+		trend = util.CalculatePercentageTrend(float64(current), float64(past))
+	}
+
+	cardEntry := &CardEntry{
+		Current: current,
+		Trend:   trend,
+		Hist:    histEntries,
+	}
+
+	return cardEntry, nil
+}
+
+func (r *AnimalRepository) GetDeathHist(userId string) (*CardEntry, error) {
+
+	query := `
+		with cte as (
+			select
+				date_trunc('month', death_date) as entry_date,
+				count(*) as animals_number
+			from animals a
+			where user_id = $1 
+				and deleted_at is null
+				and death_date is not null
+				and not exists (
+					select 1
+					from slaughter_entries s
+					where s.animal_id = a.id
+						and a.death_date = s.entry_date
+						and s.user_id = $1
+				)
+			group by 1
+			order by 1 desc
+			limit 12
+		)
+		select *
+		from cte 
+		order by entry_date
+	`
+
+	hist, err := repositoriesUtil.GetList[AnimalsNumberHist](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var current, past, trend int
+
+	histEntries := *hist
+	switch lenght := len(histEntries); lenght {
+	case 0:
+		current = 0
+		past = 0
+		trend = 0
+	case 1:
+		current = histEntries[0].AnimalsNumber
+		past = 0
+		trend = 0
+	default:
+		current = histEntries[lenght-1].AnimalsNumber
+		past = histEntries[lenght-2].AnimalsNumber
+		trend = current - past
+	}
+
+	cardEntry := &CardEntry{
+		Current: current,
+		Trend:   float64(trend),
+		Hist:    histEntries,
+	}
+
+	return cardEntry, nil
+}
+
+func (r *AnimalRepository) GetSlaughterHist(userId string) (*CardEntry, error) {
+
+	query := `
+		with cte as (
+			select
+				entry_date,
+				count(*) as animals_number
+			from slaughter_entries
+			where user_id = $1 and deleted_at is null
+			group by 1
+			order by 1 desc
+			limit 12
+		)
+		select *
+		from cte
+		order by entry_date
+	`
+
+	hist, err := repositoriesUtil.GetList[AnimalsNumberHist](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var current, past int
+	var trend float64
+
+	histEntries := *hist
+	switch lenght := len(histEntries); lenght {
+	case 0:
+		current = 0
+		past = 0
+		trend = 0
+	case 1:
+		current = histEntries[0].AnimalsNumber
+		past = 0
+		trend = 0
+	default:
+		current = histEntries[lenght-1].AnimalsNumber
+		past = histEntries[lenght-2].AnimalsNumber
+		trend = util.CalculatePercentageTrend(float64(current), float64(past))
+	}
+
+	cardEntry := &CardEntry{
+		Current: current,
+		Trend:   trend,
+		Hist:    histEntries,
+	}
+
+	return cardEntry, nil
+}
+
+func (r *AnimalRepository) GetAnimalTypes(userId string) (*AnimalByType, error) {
+
+	query := `
+		select
+			count(*) filter (where animal_type = 'DAIRY_ANIMAL') as dairy_animals,
+			count(*) filter (where animal_type = 'OFFSPRING') as offspring,
+			count(*) filter (where animal_type = 'BEEF_ANIMAL') as beef_animals,
+			count(*) filter (where animal_type = 'REPRODUCTION_ANIMAL') as reproduction_animals
+		from animals a
+		where user_id = $1 
+			and deleted_at is null
+			and is_outside_animal = false
+			and death_date is null
+	`
+	result, err := repositoriesUtil.GetOne[AnimalByType](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (r *AnimalRepository) GetAnimalsByAge(userId string) (*AnimalByType, error) {
+
+	query := `
+		select
+			count(*) filter (where age(birth_date) < interval '2 months' and sex = 'M') as calf_male,
+			count(*) filter (where age(birth_date) < interval '2 months' and sex = 'F') as calf_female,
+			count(*) filter (where age(birth_date) between interval '2 months' and interval interval '8 months' and sex = 'M') as young_male,
+			count(*) filter (where age(birth_date) between interval '2 months' and interval interval '8 months' and sex = 'F') as young_female,
+		from animals a
+		where user_id = $1 
+			and deleted_at is null
+			and is_outside_animal = false
+			and death_date is null
+	`
+	result, err := repositoriesUtil.GetOne[AnimalByType](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// ---------------------------------------------------- Link Legado ------------------------------------------------------------//
 func (r *AnimalRepository) GroupByYear(userId string) (*[]TotalByYear, error) {
 	query := `
         with min_max as (
@@ -1075,3 +1336,5 @@ func (r *AnimalRepository) Replace(entry *AnimalSave) *apiError.APIError {
 
 	return nil
 }
+
+//---------------------------------------------------- Link Legado ------------------------------------------------------------//

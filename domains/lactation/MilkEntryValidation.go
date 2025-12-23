@@ -1,12 +1,34 @@
 package lactation
 
 import (
-	"time"
-
 	"github.com/felipeErnica/rebanho-backend/apiError"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
+
+func validateGroupUpdate(db *sqlx.DB, entry LactationGroupSave) *apiError.APIError {
+	query := `
+		select exists (
+			select 1
+			from milk_entries
+			where entry_date = :entry_date
+				and user_id = :user_id
+				and deleted_at is null
+		)
+	`
+
+	var exists bool
+	err := repositoriesUtil.NamedPrimitive(db, query, &exists, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if exists {
+		return apiError.ConflictAPIError("Já exite uma marcação com esta data!")
+	}
+
+	return nil
+}
 
 func ValidateMilkEntryUpdate(db *sqlx.DB, entry MilkEntry, userId string) *apiError.APIError {
 
@@ -35,13 +57,13 @@ func ValidateMilkEntryUpdate(db *sqlx.DB, entry MilkEntry, userId string) *apiEr
 	return nil
 }
 
-func validateMilkEntry(db *sqlx.DB, entry MilkEntry) *apiError.APIError {
-	err := isOnLac(db, entry.AnimalId, entry.EntryDate, entry.UserId)
+func validateMilkEntry(db *sqlx.DB, entry MilkEntrySave) *apiError.APIError {
+	err := isOnLac(db, entry)
 	if err != nil {
 		return err
 	}
 
-	err = entryExists(db, entry.AnimalId, entry.EntryDate, entry.UserId)
+	err = entryExists(db, entry)
 	if err != nil {
 		return err
 	}
@@ -49,48 +71,47 @@ func validateMilkEntry(db *sqlx.DB, entry MilkEntry) *apiError.APIError {
 	return nil
 }
 
-func isOnLac(db *sqlx.DB, animalId string, entryDate time.Time, userId string) *apiError.APIError {
+func isOnLac(db *sqlx.DB, entry MilkEntrySave) *apiError.APIError {
 	lacQuery := `
 		select exists (
 			select 1
 			from lactations l
-			where l.animal_id = $1
-				and l.start_date <= $2 
+			where l.animal_id = :animal_id
+			and l.start_date <= :entry_date
 				and l.end_date is null 
 				and l.deleted_at is null
-				and l.user_id = $3
+				and l.user_id = :user_id
 		)
 	`
 
-	hasLac := false
-	err := db.Get(&hasLac, lacQuery, animalId, entryDate, userId)
+	var hasLac bool
+	err := repositoriesUtil.NamedPrimitive(db, lacQuery, &hasLac, entry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
 	if !hasLac {
-		return apiError.IncorrectEntityAPIError(
-			"Esta vaca não está lactando! Inicie uma lactação antes de adicionar marcações de leite!", 
-		)
+		return apiError.IncorrectEntityAPIError("Esta vaca não está lactando! Inicie uma lactação antes de " + 
+												"adicionar marcações de leite!")
 	}
 
 	return nil
 }
 
-func entryExists(db *sqlx.DB, animalId string, entryDate time.Time, userId string) *apiError.APIError {
+func entryExists(db *sqlx.DB, entry MilkEntrySave) *apiError.APIError {
 
 	existsQuery := `
 		select exists (
 			select 1
 			from milk_entries m
-			where m.animal_id = $1
-				and m.entry_date = $2
+			where m.animal_id = :animal_id
+				and m.entry_date = :entry_date
+				and m.user_id = :user_id
 				and m.deleted_at is null
-				and m.user_id = $3
 		)
 	`
-	exists := false
-	err := db.Get(&exists, existsQuery, animalId, entryDate, userId)
+	var exists bool
+	err := repositoriesUtil.NamedPrimitive(db, existsQuery, &exists, entry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -102,18 +123,18 @@ func entryExists(db *sqlx.DB, animalId string, entryDate time.Time, userId strin
 	return nil
 }
 
-func isDiferentPasture(db *sqlx.DB, entry AddMilkEntryStruct) *apiError.APIError {
+func isDiferentPasture(db *sqlx.DB, entry MilkEntrySave) *apiError.APIError {
 
 	query := `
-		select coalesce(pasture_id <> $1, false) as other_pasture
+		select coalesce(pasture_id <> :pasture_id, false) as other_pasture
 		from pasture_entries
-		where animal_id = $2 and deleted_at is null
+		where animal_id = :animal_id and deleted_at is null
 		order by entry_date desc
 		limit 1
 	`
 
 	var otherPasture bool
-	err := repositoriesUtil.GetPrimitive(db, query, &otherPasture, entry.PastureId, entry.AnimalId)
+	err := repositoriesUtil.NamedPrimitive(db, query, &otherPasture, entry)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}

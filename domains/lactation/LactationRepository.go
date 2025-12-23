@@ -1,9 +1,7 @@
 package lactation
 
 import (
-	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/felipeErnica/rebanho-backend/apiError"
 	pastureEntries "github.com/felipeErnica/rebanho-backend/domains/farm-area/pasture-entries"
@@ -812,209 +810,6 @@ func (r *LactationRepository) GetLastGroups(userId string) (*[]LactationGroup, e
 	return repositoriesUtil.GetList[LactationGroup](r.DB, query, userId)
 }
 
-func (r *LactationRepository) FindGroupsPage(
-	filter LactationGroupFilter,
-	order string,
-	cursor string,
-	userId string,
-) (*entity.Page[LactationGroup], error) {
-
-	sortMap := map[string]repositoriesUtil.SortField{"entry_date": {Field: "cte.entry_date", Order: "asc"}}
-
-	query := `
-		with cte as (
-			select 
-				entry_date,
-				count(*) animals_number,
-				sum(quantity) total_milk,
-				avg(quantity) avg_milk
-			from milk_entries
-			where user_id = $1 and deleted_at is null
-			group by 1
-		)
-		select 
-			cte.*,
-			coalesce(animals_number - lag(animals_number) over (order by entry_date), 0) number_difference,
-			coalesce(((total_milk / lag(total_milk) over (order by entry_date)) - 1)*100, 0) total_rate,
-			coalesce(((avg_milk / lag(avg_milk) over (order by entry_date)) - 1)*100, 0) avg_rate
-		from cte
-    `
-	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
-	if err != nil {
-		return nil, err
-	}
-
-	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
-	if err != nil {
-		return nil, err
-	}
-
-	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, "entry_date", order, cursor, nextParam)
-	if err != nil {
-		return nil, err
-	}
-
-	var whereExpression string
-	if filterExpression != "" {
-		whereExpression = "where " + filterExpression
-	}
-
-	if cursorExpression != "" {
-		if whereExpression != "" {
-			whereExpression += " and " + cursorExpression
-		} else {
-			whereExpression = "where " + cursorExpression
-		}
-	}
-
-	query += whereExpression + " order by cte.entry_date " + order
-	args := []any{userId}
-	filterArgs := repositoriesUtil.GetFilterArgs(filter)
-	args = append(args, filterArgs...)
-	args = append(args, cursorArgs...)
-	return repositoriesUtil.GetPage[LactationGroup](r.DB, query, "entry_date", 100, args...)
-}
-
-func (r *LactationRepository) FindEntriesPage(
-	filter MilkEntryFilter,
-	sort string,
-	order string,
-	cursor string,
-	userId string,
-) (*entity.Page[MilkEntry], error) {
-
-	sort = repositoriesUtil.AddCommonFields(sort)
-	sortMap := map[string]repositoriesUtil.SortField{
-		"animal_name":  {Field: "a.name", Order: "asc"},
-		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
-		"entry_date":   {Field: "m.entry_date", Order: "desc"},
-		"quantity":     {Field: "m.quantity", Order: "asc"},
-		"id":           {Field: "m.id", Order: "asc"},
-		"created_at":   {Field: "m.created_at", Order: "asc"},
-	}
-
-	query := `
-		select
-			m.id,
-			m.animal_id,
-			a.name as animal_name,
-			concat_ws(' - ', a.ring_number, a.name) as animal_info,
-			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
-			coalesce(p.name, 'Sem Pasto') as pasture_name,
-			m.entry_date,
-			m.quantity,
-			m.created_at
-		from milk_entries m
-			join animals a on a.id = m.animal_id
-			left join pasture_entries pe on pe.animal_id = m.animal_id
-				and m.entry_date >= pe.entry_date
-				and m.entry_date < coalesce(pe.exit_date, now())
-				and pe.deleted_at is null
-			left join pastures p on p.id = pe.pasture_id
-    `
-
-	whereExpression := "where m.user_id = $1 and m.deleted_at is null"
-
-	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "m", 2)
-	if err != nil {
-		return nil, err
-	}
-
-	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
-	if err != nil {
-		return nil, err
-	}
-
-	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
-	if err != nil {
-		return nil, err
-	}
-
-	if filterExpression != "" {
-		whereExpression += " and " + filterExpression
-	}
-
-	if cursorExpression != "" {
-		whereExpression += " and " + cursorExpression
-	}
-
-	query = query + whereExpression
-
-	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
-	if err != nil {
-		return nil, err
-	}
-
-	query += " order by " + sortExpression
-	args := []any{userId}
-	filterArgs := repositoriesUtil.GetFilterArgs(filter)
-	args = append(args, filterArgs...)
-	args = append(args, cursorArgs...)
-	return repositoriesUtil.GetPage[MilkEntry](r.DB, query, sort, 100, args...)
-}
-
-func (r *LactationRepository) GetEntriesPageFoot(filter MilkEntryFilter, userId string) (*MilkEntryFoot, error) {
-	query := `
-		select
-			count(*) animals_number,
-			sum(quantity) total_milk,
-			avg(quantity) avg_milk
-		from milk_entries m
-    `
-	whereExpression := "where m.user_id = $1 and m.deleted_at is null"
-
-	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "m", 2)
-	if err != nil {
-		return nil, err
-	}
-
-	if filterExpression != "" {
-		whereExpression += " and " + filterExpression
-	}
-
-	args := []any{userId}
-	filterArgs := repositoriesUtil.GetFilterArgs(filter)
-	args = append(args, filterArgs...)
-	query = query + whereExpression
-	return repositoriesUtil.GetOne[MilkEntryFoot](r.DB, query, args...)
-}
-
-func (r *LactationRepository) GetGroupEntries(userId string, entryDate time.Time) (*[]MilkEntry, error) {
-
-	query := `
-		select
-			m.id,
-			m.animal_id,
-			concat_ws(' - ', a.ring_number, a.name) animal_info,
-			coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-			p.name pasture_name,
-			m.entry_date,
-			m.quantity
-		from milk_entries m
-			join animals a on a.id = m.animal_id
-			join pasture_entries pe on pe.animal_id = m.animal_id
-				and pe.entry_date <= m.entry_date
-				and coalesce(pe.exit_date, now()) > m.entry_date
-				and pe.deleted_at is null
-			join pastures p on p.id = pe.pasture_id
-		where m.user_id = $1 and m.deleted_at is null and m.entry_date = $2
-		order by coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)
-    `
-	return repositoriesUtil.GetList[MilkEntry](r.DB, query, userId, entryDate)
-}
-
-func (r *LactationRepository) GetGroupEntriesFoot(userId string, entryDate time.Time) (*MilkEntryFoot, error) {
-	query := `
-		select
-			count(*) animals_number,
-			sum(quantity) total_milk,
-			avg(quantity) avg_milk
-		from milk_entries m
-		where m.user_id = $1 and deleted_at is null and m.entry_date = $2
-    `
-	return repositoriesUtil.GetOne[MilkEntryFoot](r.DB, query, userId, entryDate)
-}
-
 func (r *LactationRepository) FindLactationPage(
 	filter LactationHistFilter,
 	sort string,
@@ -1511,28 +1306,24 @@ func (r *LactationRepository) UpdateLactation(entry *LactationHist) (*LactationH
 	return response, nil
 }
 
-func (r *LactationRepository) DeleteLactation(id string) *apiError.APIError {
+func (r *LactationRepository) DeleteLactation(id string, userId string) *apiError.APIError {
 
-	validateErr := validateDeleteLactation(r.DB, id)
-	if validateErr != nil {
-		return validateErr
-	}
-
-	query := `
-		update lactations
-		set deleted_at = now()
-		where id = $1
-	`
-
-	err := repositoriesUtil.Exec(r.DB, query, id)
+	tx, err := r.DB.Beginx()
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
-	return nil
-}
+	defer tx.Rollback()
 
-func (r *LactationRepository) DeleteLactationAndEntries(id string) *apiError.APIError {
+	query := `
+		update lactations
+		set deleted_at = now()
+		where id = $1 and user_id = $2
+	`
+	err = repositoriesUtil.ExecTx(tx, query, id, userId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
 
 	entriesQuery := `
 		update milk_entries m
@@ -1541,233 +1332,14 @@ func (r *LactationRepository) DeleteLactationAndEntries(id string) *apiError.API
 		where l.id = $1
 			and m.animal_id = l.animal_id
 			and m.entry_date between l.start_date and coalesce(l.end_date, now());
+			and m.user_id = $2
 	`
-
-	err := repositoriesUtil.Exec(r.DB, entriesQuery, id)
+	err = repositoriesUtil.ExecTx(tx, entriesQuery, id, userId)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
-	query := `
-		update lactations
-		set deleted_at = now()
-		where id = $1
-	`
-	err = repositoriesUtil.Exec(r.DB, query, id)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	return nil
-}
-
-func (r *LactationRepository) AddMilkEntry(entry *AddMilkEntryStruct) *apiError.APIError {
-
-	if entry.PastureId != nil {
-		validateErr := isDiferentPasture(r.DB, *entry)
-		if validateErr != nil {
-			return validateErr
-		}
-	}
-
-	milkEntry := MilkEntry{
-		AnimalId:  entry.AnimalId,
-		Quantity:  entry.Quantity,
-		EntryDate: entry.EntryDate,
-		UserId:    entry.UserId,
-	}
-
-	apiErr := validateMilkEntry(r.DB, milkEntry)
-	if apiErr != nil {
-		return apiErr
-	}
-
-	insertQuery := `
-		insert into milk_entries (animal_id, entry_date, quantity, user_id) 
-		values (:animal_id, :entry_date, :quantity, :user_id)
-	`
-
-	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &milkEntry)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	return nil
-}
-
-func (r *LactationRepository) AddMilkEntryNoTransfer(entry *AddMilkEntryStruct) *apiError.APIError {
-
-	milkEntry := MilkEntry{
-		AnimalId:  entry.AnimalId,
-		Quantity:  entry.Quantity,
-		EntryDate: entry.EntryDate,
-		UserId:    entry.UserId,
-	}
-
-	apiErr := validateMilkEntry(r.DB, milkEntry)
-	if apiErr != nil {
-		return apiErr
-	}
-
-	insertQuery := `
-		insert into milk_entries (animal_id, entry_date, quantity, user_id) 
-		values (:animal_id, :entry_date, :quantity, :user_id)
-	`
-
-	err := repositoriesUtil.NamedExec(r.DB, insertQuery, &milkEntry)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	return nil
-}
-
-func (r *LactationRepository) AddMilkAndTransferPasture(entry *AddMilkEntryStruct) *apiError.APIError {
-
-	pastureEntry := pastureEntries.PastureEntry{
-		AnimalId:  entry.AnimalId,
-		PastureId: *entry.PastureId,
-		EntryDate: entry.EntryDate,
-		UserId:    entry.UserId,
-	}
-
-	entriesRepo := pastureEntries.NewRepository(r.DB)
-	validateErr := entriesRepo.TransferEntry(&pastureEntry)
-	if validateErr != nil {
-		return validateErr
-	}
-
-	calfQuery := `
-		select calf_id
-		from lactations
-		where user_id = $1
-			and animal_id = $2
-			and end_date is null
-			and deleted_at is null
-		order by start_date desc
-		limit 1
-	`
-
-	var calfId sql.NullString
-	err := repositoriesUtil.GetPrimitive(r.DB, calfQuery, &calfId, entry.UserId, entry.AnimalId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if calfId.Valid {
-		pastureRepository := pastureEntries.NewRepository(r.DB)
-		calfEntry := pastureEntries.PastureEntry{
-			PastureId: *entry.PastureId,
-			AnimalId:  calfId.String,
-			EntryDate: entry.EntryDate,
-			UserId:    entry.UserId,
-		}
-
-		err := pastureRepository.TransferCalfEntry(&calfEntry)
-		if err != nil {
-			return err
-		}
-
-	}
-
-	milkEntry := MilkEntry{
-		AnimalId:  entry.AnimalId,
-		Quantity:  entry.Quantity,
-		EntryDate: entry.EntryDate,
-		UserId:    entry.UserId,
-	}
-
-	validateErr = validateMilkEntry(r.DB, milkEntry)
-	if validateErr != nil {
-		return validateErr
-	}
-
-	insertQuery := `
-		insert into milk_entries (animal_id, entry_date, quantity, user_id) 
-		values (:animal_id, :entry_date, :quantity, :user_id)
-	`
-
-	err = repositoriesUtil.NamedExec(r.DB, insertQuery, &milkEntry)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	return nil
-}
-
-func (r *LactationRepository) ReplaceMilkEntry(entry *MilkEntry, userId string) *apiError.APIError {
-
-	query := `
-		update milk_entries 
-		set quantity = :quantity,
-			created_at = now()
-		where animal_id = :animal_id 
-			and entry_date = :entry_date
-			and user_id = :user_id
-	`
-
-	entry.UserId = userId
-	_, err := r.DB.NamedExec(query, entry)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	return nil
-}
-
-func (r *LactationRepository) UpdateMilkEntry(entry *MilkEntry) (*MilkEntry, *apiError.APIError) {
-
-	apiErr := ValidateMilkEntryUpdate(r.DB, *entry, entry.UserId)
-	if apiErr != nil {
-		return nil, apiErr
-	}
-
-	query := `
-		update milk_entries 
-		set entry_date = :entry_date,
-			quantity = :quantity
-		where id = :id and user_id = :user_id
-	`
-
-	id, err := repositoriesUtil.NamedExecReturningId(r.DB, query, entry)
-	if err != nil {
-		return nil, apiError.InternalServerAPIError(err)
-	}
-
-	returnQuery := `
-		select 
-			m.id,
-			m.animal_id,
-			concat_ws(' - ', a.ring_number, a.name) as animal_info,
-			coalesce(p.name, 'Sem Pasto') as pasture_name,
-			m.entry_date,
-			m.quantity
-		from milk_entries m 
-			join animals a on a.id = m.animal_id
-			left join pasture_entries pe on 
-				pe.animal_id = m.animal_id
-				and pe.entry_date <= m.entry_date
-				and m.entry_date <= coalesce(pe.exit_date, now())
-			left join pastures p on p.id = pe.pasture_id
-		where m.id = $1
-	`
-
-	response, err := repositoriesUtil.GetOne[MilkEntry](r.DB, returnQuery, id)
-	if err != nil {
-		return nil, apiError.InternalServerAPIError(err)
-	}
-
-	return response, nil
-}
-
-func (r *LactationRepository) DeleteMilkEntry(id string) *apiError.APIError {
-	deleteQuery := `
-		update milk_entries
-		set deleted_at = now()
-		where id = $1
-	`
-
-	err := repositoriesUtil.Exec(r.DB, deleteQuery, id)
+	err = tx.Commit()
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}

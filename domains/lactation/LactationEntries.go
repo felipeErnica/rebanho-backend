@@ -33,12 +33,12 @@ type MilkEntryFoot struct {
 	AverageMilk   float64 `json:"averageMilk" db:"avg_milk"`
 }
 
-type AddMilkEntryStruct struct {
-	AnimalId  string    `json:"animalId"`
-	PastureId *string   `json:"pastureId"`
-	EntryDate time.Time `json:"entryDate"`
+type MilkEntrySave struct {
+	AnimalId  string    `json:"animalId" db:"animal_id"`
+	PastureId *string   `json:"pastureId" db:"pasture_id"`
+	EntryDate time.Time `json:"entryDate" db:"entry_date"`
 	Quantity  float64   `json:"quantity"`
-	UserId    string    `json:"userId"`
+	UserId    string    `json:"userId" db:"user_id"`
 }
 
 type LactationHist struct {
@@ -140,6 +140,11 @@ type LactationGroup struct {
 	NumberDifference int       `json:"numberDifference" db:"number_difference"`
 	AverageRate      float64   `json:"averageRate" db:"avg_rate"`
 	TotalRate        float64   `json:"totalRate" db:"total_rate"`
+}
+
+type LactationGroupSave struct {
+	EntryDate time.Time `json:"entryDate" db:"entry_date"`
+	UserId    string    `json:"-" db:"user_id"`
 }
 
 type LactationGroupFilter struct {

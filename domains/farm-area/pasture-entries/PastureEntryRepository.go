@@ -196,9 +196,10 @@ func (r *PastureEntryRepository) TransferEntry(entry *PastureEntry) *apiError.AP
 
 	updateQuery := `
 		update pasture_entries
-		set exit_date = $1
-		where animal_id = $2
+		set exit_date = :entry_date
+		where animal_id = :animal_id
 			and exit_date is null
+			and user_id = :user_id
 			and deleted_at is null
 	`
 
