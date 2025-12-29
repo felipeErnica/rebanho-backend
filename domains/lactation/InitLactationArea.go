@@ -26,6 +26,7 @@ func InitLactationArea(app *app.App) {
 
 	app.HandleFunc("POST /lactation/lac-hist/page", handler.FindLactationPage)
 	app.HandleFunc("POST /lactation/lac-hist/page/foot", handler.GetLactationPageFoot)
+	app.HandleFunc("GET /lactation/lac-hist/{id}", handler.FindById)
 	app.HandleFunc("GET /lactation/lac-hist/{id}/entries", handler.GetLactationEntries)
 	app.HandleFunc("GET /lactation/lac-hist/{id}/entries/foot", handler.GetLactationEntriesFoot)
 	app.HandleFunc("GET /lactation/lac-hist/search-lactating", handler.SearchLactatingAnimals)

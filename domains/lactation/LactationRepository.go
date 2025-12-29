@@ -917,6 +917,65 @@ func (r *LactationRepository) FindLactationPage(
 	return repositoriesUtil.GetPage[LactationHist](r.DB, query, sort, 100, args...)
 }
 
+func (r *LactationRepository) FindById(id string, userId string) (*LactationHist, error) {
+
+	query := `
+        with lac_stats as (
+            select
+                l.id,
+                avg(coalesce(m.quantity, 0)) avg_prod,
+				max(entry_date) max_date,
+				max(coalesce(m.quantity, 0)) peak
+            from lactations l
+                left join milk_entries m on 
+                    l.animal_id = m.animal_id
+                    and l.start_date <= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
+                    and m.deleted_at is null
+                    and m.user_id = $1
+            group by 1
+        ),
+		cte as (
+			select
+				l.id,
+				l.animal_id,
+				a.name,
+				concat_ws(' - ', a.ring_number, a.name) as animal_name,
+				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+				l.calf_id,
+				c.birth_date calf_birth_date,
+				case
+					when l.calf_id is null then 'Sem Bezerro'
+					when c.name is not null then format(
+						'%s (%s)',
+						concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+						concat_ws(' - ', c.ring_number, c.name)
+					)
+					else concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+				end as calf_info,
+				l.start_date,
+				l.end_date,
+				s.avg_prod avg_production,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) lac_period,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * s.avg_prod total_production,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+				s.peak,
+				l.observation,
+				l.created_at
+			from lactations l
+				join lac_stats s using (id)
+				join animals a on a.id = l.animal_id
+				left join animals c on c.id = l.calf_id
+				left join animals cm on cm.id = c.mother_id
+			where l.id = $1
+				and l.user_id = $2
+				and l.deleted_at is null
+		)
+		select * from cte
+    `
+	return repositoriesUtil.GetOne[LactationHist](r.DB, query, id, userId)
+}
+
 func (r *LactationRepository) GetLactationPageFoot(filter LactationHistFilter, userId string) (*LactationHistFoot, error) {
 
 	lacQuery := "select * from cte"

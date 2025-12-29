@@ -245,6 +245,23 @@ func (h *LactationHandler) FindLactationPage(w http.ResponseWriter, r *http.Requ
 	handlersUtil.WriteEntity(w, result)
 }
 
+func (h *LactationHandler) FindById(w http.ResponseWriter, r *http.Request) {
+	lacId := r.PathValue("id")
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindById(lacId, userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
 func (h *LactationHandler) GetLactationPageFoot(w http.ResponseWriter, r *http.Request) {
 	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
 	if !ok {
