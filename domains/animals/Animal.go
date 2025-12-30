@@ -9,13 +9,13 @@ type Animal struct {
 	AnimalOrder          int        `json:"animalOrder" db:"animal_order"`
 	WeightBirth          float64    `json:"weightBirth" db:"weight_birth"`
 	Sex                  string     `json:"sex" db:"sex"`
+	BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
+	DeathDate            *time.Time `json:"deathDate" db:"death_date"`
 	WeaningDate          *time.Time `json:"weaningDate" db:"weaning_date"`
 	FatherId             *string    `json:"fatherId" db:"father_id"`
 	FatherName           *string    `json:"fatherName" db:"father_name"`
 	MotherId             *string    `json:"motherId" db:"mother_id"`
 	MotherName           *string    `json:"motherName" db:"mother_name"`
-	BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
-	DeathDate            *time.Time `json:"deathDate" db:"death_date"`
 	PastureId            *string    `json:"pastureId" db:"pasture_id"`
 	PastureName          *string    `json:"pastureName" db:"pasture_name"`
 	FarmId               *string    `json:"farmId" db:"farm_id"`
