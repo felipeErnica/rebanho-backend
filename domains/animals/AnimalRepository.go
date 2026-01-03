@@ -9,26 +9,11 @@ import (
 )
 
 type AnimalRepository struct {
-	SelectQuery string
-	TableName   string
-	DB          *sqlx.DB
+	DB *sqlx.DB
 }
 
 func NewRepository(db *sqlx.DB) *AnimalRepository {
-	selectQuery := `
-        select animals.*, 
-            coalesce(nullif(regexp_replace(animals.ring_number, '[^0-9]', '', 'g'), '')::int, 0) as animal_order,
-            concat_ws(' - ', father.ring_number, father.name) as father_name, 
-            concat_ws(' - ', mother.ring_number, mother.name) as mother_name,
-            pastures.name as pasture_name,
-            farms.id as farm_id, farms.name as farm_name
-        from animals
-            left join animals as father ON father.id = animals.father_id
-            left join animals as mother ON mother.id = animals.mother_id
-            left join pastures ON pastures.id = animals.pasture_id
-            left join farms ON farms.id = pastures.farm_id
-    `
-	return &AnimalRepository{selectQuery, "animals", db}
+	return &AnimalRepository{db}
 }
 
 func (r *AnimalRepository) GetBirthHist(userId string) (*CardEntry, error) {
@@ -268,6 +253,44 @@ func (r *AnimalRepository) GetAnimalTypes(userId string) (*AnimalByType, error) 
 	return result, nil
 }
 
+func (r *AnimalRepository) GetLastDeaths(userId string) (*[]Animal, error) {
+
+	query := `
+		select
+			id,
+			concat_ws(
+				' - ', 
+				ring_number, 
+				coalesce(name, sex),
+				to_char(birth_date, 'DD/MM/YYYY')
+			) as name,
+			sex,
+			animal_type,
+			death_date,
+			observation
+		from animals a
+		where user_id = $1 
+			and deleted_at is null
+			and is_outside_animal = false
+			and death_date is not null
+			and not exists (
+				select 1
+				from slaughter_entries s
+				where s.animal_id = a.id
+					and s.user_id = $1
+					and s.deleted_at is null
+			)
+		order by death_date desc
+		limit 20
+	`
+	result, err := repositoriesUtil.GetList[Animal](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func (r *AnimalRepository) GetAnimalsByAge(userId string) (*AnimalByType, error) {
 
 	query := `
@@ -290,7 +313,6 @@ func (r *AnimalRepository) GetAnimalsByAge(userId string) (*AnimalByType, error)
 	return result, nil
 }
 
-// ---------------------------------------------------- Link Legado ------------------------------------------------------------//
 func (r *AnimalRepository) GroupByYear(userId string) (*[]TotalByYear, error) {
 	query := `
         with min_max as (
@@ -521,31 +543,115 @@ func (r *AnimalRepository) FindPage(
 
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
-		"name":                   {Field: "coalesce(animals.name, '')", Order: "asc"},
-		"isr":                    {Field: "coalesce(animals.isr, 0)", Order: "asc"},
-		"average_birth_interval": {Field: "coalesce(animals.average_birth_interval, 0)", Order: "asc"},
-		"average_prod_interval":  {Field: "coalesce(animals.average_prod_interval, 0)", Order: "asc"},
-		"average_prod":           {Field: "coalesce(animals.average_prod, 0)", Order: "asc"},
-		"average_peak":           {Field: "coalesce(animals.average_peak, 0)", Order: "asc"},
-		"death_date":             {Field: "coalesce(animals.death_date, '-infinity')", Order: "asc"},
-		"weaning_date":           {Field: "coalesce(animals.weaning_date, '-infinity')", Order: "asc"},
-		"birth_date":             {Field: "coalesce(animals.birth_date, '-infinity')", Order: "asc"},
-		"animal_order":           {Field: "coalesce(nullif(regexp_replace(animals.ring_number, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
+		"name":                   {Field: "coalesce(a.name, '')", Order: "asc"},
+		"average_birth_interval": {Field: "coalesce(b.average_birth_interval, 0)", Order: "asc"},
+		"average_lac_interval":   {Field: "coalesce(l.average_lac_interval, 0)", Order: "asc"},
+		"average_prod":           {Field: "coalesce(milk.average_prod, 0)", Order: "asc"},
+		"average_peak":           {Field: "coalesce(l.average_peak, 0)", Order: "asc"},
+		"death_date":             {Field: "coalesce(a.death_date, '-infinity')", Order: "asc"},
+		"weaning_date":           {Field: "coalesce(a.weaning_date, '-infinity')", Order: "asc"},
+		"birth_date":             {Field: "coalesce(a.birth_date, '-infinity')", Order: "desc"},
+		"animal_order":           {Field: "coalesce(nullif(regexp_replace(a.ring_number, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
+		"created_at":             {Field: "a.created_at", Order: "asc"},
+		"id":                     {Field: "a.id", Order: "asc"},
 	}
 
-	whereExpression := "where animals.deleted_at is null and animals.user_id = $1"
+	query := `
+		with peak_stats as (
+			select
+				l.id as lactation_id,
+				max(m.quantity) as peak
+			from milk_entries m
+			join lactations l
+				on l.animal_id = m.animal_id
+			   and l.start_date <= m.entry_date
+			   and coalesce(l.end_date, now()) >= m.entry_date
+			   and l.deleted_at is null
+			where m.deleted_at is null
+			group by l.id
+		),
+
+		lac_interval_cte as (
+			select
+				l.animal_id,
+				l.start_date,
+				l.end_date,
+				extract(days from l.start_date - lag(l.start_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+				p.peak
+			from lactations l
+			join peak_stats p on p.lactation_id = l.id
+			where l.user_id = $1 and l.deleted_at is null
+		),
+
+		lac_stats as (
+			select
+				animal_id,
+				avg(lac_interval) as average_lac_interval,
+				avg(peak) as average_peak
+			from lac_interval_cte
+			group by animal_id
+		),
+
+		birth_interval_cte as (
+			select
+				mother_id,
+				extract(days from birth_date - lag(birth_date) over (partition by mother_id order by birth_date)) as birth_interval
+			from animals
+			where user_id = $1
+			  and deleted_at is null
+			  and mother_id is not null
+		),
+
+		birth_stats as (
+			select
+				mother_id,
+				avg(birth_interval) as average_birth_interval
+			from birth_interval_cte
+			group by mother_id
+		)
+
+		select
+			a.id,
+			a.father_id,
+			a.mother_id,
+			coalesce(nullif(regexp_replace(a.ring_number, '[^0-9]', '', 'g'), '')::int, 0) animal_order,
+			a.ring_number,
+			a.name,
+			a.sex,
+			a.birth_date,
+			concat_ws(' - ', f.ring_number, f.name) as father_name,
+			concat_ws(' - ', m.ring_number, m.name) as mother_name,
+			a.weight_birth,
+			a.weaning_date,
+			a.death_date,
+			a.animal_type,
+			milk.average_prod,
+			l.average_lac_interval,
+			l.average_peak,
+			b.average_birth_interval,
+			a.observation,
+			a.created_at
+		from animals a
+			left join animals m on m.id = a.mother_id
+			left join animals f on f.id = a.father_id
+			left join (
+				select
+					animal_id,
+					avg(quantity) as average_prod
+				from milk_entries
+				where deleted_at is null
+				group by animal_id
+			) milk on milk.animal_id = a.id
+			left join birth_stats b on b.mother_id = a.id
+			left join lac_stats l on l.animal_id = a.id
+	`
+
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
 		return nil, err
 	}
-	sortExpression = " order by " + sortExpression
 
-	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
-	if err != nil {
-		return nil, err
-	}
-
-	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "animals", 2)
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "a", 2)
 	if err != nil {
 		return nil, err
 	}
@@ -555,21 +661,97 @@ func (r *AnimalRepository) FindPage(
 		return nil, err
 	}
 
-	if filterExpression != "" {
-		whereExpression = whereExpression + " and " + filterExpression
+	mainExpression := "a.is_outside_animal = false and a.deleted_at is null and a.user_id = $1"
+	whereExpression := repositoriesUtil.GetWhereExpression(mainExpression, filterExpression, cursorExpression)
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
 	}
 
-	if cursorExpression != "" {
-		whereExpression = whereExpression + " and " + cursorExpression
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+	orderExpression := " order by " + sortExpression
+	query += whereExpression + orderExpression
+	return repositoriesUtil.GetPage[Animal](r.DB, query, sort, 200, args...)
+}
+
+func (r *AnimalRepository) FindPageFooter(userId string, filter AnimalFilter) (*AnimalFooter, error) {
+
+	query := `
+		with lac_stats as (
+			select
+				l.animal_id,
+				avg(l.start_date - lag(l.start_date) over (order by l.start_date partition by l.animal_id)) as average_lac_interval,
+				avg(m.peak) as average_peak
+			from lactations l
+				join lateral (
+					select max(quantity) peak
+					from milk_entries 
+					where animal_id = l.animal_id
+						and entry_date >= l.start_date
+						and entry_date <= coalesce(l.entry_date, now())
+						and user_id = $1
+						and deleted_at is null
+				) m on true
+			where l.user_id = $1 and l.deleted_at is null
+			group by 1
+		),
+		cte as (
+			select 
+				a.id,
+				a.name,
+				milk.average_prod,
+				l.average_lac_interval,
+				l.average_peak,
+				b.average_birth_interval,
+				a.observation
+			from animals a
+				left join animals m on m.id = a.mother_id
+				left join animals f on f.id = a.father_id
+				left join (
+					select
+						animal_id,
+						avg(quantity) average_prod
+					from milk_entries
+					where user_id = $1 and deleted_at is null
+					group by 1
+				) milk on milk.animal_id = a.id
+				left join (
+					select
+						mother_id,
+						avg(birth_date - lag(birth_date) over (order by birth_date partition by mother_id)) average_birth_interval
+					from animals
+					where user_id = $1 and deleted_at is null
+					group by 1
+				) b on b.mother_id = a.mother_id
+				left join lac_stats l on l.animal_id = a.id
+			where a.user_id = $1 and a.deleted_at is null
+		)
+		select 
+			count(cte.id) as total,
+			avg(cte.average_prod) as average_prod,
+			avg(cte.average_lac_interval) as average_lac_interval,
+			avg(cte.average_birth_interval) as average_birth_interval,
+			avg(cte.average_peak) as average_peak
+		from cte
+	`
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
+	if err != nil {
+		return nil, err
 	}
+
+	whereExpression := repositoriesUtil.GetWhereExpression(filterExpression)
+	query += whereExpression
 
 	args := []any{userId}
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
-	args = append(args, cursorArgs...)
 
-	query := r.SelectQuery + whereExpression + sortExpression
-	return repositoriesUtil.GetPage[Animal](r.DB, query, sort, 200, args...)
+	return repositoriesUtil.GetOne[AnimalFooter](r.DB, query, args...)
 }
 
 func (r *AnimalRepository) FindById(id string, userId string) (*Animal, error) {
@@ -609,26 +791,6 @@ func (r *AnimalRepository) FindById(id string, userId string) (*Animal, error) {
 		where a.id = $1 and a.user_id = $2
 	`
 	return repositoriesUtil.GetOne[Animal](r.DB, query, id, userId)
-}
-
-func (r *AnimalRepository) FindByFatherId(fatherId string) (*[]Animal, error) {
-	query := r.SelectQuery + "where animals.father_id = $1"
-	return repositoriesUtil.GetList[Animal](r.DB, query, fatherId)
-}
-
-func (r *AnimalRepository) FindByMotherId(motherId string) (*[]Animal, error) {
-	query := r.SelectQuery + "where animals.mother_id = $1"
-	return repositoriesUtil.GetList[Animal](r.DB, query, motherId)
-}
-
-func (r *AnimalRepository) FindByName(name string, userId string) (*[]Animal, error) {
-	query := r.SelectQuery + "where animals.name = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[Animal](r.DB, query, name, userId)
-}
-
-func (r *AnimalRepository) FindByNumber(ringNumber string, userId string) (*[]Animal, error) {
-	query := r.SelectQuery + "where animals.ring_number = $1 AND animals.user_id = $2"
-	return repositoriesUtil.GetList[Animal](r.DB, query, ringNumber, userId)
 }
 
 func (r *AnimalRepository) SearchFather(userId string) (*[]entity.SearchEntity, error) {
@@ -1336,5 +1498,3 @@ func (r *AnimalRepository) Replace(entry *AnimalSave) *apiError.APIError {
 
 	return nil
 }
-
-//---------------------------------------------------- Link Legado ------------------------------------------------------------//

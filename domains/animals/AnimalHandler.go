@@ -85,9 +85,20 @@ func (h *AnimalHandler) GetAnimalTypes(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, res)
 }
 
+func (h *AnimalHandler) GetLastDeaths(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
 
+	res, err := h.Repository.GetLastDeaths(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
 
-
+	handlersUtil.WriteEntity(w, res)
+}
 
 
 //---------------------------------------------------- Link Legado ------------------------------------------------------------//
@@ -205,6 +216,26 @@ func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, result)
 }
 
+func (h *AnimalHandler) FindPageFooter(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{})
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindPageFooter(userId, filter)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
 func (h *AnimalHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
@@ -219,56 +250,6 @@ func (h *AnimalHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	handlersUtil.WriteEntity(w, response)
-}
-
-func (h *AnimalHandler) FindByName(w http.ResponseWriter, r *http.Request) {
-	name := r.PathValue("name")
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-	animals, err := h.Repository.FindByName(name, userId)
-	if err != nil {
-		apiError.WriteError(err, w)
-		return
-	}
-	handlersUtil.SendList(w, animals)
-}
-
-func (h *AnimalHandler) FindByNumber(w http.ResponseWriter, r *http.Request) {
-	number := r.PathValue("number")
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-	animals, err := h.Repository.FindByNumber(number, userId)
-	if err != nil {
-		apiError.WriteError(err, w)
-		return
-	}
-	handlersUtil.SendList(w, animals)
-}
-
-func (h *AnimalHandler) FindByFatherId(w http.ResponseWriter, r *http.Request) {
-	fatherId := r.PathValue("fatherId")
-	animals, err := h.Repository.FindByFatherId(fatherId)
-	if err != nil {
-		apiError.WriteError(err, w)
-		return
-	}
-
-	handlersUtil.SendList(w, animals)
-}
-
-func (h *AnimalHandler) FindByMotherId(w http.ResponseWriter, r *http.Request) {
-	motherId := r.PathValue("motherId")
-	animals, err := h.Repository.FindByMotherId(motherId)
-	if err != nil {
-		apiError.WriteError(err, w)
-		return
-	}
-
-	handlersUtil.SendList(w, animals)
 }
 
 func (h *AnimalHandler) FindMaleOffspring(w http.ResponseWriter, r *http.Request) {
@@ -533,6 +514,3 @@ func (h *AnimalHandler) Replace(w http.ResponseWriter, r *http.Request) {
 }
 
 //---------------------------------------------------- Link Legado ------------------------------------------------------------//
-
-
-
