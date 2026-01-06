@@ -114,32 +114,10 @@ type TotalBySex struct {
 	TotalFemales int `json:"totalFemales" db:"total_females"`
 }
 
-type AnimalsByAgeAndFarm struct {
-	FarmId        *string `json:"farmId" db:"farm_id"`
-	FarmName      *string `json:"farmName" db:"farm_name"`
-	NewbornMale   int     `json:"newbornMale" db:"newborn_male"`
-	NewbornFemale int     `json:"newbornFemale" db:"newborn_female"`
-	BabyMale      int     `json:"babyMale" db:"baby_male"`
-	BabyFemale    int     `json:"babyFemale" db:"baby_female"`
-	ChildMale     int     `json:"childMale" db:"child_male"`
-	ChildFemale   int     `json:"childFemale" db:"child_female"`
-	YoungMale     int     `json:"youngMale" db:"young_male"`
-	YoungFemale   int     `json:"youngFemale" db:"young_female"`
-	AdultMale     int     `json:"adultMale" db:"adult_male"`
-	AdultFemale   int     `json:"adultFemale" db:"adult_female"`
-	OldMale       int     `json:"oldMale" db:"old_male"`
-	OldFemale     int     `json:"oldFemale" db:"old_female"`
-	TotalMale     int     `json:"totalMale" db:"total_male"`
-	TotalFemale   int     `json:"totalFemale" db:"total_female"`
-	Total         int     `json:"total" db:"total"`
-}
-
 type AnimalsByAge struct {
-	AgeCategory  string     `json:"ageCategory" db:"age_category"`
-	MinBirthDate *time.Time `json:"minBirthDate" db:"min_birth_date"`
-	MaxBirthDate *time.Time `json:"maxBirthDate" db:"max_birth_date"`
-	Male         int        `json:"male" db:"male"`
-	Female       int        `json:"female" db:"female"`
+	Category string `json:"category" db:"category"`
+	Female   int    `json:"female" db:"female"`
+	Male     int    `json:"male" db:"male"`
 }
 
 type TotalByYear struct {

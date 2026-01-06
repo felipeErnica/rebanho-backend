@@ -11,8 +11,10 @@ func InitLactationArea(app *app.App) {
 
 	app.HandleFunc("GET /lactation/dashboard/last-milk", handler.GetLastMilk)
 	app.HandleFunc("GET /lactation/dashboard/last-avg-milk", handler.GetLastAverageMilk)
-	app.HandleFunc("GET /lactation/dashboard/last-count", handler.GetLastAnimalsCount)
+	app.HandleFunc("GET /lactation/dashboard/last-lactating", handler.GetLastLactating)
+	app.HandleFunc("GET /lactation/dashboard/last-dry", handler.GetLastDry)
 	app.HandleFunc("GET /lactation/dashboard/milk-production", handler.GetMilkProduction)
+	app.HandleFunc("GET /lactation/dashboard/dairy-types", handler.GetDairyTypes)
 	app.HandleFunc("GET /lactation/dashboard/year-milk", handler.GetYearMilkProduction)
 	app.HandleFunc("GET /lactation/dashboard/year-avg-milk", handler.GetYearAverageMilk)
 	app.HandleFunc("GET /lactation/dashboard/best-animals", handler.GetBestAnimals)
@@ -26,6 +28,10 @@ func InitLactationArea(app *app.App) {
 
 	app.HandleFunc("POST /lactation/lac-hist/page", handler.FindLactationPage)
 	app.HandleFunc("POST /lactation/lac-hist/page/foot", handler.GetLactationPageFoot)
+	app.HandleFunc("POST /lactation/lac-hist/dry-animals/page", handler.FindDryAnimalsPage)
+	app.HandleFunc("POST /lactation/lac-hist/dry-animals/page/foot", handler.GetDryAnimalsFoot)
+	app.HandleFunc("POST /lactation/lac-hist/lac-animals/page", handler.FindLacAnimalsPage)
+	app.HandleFunc("POST /lactation/lac-hist/lac-animals/page/foot", handler.GetLacAnimalsFoot)
 	app.HandleFunc("GET /lactation/lac-hist/{id}", handler.FindById)
 	app.HandleFunc("GET /lactation/lac-hist/{id}/entries", handler.GetLactationEntries)
 	app.HandleFunc("GET /lactation/lac-hist/{id}/entries/foot", handler.GetLactationEntriesFoot)

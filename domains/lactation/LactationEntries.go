@@ -50,7 +50,7 @@ type LactationHist struct {
 	CalfId            *string    `json:"calfId" db:"calf_id"`
 	CalfBirthDate     *time.Time `json:"-" db:"calf_birth_date"`
 	CalfInfo          *string    `json:"calfInfo" db:"calf_info"`
-	StartDate         time.Time  `json:"startDate" db:"start_date"`
+	StartDate         *time.Time  `json:"startDate" db:"start_date"`
 	EndDate           *time.Time `json:"endDate" db:"end_date"`
 	LacPeriod         float64    `json:"lacPeriod" db:"lac_period"`
 	AverageProduction float64    `json:"averageProduction" db:"avg_production"`
@@ -166,6 +166,11 @@ type AnimalsRating struct {
 	IntervalRate  float64 `json:"intervalRate" db:"interval_rate"`
 	TotalScore    float64 `json:"-" db:"total_score"`
 	IntervalScore float64 `json:"-" db:"interval_score"`
+}
+
+type DairyTypes struct {
+	Lactating int `json:"lactating" db:"lactating"`
+	Dry       int `json:"dry" db:"dry"`
 }
 
 type ParentsRating struct {

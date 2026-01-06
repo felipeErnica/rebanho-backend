@@ -747,6 +747,13 @@ func (r *SlaughterRepository) Add(entry *SlaughterEntrySave) *apiError.APIError 
 		return validateErr
 	}
 
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	defer tx.Rollback()
+
 	query := `
 		insert into slaughter_entries (
 			animal_id, 
@@ -768,7 +775,22 @@ func (r *SlaughterRepository) Add(entry *SlaughterEntrySave) *apiError.APIError 
 		)
 	`
 	
-	err := repositoriesUtil.NamedExec(r.DB, query, entry)
+	err = repositoriesUtil.NamedExecTx(tx, query, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	animalQuery := `
+		update animals
+		set death_date = $1
+		where id = $1 and user_id = $2
+	`
+	err = repositoriesUtil.ExecTx(tx, animalQuery, entry.AnimalId, entry.UserId)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
@@ -785,11 +807,9 @@ func (r *SlaughterRepository) Replace(entry *SlaughterEntrySave) *apiError.APIEr
 
 	query := `
 		update slaughter_entries 
-		set butcher_id = :butcher_id, 
-			entry_date = :entry_date, 
-			discount_rate = :discount_rate, 
+		set discount_rate = :discount_rate, 
 			weight = :weight, 
-			dead_weight = :dead_weight,
+			dead_weight = :dead_weight
 		where entry_date = :entry_date
 			and animal_id = :animal_id
 			and user_id = :user_id

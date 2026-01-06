@@ -147,43 +147,13 @@ func (h *AnimalHandler) TotalByType(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, res)
 }
 
-func (h *AnimalHandler) GroupByAgeAndFarm(w http.ResponseWriter, r *http.Request) {
+func (h *AnimalHandler) GetAgeAndSex(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	res, err := h.Repository.GroupByAgeAndFarm(userId)
-	if err != nil {
-		apiError.WriteError(err, w)
-		return
-	}
-
-	handlersUtil.WriteEntity(w, res)
-}
-
-func (h *AnimalHandler) GroupByAgeAndPasture(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	res, err := h.Repository.GroupByAgeAndPasture(userId)
-	if err != nil {
-		apiError.WriteError(err, w)
-		return
-	}
-
-	handlersUtil.WriteEntity(w, res)
-}
-
-func (h *AnimalHandler) GroupByAge(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	res, err := h.Repository.GroupByAge(userId)
+	res, err := h.Repository.GetAgeAndSex(userId)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return

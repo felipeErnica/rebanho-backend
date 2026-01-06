@@ -223,7 +223,7 @@ func (r *LactationRepository) GetYearAverageMilk(userId string) (*CardContainer,
 	return averageMilk, nil
 }
 
-func (r *LactationRepository) GetLastAnimalsCount(userId string) (*CardContainer, error) {
+func (r *LactationRepository) GetLastLactating(userId string) (*CardContainer, error) {
 	query := `
         with cte as (
             select
@@ -268,6 +268,89 @@ func (r *LactationRepository) GetLastAnimalsCount(userId string) (*CardContainer
 	}
 
 	return averageAnimals, nil
+}
+
+func (r *LactationRepository) GetLastDry(userId string) (*CardContainer, error) {
+	query := `
+		with cte as (
+            select
+                entry_date,
+                count(*) animals_number
+            from milk_entries m
+				join lactations l on l.animal_id = m.animal_id
+					and m.entry_date = l.end_date
+					and l.deleted_at is null
+            where m.user_id = $1 and m.deleted_at is null
+            group by 1
+            order by 1 desc
+            limit 10
+        )
+        select * from cte order by entry_date
+    `
+
+	result, err := repositoriesUtil.GetList[AnimalsAverageHist](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	averageHist := *result
+	var current, previous, trend float64
+
+	switch lenght := len(averageHist); lenght {
+	case 0:
+		current = 0
+		previous = 0
+		trend = 0
+	case 1:
+		current = averageHist[0].AnimalsNumber
+		previous = 0
+		trend = 0
+	default:
+		current = averageHist[lenght-1].AnimalsNumber
+		previous = averageHist[lenght-2].AnimalsNumber
+		trend = current - previous
+	}
+
+	averageAnimals := &CardContainer{
+		Current: current,
+		Trend:   trend,
+		Hist:    averageHist,
+	}
+
+	return averageAnimals, nil
+}
+
+func (r *LactationRepository) GetDairyTypes(userId string) (*DairyTypes, error) {
+
+	query := `
+		with cte as (
+			select
+				a.id,
+				case
+					when l.id is null then false
+					else true
+				end as is_lactating
+			from animals a
+				left join lactations l on l.animal_id = a.id
+					and l.end_date is null
+					and l.deleted_at is null
+			where a.user_id = $1 
+				and a.deleted_at is null
+				and a.animal_type = 'DAIRY_ANIMAL'
+				and a.death_date is null
+		)
+		select
+			count(*) filter (where is_lactating = false) as dry,
+			count(*) filter (where is_lactating = true) as lactating
+		from cte
+	`
+
+	result, err := repositoriesUtil.GetOne[DairyTypes](r.DB, query, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, error) {
@@ -849,6 +932,7 @@ func (r *LactationRepository) FindLactationPage(
                     and m.user_id = $1
             group by 1
         ),
+
 		cte as (
 			select
 				l.id,
@@ -1126,6 +1210,456 @@ func (r *LactationRepository) SearchDryAnimals(userId string) (*[]entity.SearchE
 	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
+func (r *LactationRepository) FindLacAnimalsPage(
+	filter LactationHistFilter,
+	sort string,
+	order string,
+	cursor string,
+	userId string,
+) (*entity.Page[LactationHist], error) {
+
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"animal_order":     {Field: "cte.animal_order", Order: "asc"},
+		"name":             {Field: "cte.name", Order: "asc"},
+		"start_date":       {Field: "cte.start_date", Order: "asc"},
+		"end_date":         {Field: "coalesce(cte.end_date, '-infinity')", Order: "asc"},
+		"calf_birth_date":  {Field: "coalesce(cte.calf_birth_date, -infinity)", Order: "asc"},
+		"avg_production":   {Field: "coalesce(cte.avg_production, 0)", Order: "asc"},
+		"lac_period":       {Field: "cte.lac_period", Order: "asc"},
+		"total_production": {Field: "coalesce(cte.total_production, 0)", Order: "asc"},
+		"lac_interval":     {Field: "coalesce(cte.lac_interval, 0)", Order: "asc"},
+		"id":               {Field: "cte.id", Order: "asc"},
+		"created_at":       {Field: "cte.created_at", Order: "asc"},
+	}
+
+	query := `
+        with lac_stats as (
+            select
+                l.id,
+                avg(coalesce(m.quantity, 0)) avg_prod,
+				max(entry_date) max_date,
+				max(coalesce(m.quantity, 0)) peak
+            from lactations l
+                left join milk_entries m on 
+                    l.animal_id = m.animal_id
+                    and l.start_date <= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
+                    and m.deleted_at is null
+                    and m.user_id = $1
+            group by 1
+        ),
+
+		lac_cte as (
+			select
+				l.id,
+				l.animal_id,
+				l.calf_id,
+				l.start_date,
+				l.end_date,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+				l.observation,
+				l.created_at
+			from lactations l
+			where l.user_id = $1 and l.deleted_at is null
+		),
+
+		cte as (
+			select
+				l.id,
+				l.animal_id,
+				a.name,
+				concat_ws(' - ', a.ring_number, a.name) as animal_name,
+				coalesce(nullif(regexp_replace(a.ring_number, '[^0-9]', '', 'g'), '')::int, 0) as animal_order,
+				l.calf_id,
+				c.birth_date calf_birth_date,
+				case
+					when l.calf_id is null then 'Sem Bezerro'
+					when c.name is not null then format(
+						'%s (%s)',
+						concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+						concat_ws(' - ', c.ring_number, c.name)
+					)
+					else concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+				end as calf_info,
+				l.start_date,
+				l.end_date,
+				coalesce(s.avg_prod, 0) as avg_production,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) as lac_period,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * coalesce(s.avg_prod, 0) as total_production,
+				l.lac_interval,
+				coalesce(s.peak, 0) as peak,
+				l.observation,
+				l.created_at
+			from lac_cte l
+				join animals a on a.id = l.animal_id
+				left join lac_stats s on s.id = l.id
+				left join animals c on c.id = l.calf_id
+				left join animals cm on cm.id = c.mother_id
+			where l.end_date is null
+		)
+		select * from cte
+    `
+
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	whereExpression := repositoriesUtil.GetWhereExpression(filterExpression, cursorExpression)
+
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+
+	orderBy := " order by " + sortExpression
+	query += whereExpression + orderBy
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+
+	return repositoriesUtil.GetPage[LactationHist](r.DB, query, sort, 100, args...)
+}
+
+func (r *LactationRepository) GetLacAnimalsFoot(filter LactationHistFilter, userId string) (*LactationHistFoot, error) {
+	query := `
+        with lac_stats as (
+            select
+                l.id,
+                avg(coalesce(m.quantity, 0)) avg_prod,
+				max(entry_date) max_date,
+				max(coalesce(m.quantity, 0)) peak
+            from lactations l
+                left join milk_entries m on 
+                    l.animal_id = m.animal_id
+                    and l.start_date <= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
+                    and m.deleted_at is null
+                    and m.user_id = $1
+            group by 1
+        ),
+
+		lac_cte as (
+			select
+				l.id,
+				l.animal_id,
+				l.calf_id,
+				l.start_date,
+				l.end_date,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+				l.observation,
+				l.created_at
+			from lactations l
+			where l.user_id = $1 and l.deleted_at is null
+		),
+
+		cte as (
+			select
+				l.id,
+				l.animal_id,
+				a.name,
+				concat_ws(' - ', a.ring_number, a.name) as animal_name,
+				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+				l.calf_id,
+				c.birth_date calf_birth_date,
+				case
+					when l.calf_id is null then 'Sem Bezerro'
+					when c.name is not null then format(
+						'%s (%s)',
+						concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+						concat_ws(' - ', c.ring_number, c.name)
+					)
+					else concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+				end as calf_info,
+				l.start_date,
+				l.end_date,
+				s.avg_prod avg_production,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) lac_period,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * s.avg_prod total_production,
+				l.lac_interval,
+				s.peak,
+				l.observation,
+				l.created_at
+			from lac_cte l
+				join animals a on a.id = l.animal_id
+				left join lac_stats s on s.id = l.id
+				left join animals c on c.id = l.calf_id
+				left join animals cm on cm.id = c.mother_id
+			where l.end_date is null
+		)
+
+		select 
+			count(*) as total_lacs,
+			avg(lac_period) as avg_lac_period,
+			avg(avg_production) as avg_production,
+			avg(total_production) as avg_total_production,
+			avg(lac_interval) as avg_lac_interval,
+			avg(peak) as avg_peak
+		from cte
+	`
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		query += " where " + filterExpression
+	}
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetOne[LactationHistFoot](r.DB, query, args...)
+}
+func (r *LactationRepository) FindDryAnimalsPage(
+	filter LactationHistFilter,
+	sort string,
+	order string,
+	cursor string,
+	userId string,
+) (*entity.Page[LactationHist], error) {
+
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"animal_order":     {Field: "cte.animal_order", Order: "asc"},
+		"name":             {Field: "cte.name", Order: "asc"},
+		"start_date":       {Field: "cte.start_date", Order: "asc"},
+		"end_date":         {Field: "coalesce(cte.end_date, '-infinity')", Order: "asc"},
+		"calf_birth_date":  {Field: "coalesce(cte.calf_birth_date, -infinity)", Order: "asc"},
+		"avg_production":   {Field: "coalesce(cte.avg_production, 0)", Order: "asc"},
+		"lac_period":       {Field: "cte.lac_period", Order: "asc"},
+		"total_production": {Field: "coalesce(cte.total_production, 0)", Order: "asc"},
+		"lac_interval":     {Field: "coalesce(cte.lac_interval, 0)", Order: "asc"},
+		"id":               {Field: "cte.id", Order: "asc"},
+		"created_at":       {Field: "cte.created_at", Order: "asc"},
+	}
+
+	query := `
+        with lac_stats as (
+            select
+                l.id,
+                avg(coalesce(m.quantity, 0)) avg_prod,
+				max(entry_date) max_date,
+				max(coalesce(m.quantity, 0)) peak
+            from lactations l
+                left join milk_entries m on 
+                    l.animal_id = m.animal_id
+                    and l.start_date <= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
+                    and m.deleted_at is null
+                    and m.user_id = $1
+            group by 1
+        ),
+
+		lac_cte as (
+			select distinct on (l.animal_id)
+				l.id,
+				l.animal_id,
+				l.calf_id,
+				l.start_date,
+				l.end_date,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+				l.observation,
+				l.created_at
+			from lactations l 
+			where l.user_id = $1 and l.deleted_at is null
+			order by l.animal_id, l.start_date desc
+		),
+
+		cte as (
+			select
+				coalesce(l.id, a.id) as id,
+				coalesce(l.animal_id, a.id) as animal_id,
+				coalesce(a.name, '') as name,
+				concat_ws(' - ', a.ring_number, a.name) as animal_name,
+				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+				l.calf_id,
+				c.birth_date calf_birth_date,
+				case
+					when l.calf_id is null then 'Sem Bezerro'
+					when c.name is not null then format(
+						'%s (%s)',
+						concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+						concat_ws(' - ', c.ring_number, c.name)
+					)
+					else concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+				end as calf_info,
+				l.start_date,
+				l.end_date,
+				coalesce(s.avg_prod, 0) as avg_production,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) as lac_period,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * coalesce(s.avg_prod, 0) as total_production,
+				coalesce(l.lac_interval, 0) as lac_interval,
+				coalesce(s.peak, 0) as peak,
+				l.observation,
+				coalesce(l.created_at, a.created_at) as created_at
+			from animals a
+				left join lac_cte l on a.id = l.animal_id
+				left join lac_stats s on s.id = l.id
+				left join animals c on c.id = l.calf_id
+				left join animals cm on cm.id = c.mother_id
+			where a.user_id = $1 
+				and a.deleted_at is null
+				and a.animal_type = 'DAIRY_ANIMAL'
+				and a.is_outside_animal = false
+				and not exists (
+					select 1
+					from lactations lac
+					where lac.animal_id = a.id
+						and lac.deleted_at is null
+						and lac.end_date is null
+				)
+		)
+		select * from cte
+    `
+
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	whereExpression := repositoriesUtil.GetWhereExpression(filterExpression, cursorExpression)
+
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+
+	orderBy := " order by " + sortExpression
+	query += whereExpression + orderBy
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+
+	return repositoriesUtil.GetPage[LactationHist](r.DB, query, sort, 100, args...)
+}
+
+func (r *LactationRepository) GetDryAnimalsFoot(filter LactationHistFilter, userId string) (*LactationHistFoot, error) {
+	query := `
+        with lac_stats as (
+            select
+                l.id,
+                avg(coalesce(m.quantity, 0)) avg_prod,
+				max(entry_date) max_date,
+				max(coalesce(m.quantity, 0)) peak
+            from lactations l
+                left join milk_entries m on 
+                    l.animal_id = m.animal_id
+                    and l.start_date <= m.entry_date
+                    and coalesce(l.end_date, now()) >= m.entry_date
+                    and m.deleted_at is null
+                    and m.user_id = $1
+            group by 1
+        ),
+
+		lac_cte as (
+			select distinct on (l.animal_id)
+				l.id,
+				l.animal_id,
+				l.calf_id,
+				l.start_date,
+				l.end_date,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+				l.observation,
+				l.created_at
+			from lactations l 
+			where l.user_id = $1 and l.deleted_at is null
+			order by l.animal_id, l.start_date desc
+		),
+
+		cte as (
+			select
+				l.id,
+				l.animal_id,
+				a.name,
+				concat_ws(' - ', a.ring_number, a.name) as animal_name,
+				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
+				l.calf_id,
+				c.birth_date calf_birth_date,
+				case
+					when l.calf_id is null then 'Sem Bezerro'
+					when c.name is not null then format(
+						'%s (%s)',
+						concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY')),
+						concat_ws(' - ', c.ring_number, c.name)
+					)
+					else concat_ws(' - ', cm.ring_number, c.sex, to_char(c.birth_date, 'DD/MM/YYYY'))
+				end as calf_info,
+				l.start_date,
+				l.end_date,
+				s.avg_prod avg_production,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) lac_period,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * s.avg_prod total_production,
+				l.lac_interval,
+				s.peak,
+				l.observation,
+				l.created_at
+			from animals a
+				left join lac_cte l on a.id = l.animal_id
+				left join lac_stats s on s.id = l.id
+				left join animals c on c.id = l.calf_id
+				left join animals cm on cm.id = c.mother_id
+			where a.user_id = $1 
+				and a.deleted_at is null
+				and a.animal_type = 'DAIRY_ANIMAL'
+				and a.is_outside_animal = false
+				and not exists (
+					select 1
+					from lactations lac
+					where lac.animal_id = a.id
+						and lac.deleted_at is null
+						and lac.end_date is null
+				)
+		)
+		select 
+			count(*) as total_lacs,
+			avg(lac_period) as avg_lac_period,
+			avg(avg_production) as avg_production,
+			avg(total_production) as avg_total_production,
+			avg(lac_interval) as avg_lac_interval,
+			avg(peak) as avg_peak
+		from cte
+	`
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	if filterExpression != "" {
+		query += " where " + filterExpression
+	}
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetOne[LactationHistFoot](r.DB, query, args...)
+}
+
 func (r *LactationRepository) SearchNewLactationCalf(userId string) (*[]entity.SearchEntity, error) {
 	query := `
 		select
@@ -1207,7 +1741,7 @@ func (r *LactationRepository) AddLactation(entry *AddLactationStruct) *apiError.
 	lacEntry := LactationHist{
 		CalfId:      entry.CalfId,
 		AnimalId:    entry.AnimalId,
-		StartDate:   entry.StartDate,
+		StartDate:   &entry.StartDate,
 		EndDate:     entry.EndDate,
 		Observation: entry.Observation,
 		UserId:      entry.UserId,

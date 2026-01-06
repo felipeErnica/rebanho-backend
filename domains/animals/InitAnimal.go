@@ -19,9 +19,7 @@ func InitAnimal(app *app.App) {
 //-------------------------------------------- Links Legados ------------------------------------------------------------------//
     app.HandleFunc("POST /animals/dashboard/total-general", handler.TotalBySex)
     app.HandleFunc("POST /animals/dashboard/types", handler.TotalByType)
-    app.HandleFunc("POST /animals/dashboard/group-age-farm", handler.GroupByAgeAndFarm)
-    app.HandleFunc("POST /animals/dashboard/group-pasture", handler.GroupByAgeAndPasture)
-    app.HandleFunc("POST /animals/dashboard/group-age", handler.GroupByAge)
+    app.HandleFunc("GET /animals/dashboard/age-and-sex", handler.GetAgeAndSex)
     app.HandleFunc("POST /animals/dashboard/group-year", handler.GroupByYear)
 
 	app.HandleFunc("POST /animals/info/page/footer", handler.FindPageFooter)

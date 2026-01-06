@@ -364,171 +364,28 @@ func (r *AnimalRepository) TotalByType(userId string) (*AnimalByType, error) {
 	return repositoriesUtil.GetOne[AnimalByType](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) GroupByAgeAndFarm(userId string) (*[]AnimalsByAgeAndFarm, error) {
-	query := `
-        select 
-            farms.id as farm_id,
-            farms.name as farm_name,
-            count(animals.id) filter (
-                where age(animals.birth_date) < interval '3 months'
-                and animals.sex = 'M'
-            ) as newborn_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) < interval '3 months'
-                and animals.sex = 'F'
-            ) as newborn_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '3 months' and interval '9 months'
-                and animals.sex = 'M'
-            ) as baby_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '3 months' and interval '9 months'
-                and animals.sex = 'F'
-            ) as baby_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '9 months' and interval '13 months'
-                and animals.sex = 'M'
-            ) as child_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '9 months' and interval '13 months'
-                and animals.sex = 'F'
-            ) as child_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '13 months' and interval '25 months'
-                and animals.sex = 'M'
-            ) as young_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '13 months' and interval '25 months'
-                and animals.sex = 'F'
-            ) as young_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '25 months' and interval '37 months'
-                and animals.sex = 'M'
-            ) as adult_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '25 months' and interval '37 months'
-                and animals.sex = 'F'
-            ) as adult_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) > interval '37 months' 
-                and animals.sex = 'M'
-            ) as old_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) > interval '37 months' 
-                and animals.sex = 'F'
-            ) as old_female,
-            count(animals.id) filter (
-                where animals.sex = 'M'
-            ) as total_male,
-            count(animals.id) filter (
-                where animals.sex = 'F'
-            ) as total_female,
-            count(animals.id) as total 
-        from animals
-			left join pastures on pastures.id = animals.pasture_id
-			left join farms on farms.id = pastures.farm_id
-        where animals.user_id = $1
-            and animals.deleted_at is null
-            and animals.animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')
-		order by animals.birth_date
-		group by farm.name, farm.id
-    `
-	return repositoriesUtil.GetList[AnimalsByAgeAndFarm](r.DB, query, userId)
-}
-
-func (r *AnimalRepository) GroupByAgeAndPasture(userId string) (*[]AnimalsByAgeAndFarm, error) {
-	query := `
-        select 
-            pastures.id as farm_id,
-            pastures.name as farm_name,
-            count(animals.id) filter (
-                where age(animals.birth_date) < interval '3 months'
-                and animals.sex = 'M'
-            ) as newborn_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) < interval '3 months'
-                and animals.sex = 'F'
-            ) as newborn_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '3 months' and interval '9 months'
-                and animals.sex = 'M'
-            ) as baby_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '3 months' and interval '9 months'
-                and animals.sex = 'F'
-            ) as baby_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '9 months' and interval '13 months'
-                and animals.sex = 'M'
-            ) as child_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '9 months' and interval '13 months'
-                and animals.sex = 'F'
-            ) as child_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '13 months' and interval '25 months'
-                and animals.sex = 'M'
-            ) as young_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '13 months' and interval '25 months'
-                and animals.sex = 'F'
-            ) as young_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '25 months' and interval '37 months'
-                and animals.sex = 'M'
-            ) as adult_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) between interval '25 months' and interval '37 months'
-                and animals.sex = 'F'
-            ) as adult_female,
-            count(animals.id) filter (
-                where age(animals.birth_date) > interval '37 months' 
-                and animals.sex = 'M'
-            ) as old_male,
-            count(animals.id) filter (
-                where age(animals.birth_date) > interval '37 months' 
-                and animals.sex = 'F'
-            ) as old_female,
-            count(animals.id) filter (
-                where animals.sex = 'M'
-            ) as total_male,
-            count(animals.id) filter (
-                where animals.sex = 'F'
-            ) as total_female,
-            count(animals.id) as total 
-        from animals
-        left join pastures on pastures.id = animals.pasture_id
-        where animals.user_id = $1
-            and animals.deleted_at is null
-            and animals.animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')
-		order by animals.birth_date
-		group by pastures.name, pastures.id
-    `
-	return repositoriesUtil.GetList[AnimalsByAgeAndFarm](r.DB, query, userId)
-}
-
-func (r *AnimalRepository) GroupByAge(userId string) (*[]AnimalsByAge, error) {
+func (r *AnimalRepository) GetAgeAndSex(userId string) (*[]AnimalsByAge, error) {
 	query := `
         select 
             case 
-                when age(animals.birth_date) < interval '3 months' then '0-2 meses'
-                when age(animals.birth_date) between interval '3 months' and interval '9 months' then '3-8 meses'
-                when age(animals.birth_date) between interval '9 months' and interval '13 months' then '9-12 meses'
-                when age(animals.birth_date) between interval '13 months' and interval '25 months' then '13-24 meses'
-                when age(animals.birth_date) between interval '25 months' and interval '37 months' then '25-36 meses'
-                when age(animals.birth_date) > interval '37 months' then '+36 meses'
-                else 'Desconhecido'
-            end as age_category,
-            max(animals.birth_date) as max_birth_date,
-            min(animals.birth_date) as min_birth_date,
-            count(animals.id) filter (where animals.sex = 'M') as male,
-            count(animals.id) filter (where animals.sex = 'F') as female
+                when age(birth_date) < interval '2 months' then '0-2 meses'
+                when age(birth_date) between interval '2 months' and interval '8 months' then '2-8 meses'
+                when age(birth_date) between interval '8 months' and interval '12 months' then '8-12 meses'
+                when age(birth_date) between interval '12 months' and interval '24 months' then '12-24 meses'
+                when age(birth_date) between interval '24 months' and interval '36 months' then '24-36 meses'
+                when age(birth_date) > interval '36 months' then '+36 meses'
+				else 'Sem Data'
+            end as category,
+			count(*) filter (where sex = 'M') as male,
+			count(*) filter (where sex = 'F') as female
         from animals
-        where animals.user_id = $1
-            and animals.deleted_at is null
-            and animals.animal_type not in ('DEAD_ANIMAL', 'SLAUGTHERED_ANIMAL', 'OUTSIDE_ANIMAL')
-		order by animals.birth_date
-		group by age_category
+        where user_id = $1
+            and deleted_at is null
+			and is_outside_animal = false
+			and birth_date is not null
+			and death_date is not null
+		group by category
+		order by min(birth_date) desc
     `
 	return repositoriesUtil.GetList[AnimalsByAge](r.DB, query, userId)
 }
