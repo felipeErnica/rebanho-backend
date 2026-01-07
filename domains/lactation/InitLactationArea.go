@@ -9,6 +9,7 @@ func InitLactationArea(app *app.App) {
 	repository := NewRepository(app.DBconn)
 	handler := LactationHandler{repository}
 
+	app.HandleFunc("GET /lactation/dashboard/long-lactations", handler.GetLongLactations)
 	app.HandleFunc("GET /lactation/dashboard/last-milk", handler.GetLastMilk)
 	app.HandleFunc("GET /lactation/dashboard/last-avg-milk", handler.GetLastAverageMilk)
 	app.HandleFunc("GET /lactation/dashboard/last-lactating", handler.GetLastLactating)
@@ -28,6 +29,8 @@ func InitLactationArea(app *app.App) {
 
 	app.HandleFunc("POST /lactation/lac-hist/page", handler.FindLactationPage)
 	app.HandleFunc("POST /lactation/lac-hist/page/foot", handler.GetLactationPageFoot)
+	app.HandleFunc("POST /lactation/lac-hist/long-lactations/page", handler.FindLongLactationPage)
+	app.HandleFunc("POST /lactation/lac-hist/long-lactations/page/foot", handler.GetLongLactationPageFoot)
 	app.HandleFunc("POST /lactation/lac-hist/dry-animals/page", handler.FindDryAnimalsPage)
 	app.HandleFunc("POST /lactation/lac-hist/dry-animals/page/foot", handler.GetDryAnimalsFoot)
 	app.HandleFunc("POST /lactation/lac-hist/lac-animals/page", handler.FindLacAnimalsPage)

@@ -33,11 +33,12 @@ type Animal struct {
 	UserId               string     `json:"-" db:"user_id"`
 }
 
-type AnimalFooter struct {
-	Total                int     `json:"total" db:"total"`
-	AverageProd          float64 `json:"averageProd" db:"average_prod"`
-	AverageBirthInterval float64 `json:"averageBirthInterval" db:"average_birth_interval"`
-	AveragePeak          float64 `json:"averagePeak" db:"average_peak"`
+type AnimalFoot struct {
+	Total                int      `json:"total" db:"total"`
+	AverageProd          *float64 `json:"averageProd" db:"average_prod"`
+	AverageBirthInterval *float64 `json:"averageBirthInterval" db:"average_birth_interval"`
+	AverageLacInterval   *float64 `json:"averageLacInterval" db:"average_lac_interval"`
+	AveragePeak          *float64 `json:"averagePeak" db:"average_peak"`
 }
 
 type AnimalSave struct {

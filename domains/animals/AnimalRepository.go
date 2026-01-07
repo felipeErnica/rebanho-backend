@@ -535,7 +535,7 @@ func (r *AnimalRepository) FindPage(
 	return repositoriesUtil.GetPage[Animal](r.DB, query, sort, 200, args...)
 }
 
-func (r *AnimalRepository) FindPageFooter(userId string, filter AnimalFilter) (*AnimalFooter, error) {
+func (r *AnimalRepository) FindPageFooter(userId string, filter AnimalFilter) (*AnimalFoot, error) {
 
 	query := `
 		with lac_stats as (
@@ -608,7 +608,264 @@ func (r *AnimalRepository) FindPageFooter(userId string, filter AnimalFilter) (*
 	filterArgs := repositoriesUtil.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 
-	return repositoriesUtil.GetOne[AnimalFooter](r.DB, query, args...)
+	return repositoriesUtil.GetOne[AnimalFoot](r.DB, query, args...)
+}
+
+func (r *AnimalRepository) FindDeadPage(
+	userId string,
+	cursor string,
+	sort string,
+	order string,
+	filter AnimalFilter,
+) (page *entity.Page[Animal], err error) {
+
+	sort = repositoriesUtil.AddCommonFields(sort)
+	sortMap := map[string]repositoriesUtil.SortField{
+		"name":                   {Field: "coalesce(a.name, '')", Order: "asc"},
+		"average_birth_interval": {Field: "coalesce(b.average_birth_interval, 0)", Order: "asc"},
+		"average_lac_interval":   {Field: "coalesce(l.average_lac_interval, 0)", Order: "asc"},
+		"average_prod":           {Field: "coalesce(milk.average_prod, 0)", Order: "asc"},
+		"average_peak":           {Field: "coalesce(l.average_peak, 0)", Order: "asc"},
+		"death_date":             {Field: "coalesce(a.death_date, '-infinity')", Order: "asc"},
+		"weaning_date":           {Field: "coalesce(a.weaning_date, '-infinity')", Order: "asc"},
+		"birth_date":             {Field: "coalesce(a.birth_date, '-infinity')", Order: "desc"},
+		"animal_order":           {Field: "coalesce(nullif(regexp_replace(a.ring_number, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
+		"created_at":             {Field: "a.created_at", Order: "asc"},
+		"id":                     {Field: "a.id", Order: "asc"},
+	}
+
+	query := `
+		with milk_stats as (
+			select
+				l.id as lactation_id,
+				avg(m.quantity) as avg_prod,
+				max(m.quantity) as peak
+			from milk_entries m
+				join lactations l
+					on l.animal_id = m.animal_id
+				   and l.start_date <= m.entry_date
+				   and coalesce(l.end_date, now()) >= m.entry_date
+				   and l.deleted_at is null
+			where m.deleted_at is null
+			group by l.id
+		),
+
+		lac_interval_cte as (
+			select
+				l.animal_id,
+				l.start_date,
+				l.end_date,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+				p.avg_prod,
+				p.peak
+			from lactations l
+				left join milk_stats p on p.lactation_id = l.id
+			where l.user_id = $1 and l.deleted_at is null
+		),
+
+		lac_stats as (
+			select
+				animal_id,
+				avg(lac_interval) as average_lac_interval,
+				avg(avg_prod) as average_prod,
+				avg(peak) as average_peak
+			from lac_interval_cte
+			group by animal_id
+		),
+
+		birth_interval_cte as (
+			select
+				mother_id,
+				extract(days from birth_date - lag(birth_date) over (partition by mother_id order by birth_date)) as birth_interval
+			from animals
+			where user_id = $1
+			  and deleted_at is null
+			  and mother_id is not null
+		),
+
+		birth_stats as (
+			select
+				mother_id,
+				avg(birth_interval) as average_birth_interval
+			from birth_interval_cte
+			group by mother_id
+		)
+
+		select
+			a.id,
+			a.father_id,
+			a.mother_id,
+			coalesce(nullif(regexp_replace(a.ring_number, '[^0-9]', '', 'g'), '')::int, 0) animal_order,
+			a.ring_number,
+			a.name,
+			a.sex,
+			a.birth_date,
+			concat_ws(' - ', f.ring_number, f.name) as father_name,
+			concat_ws(' - ', m.ring_number, m.name) as mother_name,
+			a.weight_birth,
+			a.weaning_date,
+			a.death_date,
+			a.animal_type,
+			l.average_prod,
+			l.average_lac_interval,
+			l.average_peak,
+			b.average_birth_interval,
+			a.observation,
+			a.created_at
+		from animals a
+			left join animals m on m.id = a.mother_id
+			left join animals f on f.id = a.father_id
+			left join birth_stats b on b.mother_id = a.id
+			left join lac_stats l on l.animal_id = a.id
+	`
+
+	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
+	if err != nil {
+		return nil, err
+	}
+
+	filterExpression, nextParam, err := repositoriesUtil.GetFilterExpressions(filter, "a", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	cursorExpression, _, err := repositoriesUtil.GetCursorExpression(sortMap, sort, order, cursor, nextParam)
+	if err != nil {
+		return nil, err
+	}
+
+	mainExpression := `
+		a.is_outside_animal = false 
+			and a.death_date is not null
+			and a.user_id = $1
+			and a.deleted_at is null 
+	`
+	whereExpression := repositoriesUtil.GetWhereExpression(mainExpression, filterExpression, cursorExpression)
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	cursorArgs, err := repositoriesUtil.GetCursorArgs(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	args = append(args, filterArgs...)
+	args = append(args, cursorArgs...)
+	orderExpression := " order by " + sortExpression
+	query += whereExpression + orderExpression
+	return repositoriesUtil.GetPage[Animal](r.DB, query, sort, 200, args...)
+}
+
+func (r *AnimalRepository) GetDeadPageFoot(userId string, filter AnimalFilter) (*AnimalFoot, error) {
+
+	query := `
+		with milk_stats as (
+			select
+				l.id as lactation_id,
+				avg(m.quantity) as avg_prod,
+				max(m.quantity) as peak
+			from milk_entries m
+			join lactations l
+				on l.animal_id = m.animal_id
+			   and l.start_date <= m.entry_date
+			   and coalesce(l.end_date, now()) >= m.entry_date
+			   and l.deleted_at is null
+			where m.deleted_at is null
+			group by l.id
+		),
+
+		lac_interval_cte as (
+			select
+				l.animal_id,
+				l.start_date,
+				l.end_date,
+				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
+				p.peak,
+				p.avg_prod
+			from lactations l
+			join milk_stats p on p.lactation_id = l.id
+			where l.user_id = $1 and l.deleted_at is null
+		),
+
+		lac_stats as (
+			select
+				animal_id,
+				avg(lac_interval) as average_lac_interval,
+				avg(avg_prod) as average_prod,
+				avg(peak) as average_peak
+			from lac_interval_cte
+			group by animal_id
+		),
+
+		birth_interval_cte as (
+			select
+				mother_id,
+				extract(days from birth_date - lag(birth_date) over (partition by mother_id order by birth_date)) as birth_interval
+			from animals
+			where user_id = $1
+			  and deleted_at is null
+			  and mother_id is not null
+		),
+
+		birth_stats as (
+			select
+				mother_id,
+				avg(birth_interval) as average_birth_interval
+			from birth_interval_cte
+			group by mother_id
+		),
+
+		cte as (
+			select
+				a.father_id,
+				a.mother_id,
+				coalesce(nullif(regexp_replace(a.ring_number, '[^0-9]', '', 'g'), '')::int, 0) animal_order,
+				a.ring_number,
+				a.name,
+				a.sex,
+				a.birth_date,
+				a.weight_birth,
+				a.weaning_date,
+				a.death_date,
+				a.animal_type,
+				l.average_prod,
+				l.average_lac_interval,
+				l.average_peak,
+				b.average_birth_interval,
+				a.observation
+			from animals a
+				left join animals m on m.id = a.mother_id
+				left join animals f on f.id = a.father_id
+				left join birth_stats b on b.mother_id = a.id
+				left join lac_stats l on l.animal_id = a.id
+			where a.user_id = $1 
+				and a.is_outside_animal = false
+				and a.death_date is not null
+				and a.deleted_at is null
+		)
+
+		select 
+			count(*) as total,
+			avg(cte.average_prod) as average_prod,
+			avg(cte.average_lac_interval) as average_lac_interval,
+			avg(cte.average_birth_interval) as average_birth_interval,
+			avg(cte.average_peak) as average_peak
+		from cte
+	`
+
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "cte", 2)
+	if err != nil {
+		return nil, err
+	}
+
+	whereExpression := repositoriesUtil.GetWhereExpression(filterExpression)
+	query += whereExpression
+
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetOne[AnimalFoot](r.DB, query, args...)
 }
 
 func (r *AnimalRepository) FindById(id string, userId string) (*Animal, error) {

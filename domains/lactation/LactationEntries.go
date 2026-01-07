@@ -50,13 +50,13 @@ type LactationHist struct {
 	CalfId            *string    `json:"calfId" db:"calf_id"`
 	CalfBirthDate     *time.Time `json:"-" db:"calf_birth_date"`
 	CalfInfo          *string    `json:"calfInfo" db:"calf_info"`
-	StartDate         *time.Time  `json:"startDate" db:"start_date"`
+	StartDate         *time.Time `json:"startDate" db:"start_date"`
 	EndDate           *time.Time `json:"endDate" db:"end_date"`
-	LacPeriod         float64    `json:"lacPeriod" db:"lac_period"`
-	AverageProduction float64    `json:"averageProduction" db:"avg_production"`
-	TotalProduction   float64    `json:"totalProduction" db:"total_production"`
+	LacPeriod         *float64   `json:"lacPeriod" db:"lac_period"`
+	AverageProduction *float64   `json:"averageProduction" db:"avg_production"`
+	TotalProduction   *float64   `json:"totalProduction" db:"total_production"`
 	LacInterval       *int       `json:"lacInterval" db:"lac_interval"`
-	Peak              float64    `json:"peak" db:"peak"`
+	Peak              *float64    `json:"peak" db:"peak"`
 	Observation       *string    `json:"observation" db:"observation"`
 	CreatedAt         time.Time  `json:"-" db:"created_at"`
 	DeletedAt         *time.Time `json:"-" db:"deleted_at"`
@@ -86,12 +86,12 @@ type LactationHistFilter struct {
 }
 
 type LactationHistFoot struct {
-	TotalLacs         int     `json:"totalLacs" db:"total_lacs"`
-	AveragePeriod     float64 `json:"averagePeriod" db:"avg_lac_period"`
-	AverageProduction float64 `json:"averageProduction" db:"avg_production"`
-	AverageTotal      float64 `json:"averageTotal" db:"avg_total_production"`
-	AverageInterval   float64 `json:"averageInterval" db:"avg_lac_interval"`
-	AveragePeak       float64 `json:"averagePeak" db:"avg_peak"`
+	TotalLacs         int      `json:"totalLacs" db:"total_lacs"`
+	AveragePeriod     *float64 `json:"averagePeriod" db:"avg_lac_period"`
+	AverageProduction *float64 `json:"averageProduction" db:"avg_production"`
+	AverageTotal      *float64 `json:"averageTotal" db:"avg_total_production"`
+	AverageInterval   *float64 `json:"averageInterval" db:"avg_lac_interval"`
+	AveragePeak       *float64 `json:"averagePeak" db:"avg_peak"`
 }
 
 type AddLactationStruct struct {

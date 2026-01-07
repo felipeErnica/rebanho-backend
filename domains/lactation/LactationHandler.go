@@ -11,6 +11,21 @@ type LactationHandler struct {
 	Repository *LactationRepository
 }
 
+func (h *LactationHandler) GetLongLactations(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetLongLactations(userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
 func (h *LactationHandler) GetLastMilk(w http.ResponseWriter, r *http.Request) {
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
@@ -275,6 +290,30 @@ func (h *LactationHandler) FindLactationPage(w http.ResponseWriter, r *http.Requ
 	handlersUtil.WriteEntity(w, result)
 }
 
+func (h *LactationHandler) FindLongLactationPage(w http.ResponseWriter, r *http.Request) {
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	cursor := r.URL.Query().Get("cursor")
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
+	if !ok {
+		return
+	}
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindLongLactationPage(filter, sort, order, cursor, userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
 func (h *LactationHandler) FindLacAnimalsPage(w http.ResponseWriter, r *http.Request) {
 	sort := r.URL.Query().Get("sort")
 	order := r.URL.Query().Get("order")
@@ -392,6 +431,26 @@ func (h *LactationHandler) GetLactationPageFoot(w http.ResponseWriter, r *http.R
 	}
 
 	result, err := h.Repository.GetLactationPageFoot(filter, userId)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
+func (h *LactationHandler) GetLongLactationPageFoot(w http.ResponseWriter, r *http.Request) {
+	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
+	if !ok {
+		return
+	}
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetLongLactationPageFoot(filter, userId)
 	if err != nil {
 		apiError.WriteError(err, w)
 		return

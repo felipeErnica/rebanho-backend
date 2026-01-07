@@ -24,6 +24,8 @@ func InitAnimal(app *app.App) {
 
 	app.HandleFunc("POST /animals/info/page/footer", handler.FindPageFooter)
 	app.HandleFunc("POST /animals/info/page", handler.FindPage)
+	app.HandleFunc("POST /animals/info/dead/page", handler.FindDeadPage)
+	app.HandleFunc("POST /animals/info/dead/page/foot", handler.GetDeadPageFoot)
 	app.HandleFunc("GET /animals/info/id/{id}", handler.FindById)
 
 	app.HandleFunc("DELETE /animals/delete/{id}", handler.DeleteAnimal)

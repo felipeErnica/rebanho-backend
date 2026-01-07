@@ -206,6 +206,50 @@ func (h *AnimalHandler) FindPageFooter(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.WriteEntity(w, result)
 }
 
+func (h *AnimalHandler) FindDeadPage(w http.ResponseWriter, r *http.Request) {
+	sort := r.URL.Query().Get("sort")
+	cursor := r.URL.Query().Get("cursor")
+	order := r.URL.Query().Get("order")
+
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{})
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindDeadPage(userId, cursor, sort, order, filter)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
+func (h *AnimalHandler) GetDeadPageFoot(w http.ResponseWriter, r *http.Request) {
+	userId, ok := handlersUtil.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{})
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetDeadPageFoot(userId, filter)
+	if err != nil {
+		apiError.WriteError(err, w)
+		return
+	}
+
+	handlersUtil.WriteEntity(w, result)
+}
+
 func (h *AnimalHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userId, ok := handlersUtil.GetUserId(w, r)
