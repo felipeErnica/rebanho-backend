@@ -13,8 +13,11 @@ type App struct {
 	DBconn      *sqlx.DB
 }
 
-func NewApp() *App {
-	return &App{mux: http.NewServeMux()}
+func NewApp(db *sqlx.DB) *App {
+	return &App{
+		mux:    http.NewServeMux(),
+		DBconn: db,
+	}
 }
 
 func (a *App) CreateMiddlewaresGroup(mids ...middlewares.Middleware) {

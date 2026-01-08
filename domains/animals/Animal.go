@@ -28,6 +28,7 @@ type Animal struct {
 	AverageLacInterval   *float64   `json:"averageLacInterval" db:"average_lac_interval"`
 	AverageBirthInterval *float64   `json:"averageBirthInterval" db:"average_birth_interval"`
 	AveragePeak          *float64   `json:"averagePeak" db:"average_peak"`
+	ChildrenNumber       *int       `json:"childrenNumber" db:"children_number"`
 	Observation          *string    `json:"observation" db:"observation"`
 	CreatedAt            time.Time  `json:"createdAt" db:"created_at"`
 	UserId               string     `json:"-" db:"user_id"`
@@ -86,6 +87,12 @@ type AnimalFilter struct {
 	MaxAveragePeak          *float64   `json:"maxAveragePeak" db:"average_peak"`
 	MinChildrenQuantity     *int       `json:"minChildrenQuantity" db:"children_quantity"`
 	MaxChildrenQuantity     *int       `json:"maxChildrenQuantity" db:"children_quantity"`
+	DeathIsNull             *bool      `json:"isAlive" db:"death_date"`
+	IsBreedingBull          *bool      `json:"isBreedingBull" db:"is_breeding_bull"`
+	IsInsemininationBull    *bool      `json:"isInseminationBull" db:"is_insemination_bull"`
+	IsTransferBull          *bool      `json:"isTransferBull" db:"is_transfer_bull"`
+	IsEmbryoDonor           *bool      `json:"isEmbryoDonor" db:"is_embryo_donor"`
+	IsOutsideAnimal         *bool      `json:"isOutsideAnimal" db:"is_outside_animal"`
 }
 
 type CardEntry struct {
@@ -97,16 +104,6 @@ type CardEntry struct {
 type AnimalsNumberHist struct {
 	EntryDate     time.Time `json:"entryDate" db:"entry_date"`
 	AnimalsNumber int       `json:"animalsNumber" db:"animals_number"`
-}
-
-type DeleteAnimalStruct struct {
-	Id                string `json:"id"`
-	UserId            string `json:"-"`
-	CheckLactation    bool   `json:"checkLactation"`
-	CheckSlaughter    bool   `json:"checkSlaughter"`
-	CheckInsemination bool   `json:"checkInsemination"`
-	CheckBreeding     bool   `json:"checkBreeding"`
-	CheckTransfer     bool   `json:"checkTransfer"`
 }
 
 type TotalBySex struct {

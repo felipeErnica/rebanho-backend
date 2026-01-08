@@ -2,7 +2,6 @@ package repositoriesUtil
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -111,7 +110,7 @@ func AddNewFields(sort string, fields ...string) string {
 
 func GetWhereExpression(expressions ...string) string {
 	validExp := []string{}
-	for _, exp := range(expressions) {
+	for _, exp := range expressions {
 		if exp != "" {
 			validExp = append(validExp, exp)
 		}
@@ -140,9 +139,18 @@ func GetFilterExpressions(filter any, mainTable string, numParam int) (string, i
 		return "", numParam, nil
 	}
 
-	for i := 1; i < filterTypes.NumField(); i++ {
+	for i := range filterTypes.NumField() {
 		field := filterTypes.Field(i)
 		structField := field.Name
+		tagName := field.Tag.Get("db")
+		if tagName == "" {
+			err := fmt.Errorf("O campo de filtro %s não possui a tag 'db'.", structField)
+			return "", numParam, err
+		}
+
+		if structField == "IsFiltered" {
+			continue
+		}
 
 		tableName, ok := field.Tag.Lookup("table")
 		if !ok {
@@ -154,11 +162,12 @@ func GetFilterExpressions(filter any, mainTable string, numParam int) (string, i
 		if !value.IsNil() {
 			fieldValue := value.Elem().Interface()
 			statement, param, err := buildFilterStatement(fieldValue, sqlField, structField, numParam)
+			if err != nil {
+				return "", numParam, err
+			}
+
 			numParam = param
 			buffer.WriteString(statement + " and ")
-			if err != nil {
-				return "", 0, err
-			}
 		}
 	}
 	filterExpression := buffer.String()
@@ -170,38 +179,46 @@ func isFiltered(filter reflect.Value) bool {
 	return filter.FieldByName("IsFiltered").Bool()
 }
 
-func buildFilterStatement(value any, sqlField string, structField string, numParam int) (statement string, newNumParam int, err error) {
+func buildFilterStatement(value any, sqlField string, structField string, numParam int) (string, int, error) {
 	switch t := value.(type) {
 	case string:
-		statement, newNumParam = buildFilterString(sqlField, numParam)
+		statement, newNumParam := buildFilterString(sqlField, numParam)
+		return statement, newNumParam, nil
 	case time.Time:
 		if strings.HasPrefix(structField, "Max") {
-			statement, newNumParam = buildFilterMaxNumberAndDate(sqlField, numParam)
-			break
+			statement, newNumParam := buildFilterMaxNumberAndDate(sqlField, numParam)
+			return statement, newNumParam, nil
 		}
-		statement, newNumParam = buildFilterMinNumberAndDate(sqlField, numParam)
+		statement, newNumParam := buildFilterMinNumberAndDate(sqlField, numParam)
+		return statement, newNumParam, nil
 	case int:
 		if strings.HasPrefix(structField, "Max") {
-			statement, newNumParam = buildFilterMaxNumberAndDate(sqlField, numParam)
-			break
+			statement, newNumParam := buildFilterMaxNumberAndDate(sqlField, numParam)
+			return statement, newNumParam, nil
 		}
-		statement, newNumParam = buildFilterMinNumberAndDate(sqlField, numParam)
+		statement, newNumParam := buildFilterMinNumberAndDate(sqlField, numParam)
+		return statement, newNumParam, nil
 	case float64:
 		if strings.HasPrefix(structField, "Max") {
-			statement, newNumParam = buildFilterMaxNumberAndDate(sqlField, numParam)
-			break
+			statement, newNumParam := buildFilterMaxNumberAndDate(sqlField, numParam)
+			return statement, newNumParam, nil
 		}
-		statement, newNumParam = buildFilterMinNumberAndDate(sqlField, numParam)
+		statement, newNumParam := buildFilterMinNumberAndDate(sqlField, numParam)
+		return statement, newNumParam, nil
 	case []string:
-		statement, newNumParam = GetSliceExpressions(t, sqlField, numParam)
+		statement, newNumParam := GetSliceExpressions(t, sqlField, numParam)
+		return statement, newNumParam, nil
 	case bool:
-		statement, newNumParam = buildFilterBool(sqlField, numParam)
+		if strings.HasSuffix(structField, "IsNull") {
+			statement, newNumParam := buildFilterNull(t, sqlField, numParam)
+			return statement, newNumParam, nil
+		}
+		statement, newNumParam := buildFilterBool(sqlField, numParam)
+		return statement, newNumParam, nil
 	default:
-		errMsg := fmt.Sprintf("Tipo Inválido: %s", structField)
-		err = errors.New(errMsg)
-		return
+		err := fmt.Errorf("Tipo de Filtro Inválido: %s", structField)
+		return "", numParam, err
 	}
-	return statement, newNumParam, err
 }
 
 func buildFilterMinNumberAndDate(field string, numParam int) (string, int) {
@@ -222,6 +239,13 @@ func buildFilterString(field string, numParam int) (string, int) {
 
 func buildFilterBool(field string, numParam int) (string, int) {
 	return fmt.Sprintf("%s = $%d", field, numParam), numParam + 1
+}
+
+func buildFilterNull(isNull bool, field string, numParam int) (string, int) {
+	if isNull {
+		return fmt.Sprintf("%s is null", field), numParam
+	}
+	return fmt.Sprintf("%s is not null", field), numParam
 }
 
 func GetSliceExpressions(array []string, field string, numParam int) (string, int) {

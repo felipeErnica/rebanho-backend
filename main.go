@@ -24,8 +24,7 @@ func main() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 	defer db.Close()
 
-	app := app.NewApp()
-    app.DBconn = db
+	app := app.NewApp(db)
 	app.CreateMiddlewaresGroup(
 		middlewares.CorsMiddleware,
 		middlewares.AuthenticationMiddleware,
