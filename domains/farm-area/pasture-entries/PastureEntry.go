@@ -25,7 +25,6 @@ type PastureTotal struct {
 }
 
 type PastureEntryFilter struct {
-	IsFiltered         bool       `json:"isFiltered" db:"is_filtered"`
 	AnimalRingNumber   *string    `json:"animalRingNumber" db:"ring_number"`
 	AnimalName         *string    `json:"animalName" db:"name"`
 	Fathers            *[]string  `json:"fathers" db:"father_id"`

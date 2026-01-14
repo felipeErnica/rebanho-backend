@@ -22,14 +22,15 @@ func (h *FarmHandler) FindFarmAnimals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, FarmAnimalFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, FarmAnimalFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
 	result, err := h.Repository.FindFarmAnimals(farmId, userId, filter, sort, order, cursor)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 	handlersUtil.WriteEntity(w, result)
@@ -42,19 +43,16 @@ func (h *FarmHandler) FindFarmAnimalsTotal(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, FarmAnimalFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, FarmAnimalFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
 	result, err := h.Repository.FindFarmAnimalsTotal(farmId, userId, filter)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 	handlersUtil.WriteEntity(w, result)
-}
-
-func (h *FarmHandler) SearchFarm(w http.ResponseWriter, r *http.Request) {
-	handlersUtil.ReturnSearchResults(w, r, h.Repository.SearchFarmById, h.Repository.SearchFarm)
 }

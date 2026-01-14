@@ -27,18 +27,99 @@ type ErrorRecordValidations struct {
 	IsBreedingBull     bool `db:"is_breeding_bull"`
 }
 
+type ValidationResult struct {
+	NumberExists     bool `db:"number_exists"`
+	NameExists       bool `db:"name_exists"`
+	DeadNumberExists bool `db:"dead_number_exists"`
+	DeadNameExists   bool `db:"dead_name_exists"`
+}
+
 const DELETE_OBSERVATION = "\n\nOBS.: A exclusão de animais só é recomendada em caso de erros." +
 	"Em caso de morte e/ou abate, faça o registro apropriado." +
 	"Lembre-se, apagar um animal do sistema apagará, PERMANENTEMENTE, todas as informções ligadas a ele."
 
-func validDelete(db *sqlx.DB, id string, userId string) *apiError.APIError {
+func ValidateSave(db *sqlx.DB, entry *AnimalSave) *apiError.APIError {
+	query := `
+		select
+			exists (
+				select 1
+				from animals
+				where ring_number = :ring_number
+					and death_date is null
+					and name is not null
+					and (:id is null or id <> :id)
+					and deleted_at is null
+					and user_id = :user_id
+			) as number_exists,
+			exists (
+				select 1
+				from animals
+				where name = :name
+					and death_date is null
+					and (:id is null or id <> :id)
+					and deleted_at is null
+					and user_id = :user_id
+			) as name_exists,
+			exists (
+				select 1
+				from animals
+				where ring_number = :ring_number
+					and name is not null
+					and death_date is not null
+					and deleted_at is null
+					and (:id is null or id <> :id)
+					and user_id = :user_id
+			) as dead_number_exists,
+			exists (
+				select 1
+				from animals
+				where name = :name
+					and death_date is not null
+					and deleted_at is null
+					and (:id is null or id <> :id)
+					and user_id = :user_id
+			) as dead_name_exists
+	`
 
-	err := throwError(db, id, userId)
+	res, err := repositoriesUtil.NamedGet(db, query, ValidationResult{}, entry)
+	if err != nil {
+		return apiError.InternalServerAPIError(err)
+	}
+
+	if res.NumberExists {
+		return apiError.ConflictAPIError("Já há um animal vivo com este brinco. Altere o brinco antes de continuar!")
+	}
+
+	if res.NameExists {
+		return apiError.ConflictAPIError("Já há um animal vivo com este nome. Altere o nome antes de continuar!")
+	}
+
+	warnings := []string{}
+	if res.DeadNameExists {
+		warnings = append(warnings, "\nHá um animal morto com o mesmo nome.")
+	}
+
+	if res.DeadNumberExists {
+		warnings = append(warnings, "\nHá um animal morto com o mesmo brinco.")
+	}
+
+	if len(warnings) > 0 {
+		warning := strings.Join(warnings, "")
+		msg := fmt.Sprintf("Os seguintes conflitos foram detectados: %s \nDeseja continuar?", warning)
+		return apiError.NewAPIWarning("Informações já existem!", msg, "IgnoreWarning")
+	}
+
+	return nil
+}
+
+func ValidateDelete(db *sqlx.DB, id string, userId string) *apiError.APIError {
+
+	err := checkErrorConditions(db, id, userId)
 	if err != nil {
 		return err
 	}
 
-	err = hasImportantRecords(db, id, userId)
+	err = checkWarningConditions(db, id, userId)
 	if err != nil {
 		return err
 	}
@@ -46,7 +127,7 @@ func validDelete(db *sqlx.DB, id string, userId string) *apiError.APIError {
 	return nil
 }
 
-func throwError(db *sqlx.DB, id string, userId string) *apiError.APIError {
+func checkErrorConditions(db *sqlx.DB, id string, userId string) *apiError.APIError {
 
 	query := `
 		select 
@@ -138,7 +219,7 @@ func throwError(db *sqlx.DB, id string, userId string) *apiError.APIError {
 	return nil
 }
 
-func hasImportantRecords(db *sqlx.DB, id string, userId string) *apiError.APIError {
+func checkWarningConditions(db *sqlx.DB, id string, userId string) *apiError.APIError {
 
 	query := `
 		select 
@@ -227,3 +308,4 @@ func hasImportantRecords(db *sqlx.DB, id string, userId string) *apiError.APIErr
 
 	return nil
 }
+

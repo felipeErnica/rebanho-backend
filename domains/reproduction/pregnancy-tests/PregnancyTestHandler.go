@@ -20,7 +20,7 @@ func (h *TestEntryHandler) GetPregnancyRates(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.GetPregnancyRate(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *TestEntryHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.Repository.GetAnimalsNumber(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *TestEntryHandler) GetBirthRates(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetBirthRate(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *TestEntryHandler) GetTestHist(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetPregnancyTestHist(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *TestEntryHandler) GetLastEntries(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetLastEntries(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (h *TestEntryHandler) GetLastGroups(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetLastGroups(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *TestEntryHandler) GetNextBirths(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetNextBirths(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *TestEntryHandler) GetRankedResults(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -147,8 +147,9 @@ func (h *TestEntryHandler) FindEntriesPage(w http.ResponseWriter, r *http.Reques
 	order := r.URL.Query().Get("order")
 	cursor := r.URL.Query().Get("cursor")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, TestEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, TestEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -159,7 +160,7 @@ func (h *TestEntryHandler) FindEntriesPage(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.FindEntriesPage(filter, sort, order, cursor, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -168,8 +169,9 @@ func (h *TestEntryHandler) FindEntriesPage(w http.ResponseWriter, r *http.Reques
 
 func (h *TestEntryHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, TestEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, TestEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -180,7 +182,7 @@ func (h *TestEntryHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetEntriesFoot(filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -195,7 +197,7 @@ func (h *TestEntryHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindGroups(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -210,7 +212,7 @@ func (h *TestEntryHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Req
 	order := r.URL.Query().Get("order")
 
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -221,7 +223,7 @@ func (h *TestEntryHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.FindEntriesByGroup(sort, order, testDate, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -232,7 +234,7 @@ func (h *TestEntryHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.
 	testDateString := r.PathValue("testDate")
 	testDate, err := time.Parse(time.RFC3339Nano, testDateString)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -243,7 +245,7 @@ func (h *TestEntryHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.
 
 	result, err := h.Repository.GetEntriesByGroupFoot(testDate, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 

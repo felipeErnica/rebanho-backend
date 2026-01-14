@@ -20,7 +20,7 @@ func (h *SlaughterHandler) GetLastAverageWeight(w http.ResponseWriter, r *http.R
 
 	result, err := h.Repository.GetLastAverageWeight(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *SlaughterHandler) GetLastDeadWeight(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.GetLastDeadWeight(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *SlaughterHandler) GetLastPerformance(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.GetLastPerformance(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *SlaughterHandler) GetWeightHist(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetWeightHist(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *SlaughterHandler) GetRateHist(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetRateHist(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (h *SlaughterHandler) GetBestFathers(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetBestFathers(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *SlaughterHandler) GetBestMothers(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetBestMothers(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h *SlaughterHandler) GetBestSlaughterHouses(w http.ResponseWriter, r *http
 
 	result, err := h.Repository.GetBestSlaughterhouses(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -140,7 +140,7 @@ func (h *SlaughterHandler) GetLastEntries(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetLastEntries(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *SlaughterHandler) GetLastGroups(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetLastGroups(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -172,14 +172,15 @@ func (h *SlaughterHandler) FindEntriesPage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, SlaughterEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, SlaughterEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
 	result, err := h.Repository.FindEntriesPage(sort, order, cursor, filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -192,14 +193,15 @@ func (h *SlaughterHandler) GetEntriesPageFoot(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, SlaughterEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, SlaughterEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
 	result, err := h.Repository.GetEntriesPageFoot(filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -215,7 +217,7 @@ func (h *SlaughterHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindGroups(order, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -233,13 +235,13 @@ func (h *SlaughterHandler) FindEntriesByDate(w http.ResponseWriter, r *http.Requ
 	entryDateStr := r.PathValue("entryDate")
 	entryDate, err := time.Parse(time.RFC3339Nano, entryDateStr)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
 	result, err := h.Repository.FindEntriesByDate(sort, order, entryDate, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -255,14 +257,14 @@ func (h *SlaughterHandler) GetEntriesByDateFoot(w http.ResponseWriter, r *http.R
 	entryDateStr := r.PathValue("entryDate")
 	entryDate, err := time.Parse(time.RFC3339Nano, entryDateStr)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
 
 	result, err := h.Repository.GetEntriesByDateFoot(entryDate, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 

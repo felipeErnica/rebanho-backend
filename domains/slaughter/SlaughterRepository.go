@@ -362,7 +362,7 @@ func (r *SlaughterRepository) FindEntriesPage(
 	sort string,
 	order string,
 	cursor string,
-	filter SlaughterEntryFilter,
+	filter *SlaughterEntryFilter,
 	userId string,
 ) (*entity.Page[SlaughterEntry], error) {
 
@@ -449,7 +449,7 @@ func (r *SlaughterRepository) FindEntriesPage(
 	return repositoriesUtil.GetPage[SlaughterEntry](r.DB, query, sort, 200, args...)
 }
 
-func (r *SlaughterRepository) GetEntriesPageFoot(filter SlaughterEntryFilter, userId string) (*SlaughterFoot, error) {
+func (r *SlaughterRepository) GetEntriesPageFoot(filter *SlaughterEntryFilter, userId string) (*SlaughterFoot, error) {
 
 	query := `
 		select 

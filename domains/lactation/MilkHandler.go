@@ -16,8 +16,9 @@ func (h *MilkHandler) FindGroupsPage(w http.ResponseWriter, r *http.Request) {
 	cursor := r.URL.Query().Get("cursor")
 	order := r.URL.Query().Get("order")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationGroupFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationGroupFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -28,7 +29,7 @@ func (h *MilkHandler) FindGroupsPage(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindGroupsPage(filter, order, cursor, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -40,8 +41,9 @@ func (h *MilkHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
 	order := r.URL.Query().Get("order")
 	sort := r.URL.Query().Get("sort")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, MilkEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, MilkEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -52,7 +54,7 @@ func (h *MilkHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindEntriesPage(filter, sort, order, cursor, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -60,8 +62,9 @@ func (h *MilkHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MilkHandler) GetEntriesPageFoot(w http.ResponseWriter, r *http.Request) {
-	filter, ok := handlersUtil.DecodeFilter(w, r, MilkEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, MilkEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -72,7 +75,7 @@ func (h *MilkHandler) GetEntriesPageFoot(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetEntriesPageFoot(filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -83,7 +86,7 @@ func (h *MilkHandler) GetGroupEntries(w http.ResponseWriter, r *http.Request) {
 	entryDateVar := r.PathValue("entryDate")
 	entryDate, err := time.Parse(time.RFC3339Nano, entryDateVar)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -94,7 +97,7 @@ func (h *MilkHandler) GetGroupEntries(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetGroupEntries(userId, entryDate)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -112,7 +115,7 @@ func (h *MilkHandler) GetGroupEntriesFoot(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetGroupEntriesFoot(userId, entryDate)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -123,7 +126,7 @@ func (h *MilkHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	entryDateVar := r.PathValue("entryDate")
 	entryDate, parseErr := time.Parse(time.RFC3339Nano, entryDateVar)
 	if parseErr != nil {
-		apiError.WriteError(parseErr, w)
+		apiError.WriteError(w, parseErr)
 		return
 	}
 
@@ -151,7 +154,7 @@ func (h *MilkHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 	entryDateVar := r.PathValue("entryDate")
 	entryDate, parseErr := time.Parse(time.RFC3339Nano, entryDateVar)
 	if parseErr != nil {
-		apiError.WriteError(parseErr, w)
+		apiError.WriteError(w, parseErr)
 		return
 	}
 

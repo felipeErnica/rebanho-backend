@@ -1,42 +1,45 @@
 package pasture
 
 import (
-	"fmt"
-
 	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
 
 type PastureRepository struct {
-	Db *sqlx.DB
+	DB *sqlx.DB
 }
 
 func NewRepository(db *sqlx.DB) *PastureRepository {
 	return &PastureRepository{db}
 }
 
-func (r *PastureRepository) SearchPasture(userId string, farmsId []string) (*[]entity.SearchEntity, error) {
-	args := []any{userId}
-
-	arrayStatement := ""
-	if len(farmsId) != 0 {
-		args = repositoriesUtil.GetSliceArgs(farmsId, args)
-		farmExpression, _ := repositoriesUtil.GetSliceExpressions(farmsId, "farm_id", 3)
-		arrayStatement = " and " + farmExpression
+func (r *PastureRepository) SearchPasture(filter *PastureFilter, userId string) (*[]Pasture, error) {
+	query := `
+        select 
+			id, 
+			name,
+			farm_id,
+			bull_id,
+			f.name as farm_name,
+			concat_ws(' - ', b.ring_number, b.name) as bull_name
+        from pastures p
+			join farms f on f.id = p.farm_id
+			left join animals b on b.id = p.bull_id 
+    `
+	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "p", 2)
+	if err != nil {
+		return nil, err
 	}
 
-	query := fmt.Sprintf(`
-        select id, name as label 
-        from pastures 
-        where 
-            user_id = $1 
-            %s
-            and deleted_at is null
-        order by label
-    `, arrayStatement)
+	whereExpression := repositoriesUtil.GetWhereExpression("p.user_id = $1 and p.deleted_at is null", filterExpression)
+	query += whereExpression + " order by p.name"
 
-	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, args...)
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	return repositoriesUtil.GetList[Pasture](r.DB, query, args...)
 }
 
 func (r *PastureRepository) SearchAllPastures(userId string) (*[]entity.SearchEntity, error) {
@@ -51,7 +54,7 @@ func (r *PastureRepository) SearchAllPastures(userId string) (*[]entity.SearchEn
         order by label
     `
 
-	return repositoriesUtil.GetList[entity.SearchEntity](r.Db, query, userId)
+	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
 }
 
 func (r *PastureRepository) FindAnimalsByPasture(
@@ -97,5 +100,5 @@ func (r *PastureRepository) FindAnimalsByPasture(
 	orderExpression := " order by " + expression
 	query = query + orderExpression
 
-	return repositoriesUtil.GetList[PastureAnimal](r.Db, query, pastureId, userId)
+	return repositoriesUtil.GetList[PastureAnimal](r.DB, query, pastureId, userId)
 }

@@ -619,7 +619,7 @@ func (r *InseminationRepository) GetLastEntries(userId string) (*LastEntry, erro
 
 func (r *InseminationRepository) FindEntriesPage(
 	userId string,
-	filter InseminationEntryFilter,
+	filter *InseminationEntryFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -755,7 +755,7 @@ func (r *InseminationRepository) FindEntriesPage(
 
 func (r *InseminationRepository) GetEntriesFoot(
 	userId string,
-	filter InseminationEntryFilter,
+	filter *InseminationEntryFilter,
 ) (*InseminationFooter, error) {
 
 	statusQuery := `

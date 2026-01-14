@@ -18,8 +18,8 @@ func InitWeight(app *app.App) {
 	app.HandleFunc("GET /weight/dashboard/best-fathers", handler.GetBestFathers)
 	app.HandleFunc("GET /weight/dashboard/best-mothers", handler.GetBestMothers)
 
-	app.HandleFunc("POST /weight/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("POST /weight/entries/page/foot", handler.GetEntriesFoot)
+	app.HandleFunc("GET /weight/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("GET /weight/entries/page/foot", handler.GetEntriesFoot)
 	app.HandleFunc("GET /weight/groups/page", handler.FindGroups)
 	app.HandleFunc("GET /weight/groups/{entryDate}/entries", handler.FindEntriesByDate)
 	app.HandleFunc("GET /weight/groups/{entryDate}/entries/foot", handler.GetEntriesByDateFoot)

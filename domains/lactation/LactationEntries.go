@@ -18,7 +18,6 @@ type MilkEntry struct {
 }
 
 type MilkEntryFilter struct {
-	IsFiltered   bool       `json:"isFiltered" db:"is_filtered"`
 	Animals      *[]string  `json:"animals" db:"animal_id"`
 	Pastures     *[]string  `json:"pastures" db:"pasture_id" table:"pe"`
 	MinEntryDate *time.Time `json:"minEntryDate" db:"entry_date"`
@@ -56,7 +55,7 @@ type LactationHist struct {
 	AverageProduction *float64   `json:"averageProduction" db:"avg_production"`
 	TotalProduction   *float64   `json:"totalProduction" db:"total_production"`
 	LacInterval       *int       `json:"lacInterval" db:"lac_interval"`
-	Peak              *float64    `json:"peak" db:"peak"`
+	Peak              *float64   `json:"peak" db:"peak"`
 	Observation       *string    `json:"observation" db:"observation"`
 	CreatedAt         time.Time  `json:"-" db:"created_at"`
 	DeletedAt         *time.Time `json:"-" db:"deleted_at"`
@@ -64,8 +63,9 @@ type LactationHist struct {
 }
 
 type LactationHistFilter struct {
-	IsFiltered           bool       `json:"isFiltered"`
-	Animals              *[]string  `json:"animals" db:"animal_id"`
+	Animals              *bool      `json:"animals" db:"animal_id"`
+	HasEndDate           *bool      `json:"hasEndDate" db:"end_date"`
+	HasCalf              *bool      `json:"hasCalf" db:"calf_id"`
 	MinCalfBirthDate     *time.Time `json:"minCalfBirthDate" db:"calf_birth_date"`
 	MaxCalfBirthDate     *time.Time `json:"maxCalfBirthDate" db:"calf_birth_date"`
 	MinStartDate         *time.Time `json:"minStartDate" db:"start_date"`
@@ -148,7 +148,6 @@ type LactationGroupSave struct {
 }
 
 type LactationGroupFilter struct {
-	IsFiltered   bool       `json:"isFiltered" db:"is_filtered"`
 	MinEntryDate *time.Time `json:"minEntryDate" db:"entry_date"`
 	MaxEntryDate *time.Time `json:"maxEntryDate" db:"entry_date"`
 }

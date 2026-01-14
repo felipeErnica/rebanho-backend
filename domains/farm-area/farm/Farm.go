@@ -38,7 +38,6 @@ type FarmAnimal struct {
 }
 
 type FarmAnimalFilter struct {
-	IsFiltered   bool       `json:"isFiltered"`
 	Name         *string    `json:"name" db:"name"`
 	Number       *string    `json:"ringNumber" db:"ring_number"`
 	Sex          *string    `json:"sex" db:"sex"`

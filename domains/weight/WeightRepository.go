@@ -346,7 +346,7 @@ func (r *WeightRepository) FindEntriesPage(
 	sort string,
 	order string,
 	cursor string,
-	filter WeightFilter,
+	filter *WeightFilter,
 	userId string,
 ) (*entity.Page[WeightEntry], error) {
 
@@ -441,7 +441,7 @@ func (r *WeightRepository) FindEntriesPage(
 	return repositoriesUtil.GetPage[WeightEntry](r.DB, query, sort, 200, args...)
 }
 
-func (r *WeightRepository) GetEntriesPageFoot(filter WeightFilter, userId string) (*WeightFoot, error) {
+func (r *WeightRepository) GetEntriesPageFoot(filter *WeightFilter, userId string) (*WeightFoot, error) {
 	query := `
 		select
 			w.animal_id,

@@ -20,8 +20,8 @@ func InitSlaughter(app *app.App) {
 	app.HandleFunc("GET /slaughter/dashboard/last-entries", handler.GetLastEntries)
 	app.HandleFunc("GET /slaughter/dashboard/last-groups", handler.GetLastGroups)
 
-	app.HandleFunc("POST /slaughter/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("POST /slaughter/entries/page/foot", handler.GetEntriesPageFoot)
+	app.HandleFunc("GET /slaughter/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("GET /slaughter/entries/page/foot", handler.GetEntriesPageFoot)
 	app.HandleFunc("DELETE /slaughter/entries/{id}/delete", handler.Delete)
 	app.HandleFunc("PUT /slaughter/entries/update", handler.Update)
 	app.HandleFunc("PUT /slaughter/entries/add", handler.Add)
@@ -47,8 +47,8 @@ func InitButcher(app *app.App) {
 	app.HandleFunc("GET /slaughter/butchers/find-all", handler.FindAll)
 	app.HandleFunc("GET /slaughter/butchers/{id}", handler.FindById)
 
-	app.HandleFunc("POST /slaughter/butchers/{id}/entries/page", handler.FindPage)
-	app.HandleFunc("POST /slaughter/butchers/{id}/entries/page/foot", handler.FindPageFoot)
+	app.HandleFunc("GET /slaughter/butchers/{id}/entries/page", handler.FindPage)
+	app.HandleFunc("GET /slaughter/butchers/{id}/entries/page/foot", handler.FindPageFoot)
 
 	util.LogDomainsInit("Frigoríficos")
 }

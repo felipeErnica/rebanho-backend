@@ -125,7 +125,12 @@ func GetWhereExpression(expressions ...string) string {
 	return whereExpression
 }
 
-func GetFilterExpressions(filter any, mainTable string, numParam int) (string, int, error) {
+func GetFilterExpressions[F any](filter *F, mainTable string, numParam int) (string, int, error) {
+
+	if filter == nil {
+		return "", numParam, nil
+	}
+
 	var buffer bytes.Buffer
 
 	filterTypes := reflect.TypeOf(filter)
@@ -135,21 +140,17 @@ func GetFilterExpressions(filter any, mainTable string, numParam int) (string, i
 		filterTypes = filterTypes.Elem()
 	}
 
-	if !isFiltered(filterValues) {
-		return "", numParam, nil
-	}
-
 	for i := range filterTypes.NumField() {
 		field := filterTypes.Field(i)
 		structField := field.Name
+		if structField == "IsFiltered" {
+			continue
+		}
+
 		tagName := field.Tag.Get("db")
 		if tagName == "" {
 			err := fmt.Errorf("O campo de filtro %s não possui a tag 'db'.", structField)
 			return "", numParam, err
-		}
-
-		if structField == "IsFiltered" {
-			continue
 		}
 
 		tableName, ok := field.Tag.Lookup("table")
@@ -157,9 +158,9 @@ func GetFilterExpressions(filter any, mainTable string, numParam int) (string, i
 			tableName = mainTable
 		}
 
-		sqlField := fmt.Sprintf("%s.%s", tableName, field.Tag.Get("db"))
 		value := filterValues.Field(i)
 		if !value.IsNil() {
+			sqlField := fmt.Sprintf("%s.%s", tableName, field.Tag.Get("db"))
 			fieldValue := value.Elem().Interface()
 			statement, param, err := buildFilterStatement(fieldValue, sqlField, structField, numParam)
 			if err != nil {
@@ -170,13 +171,14 @@ func GetFilterExpressions(filter any, mainTable string, numParam int) (string, i
 			buffer.WriteString(statement + " and ")
 		}
 	}
+
 	filterExpression := buffer.String()
+	if filterExpression == "" {
+		return filterExpression, numParam, nil
+	}
+
 	filterExpression = strings.TrimSuffix(filterExpression, " and ")
 	return filterExpression, numParam, nil
-}
-
-func isFiltered(filter reflect.Value) bool {
-	return filter.FieldByName("IsFiltered").Bool()
 }
 
 func buildFilterStatement(value any, sqlField string, structField string, numParam int) (string, int, error) {
@@ -209,7 +211,7 @@ func buildFilterStatement(value any, sqlField string, structField string, numPar
 		statement, newNumParam := GetSliceExpressions(t, sqlField, numParam)
 		return statement, newNumParam, nil
 	case bool:
-		if strings.HasSuffix(structField, "IsNull") {
+		if strings.HasPrefix(structField, "Has") {
 			statement, newNumParam := buildFilterNull(t, sqlField, numParam)
 			return statement, newNumParam, nil
 		}
@@ -241,11 +243,11 @@ func buildFilterBool(field string, numParam int) (string, int) {
 	return fmt.Sprintf("%s = $%d", field, numParam), numParam + 1
 }
 
-func buildFilterNull(isNull bool, field string, numParam int) (string, int) {
-	if isNull {
-		return fmt.Sprintf("%s is null", field), numParam
+func buildFilterNull(hasField bool, field string, numParam int) (string, int) {
+	if hasField {
+		return fmt.Sprintf("%s is not null", field), numParam
 	}
-	return fmt.Sprintf("%s is not null", field), numParam
+	return fmt.Sprintf("%s is null", field), numParam
 }
 
 func GetSliceExpressions(array []string, field string, numParam int) (string, int) {

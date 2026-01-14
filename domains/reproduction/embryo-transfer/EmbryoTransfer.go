@@ -33,7 +33,6 @@ type EmbryoTransferSave struct {
 }
 
 type TransferEntryFilter struct {
-	IsFiltered          bool       `json:"isFiltered"`
 	Animals             *[]string  `json:"animals" db:"animal_id"`
 	Bulls               *[]string  `json:"bulls" db:"bull_id"`
 	MinInseminationDate *time.Time `json:"minMatingDate" db:"transfer_date"`

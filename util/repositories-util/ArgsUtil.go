@@ -54,7 +54,12 @@ func verifyDate(arg string) (any, error) {
 }
 
 /*Constrói e organiza os valores do filtro*/
-func GetFilterArgs(filter any) []any {
+func GetFilterArgs[F any](filter *F) []any {
+
+	if filter == nil {
+		return nil
+	}
+
 	values := reflect.ValueOf(filter)
 	fields := reflect.TypeOf(filter)
 	if values.Kind() == reflect.Pointer {
@@ -63,9 +68,15 @@ func GetFilterArgs(filter any) []any {
 	}
 
 	args := []any{}
-	for i := 1; i < values.NumField(); i++ {
+	for i := range fields.NumField() {
 		fieldValue := values.Field(i)
 		fieldType := fields.Field(i)
+		fieldName := fieldType.Name
+		
+		if fieldName == "IsFiltered" || strings.HasPrefix(fieldName, "Has") {
+			continue
+		}
+
 		if !fieldValue.IsNil() {
 			value := fieldValue.Elem().Interface()
 			if fieldValue.Elem().Type().String() == "string" && !strings.HasSuffix(fieldType.Name, "Id") {

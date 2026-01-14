@@ -925,7 +925,7 @@ func (r *LactationRepository) GetLastGroups(userId string) (*[]LactationGroup, e
 }
 
 func (r *LactationRepository) FindLactationPage(
-	filter LactationHistFilter,
+	filter *LactationHistFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -972,7 +972,7 @@ func (r *LactationRepository) FindLactationPage(
 				concat_ws(' - ', a.ring_number, a.name) as animal_name,
 				coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0) as animal_order,
 				l.calf_id,
-				c.birth_date calf_birth_date,
+				c.birth_date as calf_birth_date,
 				case
 					when l.calf_id is null then 'Sem Bezerro'
 					when c.name is not null then format(
@@ -984,9 +984,9 @@ func (r *LactationRepository) FindLactationPage(
 				end as calf_info,
 				l.start_date,
 				l.end_date,
-				s.avg_prod avg_production,
-				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) lac_period,
-				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * s.avg_prod total_production,
+				s.avg_prod as avg_production,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) as lac_period,
+				coalesce(extract(days from coalesce(l.end_date, s.max_date) - l.start_date) + 1, 0) * s.avg_prod as total_production,
 				extract(days from l.start_date - lag(l.end_date) over (partition by l.animal_id order by l.start_date)) as lac_interval,
 				s.peak,
 				l.observation,
@@ -1033,7 +1033,7 @@ func (r *LactationRepository) FindLactationPage(
 }
 
 func (r *LactationRepository) FindLongLactationPage(
-	filter LactationHistFilter,
+	filter *LactationHistFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -1166,7 +1166,7 @@ func (r *LactationRepository) FindLongLactationPage(
 	return repositoriesUtil.GetPage[LactationHist](r.DB, query, sort, 100, args...)
 }
 
-func (r *LactationRepository) GetLongLactationPageFoot(filter LactationHistFilter, userId string) (*LactationHistFoot, error) {
+func (r *LactationRepository) GetLongLactationPageFoot(filter *LactationHistFilter, userId string) (*LactationHistFoot, error) {
 
 	lacQuery := "select * from cte"
 
@@ -1317,7 +1317,7 @@ func (r *LactationRepository) FindById(id string, userId string) (*LactationHist
 	return repositoriesUtil.GetOne[LactationHist](r.DB, query, id, userId)
 }
 
-func (r *LactationRepository) GetLactationPageFoot(filter LactationHistFilter, userId string) (*LactationHistFoot, error) {
+func (r *LactationRepository) GetLactationPageFoot(filter *LactationHistFilter, userId string) (*LactationHistFoot, error) {
 
 	lacQuery := "select * from cte"
 
@@ -1353,6 +1353,7 @@ func (r *LactationRepository) GetLactationPageFoot(filter LactationHistFilter, u
 		cte as (
 			select
 				l.animal_id,
+				l.calf_id,
 				c.birth_date calf_birth_date,
 				l.start_date,
 				l.end_date,
@@ -1468,7 +1469,7 @@ func (r *LactationRepository) SearchDryAnimals(userId string) (*[]entity.SearchE
 }
 
 func (r *LactationRepository) FindLacAnimalsPage(
-	filter LactationHistFilter,
+	filter *LactationHistFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -1589,7 +1590,7 @@ func (r *LactationRepository) FindLacAnimalsPage(
 	return repositoriesUtil.GetPage[LactationHist](r.DB, query, sort, 100, args...)
 }
 
-func (r *LactationRepository) GetLacAnimalsFoot(filter LactationHistFilter, userId string) (*LactationHistFoot, error) {
+func (r *LactationRepository) GetLacAnimalsFoot(filter *LactationHistFilter, userId string) (*LactationHistFoot, error) {
 	query := `
         with lac_stats as (
             select
@@ -1683,7 +1684,7 @@ func (r *LactationRepository) GetLacAnimalsFoot(filter LactationHistFilter, user
 }
 
 func (r *LactationRepository) FindDryAnimalsPage(
-	filter LactationHistFilter,
+	filter *LactationHistFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -1815,7 +1816,7 @@ func (r *LactationRepository) FindDryAnimalsPage(
 	return repositoriesUtil.GetPage[LactationHist](r.DB, query, sort, 100, args...)
 }
 
-func (r *LactationRepository) GetDryAnimalsFoot(filter LactationHistFilter, userId string) (*LactationHistFoot, error) {
+func (r *LactationRepository) GetDryAnimalsFoot(filter *LactationHistFilter, userId string) (*LactationHistFoot, error) {
 	query := `
         with lac_stats as (
             select

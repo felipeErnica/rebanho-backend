@@ -19,7 +19,7 @@ func (h *LactationHandler) GetLongLactations(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.GetLongLactations(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -34,7 +34,7 @@ func (h *LactationHandler) GetLastMilk(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetLastMilk(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -49,7 +49,7 @@ func (h *LactationHandler) GetLastAverageMilk(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.GetLastAverageMilk(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *LactationHandler) GetLastLactating(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.Repository.GetLastLactating(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (h *LactationHandler) GetLastDry(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetLastDry(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -94,7 +94,7 @@ func (h *LactationHandler) GetDairyTypes(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetDairyTypes(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -109,7 +109,7 @@ func (h *LactationHandler) GetMilkProduction(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.GetMilkProduction(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -124,7 +124,7 @@ func (h *LactationHandler) GetYearMilkProduction(w http.ResponseWriter, r *http.
 
 	result, err := h.Repository.GetYearMilk(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -139,7 +139,7 @@ func (h *LactationHandler) GetYearAverageMilk(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.GetYearAverageMilk(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -154,7 +154,7 @@ func (h *LactationHandler) GetBestAnimals(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetBestAnimals(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -169,7 +169,7 @@ func (h *LactationHandler) GetWorstAnimals(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetWorstAnimals(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *LactationHandler) GetBestMothers(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetBestMothers(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -199,7 +199,7 @@ func (h *LactationHandler) GetWorstMothers(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetWorstMothers(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -214,7 +214,7 @@ func (h *LactationHandler) GetBestFathers(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetBestFathers(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -229,7 +229,7 @@ func (h *LactationHandler) GetWorstFathers(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetWorstFathers(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -244,7 +244,7 @@ func (h *LactationHandler) GetLastEntries(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetLastEntries(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -259,7 +259,7 @@ func (h *LactationHandler) GetLastGroups(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.Repository.GetLastGroups(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -271,8 +271,9 @@ func (h *LactationHandler) FindLactationPage(w http.ResponseWriter, r *http.Requ
 	order := r.URL.Query().Get("order")
 	cursor := r.URL.Query().Get("cursor")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -283,7 +284,7 @@ func (h *LactationHandler) FindLactationPage(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.FindLactationPage(filter, sort, order, cursor, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -295,8 +296,9 @@ func (h *LactationHandler) FindLongLactationPage(w http.ResponseWriter, r *http.
 	order := r.URL.Query().Get("order")
 	cursor := r.URL.Query().Get("cursor")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -307,7 +309,7 @@ func (h *LactationHandler) FindLongLactationPage(w http.ResponseWriter, r *http.
 
 	result, err := h.Repository.FindLongLactationPage(filter, sort, order, cursor, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -319,8 +321,9 @@ func (h *LactationHandler) FindLacAnimalsPage(w http.ResponseWriter, r *http.Req
 	order := r.URL.Query().Get("order")
 	cursor := r.URL.Query().Get("cursor")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -331,7 +334,7 @@ func (h *LactationHandler) FindLacAnimalsPage(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.FindLacAnimalsPage(filter, sort, order, cursor, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -339,8 +342,9 @@ func (h *LactationHandler) FindLacAnimalsPage(w http.ResponseWriter, r *http.Req
 }
 
 func (h *LactationHandler) GetLacAnimalsFoot(w http.ResponseWriter, r *http.Request) {
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -351,7 +355,7 @@ func (h *LactationHandler) GetLacAnimalsFoot(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.GetLacAnimalsFoot(filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -363,8 +367,9 @@ func (h *LactationHandler) FindDryAnimalsPage(w http.ResponseWriter, r *http.Req
 	order := r.URL.Query().Get("order")
 	cursor := r.URL.Query().Get("cursor")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -375,7 +380,7 @@ func (h *LactationHandler) FindDryAnimalsPage(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.FindDryAnimalsPage(filter, sort, order, cursor, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -383,8 +388,9 @@ func (h *LactationHandler) FindDryAnimalsPage(w http.ResponseWriter, r *http.Req
 }
 
 func (h *LactationHandler) GetDryAnimalsFoot(w http.ResponseWriter, r *http.Request) {
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -395,7 +401,7 @@ func (h *LactationHandler) GetDryAnimalsFoot(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.GetDryAnimalsFoot(filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -412,7 +418,7 @@ func (h *LactationHandler) FindById(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindById(lacId, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -420,8 +426,9 @@ func (h *LactationHandler) FindById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LactationHandler) GetLactationPageFoot(w http.ResponseWriter, r *http.Request) {
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -432,7 +439,7 @@ func (h *LactationHandler) GetLactationPageFoot(w http.ResponseWriter, r *http.R
 
 	result, err := h.Repository.GetLactationPageFoot(filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -440,8 +447,9 @@ func (h *LactationHandler) GetLactationPageFoot(w http.ResponseWriter, r *http.R
 }
 
 func (h *LactationHandler) GetLongLactationPageFoot(w http.ResponseWriter, r *http.Request) {
-	filter, ok := handlersUtil.DecodeFilter(w, r, LactationHistFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -452,7 +460,7 @@ func (h *LactationHandler) GetLongLactationPageFoot(w http.ResponseWriter, r *ht
 
 	result, err := h.Repository.GetLongLactationPageFoot(filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -463,7 +471,7 @@ func (h *LactationHandler) GetLactationEntries(w http.ResponseWriter, r *http.Re
 	lacId := r.PathValue("id")
 	result, err := h.Repository.GetLactationEntries(lacId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -474,7 +482,7 @@ func (h *LactationHandler) GetLactationEntriesFoot(w http.ResponseWriter, r *htt
 	lacId := r.PathValue("id")
 	result, err := h.Repository.GetLactationEntriesFoot(lacId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -489,7 +497,7 @@ func (h *LactationHandler) SearchLactatingAnimals(w http.ResponseWriter, r *http
 
 	result, err := h.Repository.SearchLactatingAnimals(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -504,7 +512,7 @@ func (h *LactationHandler) SearchDryAnimals(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.Repository.SearchDryAnimals(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -519,7 +527,7 @@ func (h *LactationHandler) SearchNewLactationCalf(w http.ResponseWriter, r *http
 
 	result, err := h.Repository.SearchNewLactationCalf(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -534,7 +542,7 @@ func (h *LactationHandler) SearchLactationCalf(w http.ResponseWriter, r *http.Re
 
 	result, err := h.Repository.SearchLactationCalf(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 

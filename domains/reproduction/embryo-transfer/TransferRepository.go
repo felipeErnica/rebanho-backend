@@ -650,7 +650,7 @@ func (r *TransferRepository) GetLastEntries(userId string) (*LastEntry, error) {
 
 func (r *TransferRepository) FindEntriesPage(
 	userId string,
-	filter TransferEntryFilter,
+	filter *TransferEntryFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -778,7 +778,7 @@ func (r *TransferRepository) FindEntriesPage(
 
 func (r *TransferRepository) GetEntriesFoot(
 	userId string,
-	filter TransferEntryFilter,
+	filter *TransferEntryFilter,
 ) (*TransferFoot, error) {
 
 	statusQuery := `

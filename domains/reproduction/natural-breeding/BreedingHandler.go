@@ -20,7 +20,7 @@ func (h *BreedingHandler) GetBirthRateStats(w http.ResponseWriter, r *http.Reque
 
 	result, err := h.Repository.GetBirthRateStats(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *BreedingHandler) GetPregnancyRateStats(w http.ResponseWriter, r *http.R
 
 	result, err := h.Repository.GetPregnancyRateStats(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *BreedingHandler) GetInseminationHist(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.GetBreedingStats(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *BreedingHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.Repository.GetAnimalsNumber(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (h *BreedingHandler) GetFutureBirths(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.GetFutureBirths(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (h *BreedingHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.Repository.GetLastGroups(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h *BreedingHandler) GetBestBull(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.GetBestBull(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -137,8 +137,9 @@ func (h *BreedingHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request
 	sort := r.URL.Query().Get("sort")
 	order := r.URL.Query().Get("order")
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, BreedingEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, BreedingEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -149,7 +150,7 @@ func (h *BreedingHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request
 
 	result, err := h.Repository.FindEntriesPage(userId, filter, sort, order, cursor)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -161,7 +162,7 @@ func (h *BreedingHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Requ
 
 	breedingDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -172,7 +173,7 @@ func (h *BreedingHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Requ
 
 	result, err := h.Repository.FindEntriesByGroup(userId, breedingDate)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -187,7 +188,7 @@ func (h *BreedingHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindGroups(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -199,7 +200,7 @@ func (h *BreedingHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.R
 
 	breedingDate, err := time.Parse(time.RFC3339Nano, queryDate)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -210,7 +211,7 @@ func (h *BreedingHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.R
 
 	result, err := h.Repository.GetEntriesByGroupFoot(userId, breedingDate)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -222,13 +223,14 @@ func (h *BreedingHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-    filter, ok := handlersUtil.DecodeFilter(w, r, BreedingEntryFilter{}); if !ok {
+    filter, err := handlersUtil.DecodeFilter(r, BreedingEntryFilter{}); if err != nil {
+		apiError.WriteError(w, err)
         return
     }
 
 	result, err := h.Repository.GetEntriesFoot(userId, filter)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -243,7 +245,7 @@ func (h *BreedingHandler) SearchBreedingBulls(w http.ResponseWriter, r *http.Req
 
 	result, err := h.Repository.SearchBreedingBulls(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -258,7 +260,7 @@ func (h *BreedingHandler) SearchNonBreedingBulls(w http.ResponseWriter, r *http.
 
 	result, err := h.Repository.SearchNonBreedingBulls(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -416,7 +418,7 @@ func (h *BreedingHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
 	queryDate := r.PathValue("breedingDate")
 	breedingDate, parseErr := time.Parse(time.RFC3339Nano, queryDate)
 	if parseErr != nil {
-		apiError.WriteError(parseErr, w)
+		apiError.WriteError(w, parseErr)
 		return
 	}
 
@@ -444,7 +446,7 @@ func (h *BreedingHandler) DeleteBatch(w http.ResponseWriter, r *http.Request) {
 	queryDate := r.PathValue("breedingDate")
 	breedingDate, parseErr := time.Parse(time.RFC3339Nano, queryDate)
 	if parseErr != nil {
-		apiError.WriteError(parseErr, w)
+		apiError.WriteError(w, parseErr)
 		return
 	}
 

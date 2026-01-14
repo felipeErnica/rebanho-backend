@@ -524,7 +524,7 @@ func (r *BirthRepository) FindPage(
 	userId string,
 	sort string,
 	order string,
-	filter BirthEntryFilter,
+	filter *BirthEntryFilter,
 	cursor string,
 ) (*entity.Page[BirthEntry], error) {
 
@@ -593,7 +593,7 @@ func (r *BirthRepository) FindPage(
 	return repositoriesUtil.GetPage[BirthEntry](r.DB, query, sort, 100, args...)
 }
 
-func (r *BirthRepository) FindPageFooter(userId string, filter BirthEntryFilter) (*BirthFooter, error) {
+func (r *BirthRepository) FindPageFooter(userId string, filter *BirthEntryFilter) (*BirthFooter, error) {
 
 	animalQuery := `
 		select

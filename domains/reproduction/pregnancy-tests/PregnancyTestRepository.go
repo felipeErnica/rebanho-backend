@@ -488,7 +488,7 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
 }
 
 func (r *TestEntryRepository) FindEntriesPage(
-	filter TestEntryFilter,
+	filter *TestEntryFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -581,7 +581,7 @@ func (r *TestEntryRepository) FindEntriesPage(
 	return repositoriesUtil.GetPage[TestEntry](r.DB, query, sort, 100, args...)
 }
 
-func (r *TestEntryRepository) GetEntriesFoot(filter TestEntryFilter, userId string) (*TestEntryFoot, error) {
+func (r *TestEntryRepository) GetEntriesFoot(filter *TestEntryFilter, userId string) (*TestEntryFoot, error) {
 
 	countQuery := `
 		with cte as (

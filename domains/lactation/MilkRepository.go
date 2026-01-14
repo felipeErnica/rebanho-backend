@@ -18,7 +18,7 @@ func NewMilkRepository(db *sqlx.DB) *MilkRepository {
 }
 
 func (r *MilkRepository) FindGroupsPage(
-	filter LactationGroupFilter,
+	filter *LactationGroupFilter,
 	order string,
 	cursor string,
 	userId string,
@@ -81,7 +81,7 @@ func (r *MilkRepository) FindGroupsPage(
 }
 
 func (r *MilkRepository) FindEntriesPage(
-	filter MilkEntryFilter,
+	filter *MilkEntryFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -135,15 +135,8 @@ func (r *MilkRepository) FindEntriesPage(
 		return nil, err
 	}
 
-	if filterExpression != "" {
-		whereExpression += " and " + filterExpression
-	}
-
-	if cursorExpression != "" {
-		whereExpression += " and " + cursorExpression
-	}
-
-	query = query + whereExpression
+	whereExpression = repositoriesUtil.GetWhereExpression(whereExpression, filterExpression, cursorExpression)
+	query += whereExpression
 
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
@@ -158,7 +151,7 @@ func (r *MilkRepository) FindEntriesPage(
 	return repositoriesUtil.GetPage[MilkEntry](r.DB, query, sort, 100, args...)
 }
 
-func (r *MilkRepository) GetEntriesPageFoot(filter MilkEntryFilter, userId string) (*MilkEntryFoot, error) {
+func (r *MilkRepository) GetEntriesPageFoot(filter *MilkEntryFilter, userId string) (*MilkEntryFoot, error) {
 	query := `
 		select
 			count(*) animals_number,
@@ -221,7 +214,7 @@ func (r *MilkRepository) GetGroupEntriesFoot(userId string, entryDate time.Time)
 }
 
 func (r *MilkRepository) UpdateGroup(entryDate time.Time, groupEntry *LactationGroupSave) (*LactationGroup, *apiError.APIError) {
-	
+
 	validateErr := validateGroupUpdate(r.DB, *groupEntry)
 	if validateErr != nil {
 		return nil, validateErr
@@ -236,7 +229,7 @@ func (r *MilkRepository) UpdateGroup(entryDate time.Time, groupEntry *LactationG
 	`
 	err := repositoriesUtil.Exec(r.DB, query, groupEntry.EntryDate, entryDate, groupEntry.UserId)
 	if err != nil {
-		return  nil, apiError.InternalServerAPIError(err)
+		return nil, apiError.InternalServerAPIError(err)
 	}
 
 	returnQuery := `

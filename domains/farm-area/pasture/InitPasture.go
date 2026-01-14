@@ -10,7 +10,6 @@ func InitPasture(app *app.App) {
 	handler := PastureHandler{repository}
 
 	app.HandleFunc("GET /farm-area/pastures/search", handler.SearchPasture)
-	app.HandleFunc("GET /farm-area/pastures/search-all", handler.SearchAllPastures)
 	app.HandleFunc("GET /farm-area/pastures/{id}/animals", handler.FindAnimalsByPasture)
 	util.LogDomainsInit("Pastos")
 }

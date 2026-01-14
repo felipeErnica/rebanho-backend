@@ -2,6 +2,7 @@ package animals
 
 import (
 	"github.com/felipeErnica/rebanho-backend/apiError"
+	"github.com/felipeErnica/rebanho-backend/util"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
 	"net/http"
 )
@@ -11,6 +12,7 @@ type AnimalHandler struct {
 }
 
 func (h *AnimalHandler) GetDairyHist(w http.ResponseWriter, r *http.Request) {
+
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -18,7 +20,7 @@ func (h *AnimalHandler) GetDairyHist(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.Repository.GetDairyHist(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -33,7 +35,7 @@ func (h *AnimalHandler) GetBirthHist(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.Repository.GetBirthHist(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -48,7 +50,7 @@ func (h *AnimalHandler) GetDeathHist(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.Repository.GetDeathHist(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -63,7 +65,7 @@ func (h *AnimalHandler) GetSlaughterHist(w http.ResponseWriter, r *http.Request)
 
 	res, err := h.Repository.GetSlaughterHist(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -78,7 +80,7 @@ func (h *AnimalHandler) GetAnimalTypes(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.Repository.GetAnimalTypes(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -93,7 +95,7 @@ func (h *AnimalHandler) GetLastDeaths(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.Repository.GetLastDeaths(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -108,7 +110,7 @@ func (h *AnimalHandler) GetAgeAndSex(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.Repository.GetAgeAndSex(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -125,14 +127,15 @@ func (h *AnimalHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, AnimalFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
 	result, err := h.Repository.FindPage(userId, cursor, sort, order, filter)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -145,14 +148,15 @@ func (h *AnimalHandler) GetPageFoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, AnimalFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
 	result, err := h.Repository.GetPageFoot(userId, filter)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -168,7 +172,7 @@ func (h *AnimalHandler) FindById(w http.ResponseWriter, r *http.Request) {
 
 	response, err := h.Repository.FindById(id, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -184,14 +188,15 @@ func (h *AnimalHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter, ok := handlersUtil.DecodeFilter(w, r, AnimalFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, AnimalFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
 	result, err := h.Repository.Search(sort, order, filter, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -236,6 +241,12 @@ func (h *AnimalHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AnimalHandler) Add(w http.ResponseWriter, r *http.Request) {
+	ignoreValidation, err := util.ParseBool(r.URL.Query().Get("ignoreValidation"))
+	if err != nil {
+		apiError.WriteError(w, err)
+		return
+	}
+
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
@@ -247,9 +258,9 @@ func (h *AnimalHandler) Add(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newEntry.UserId = userId
-	err := h.Repository.Add(newEntry)
-	if err != nil {
-		apiError.WriteAPIError(err, w)
+	apiErr := h.Repository.Add(newEntry, ignoreValidation)
+	if apiErr != nil {
+		apiError.WriteAPIError(apiErr, w)
 		return
 	}
 

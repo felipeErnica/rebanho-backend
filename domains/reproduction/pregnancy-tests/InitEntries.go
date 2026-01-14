@@ -18,8 +18,8 @@ func InitTests(app *app.App) {
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/next-births", handler.GetNextBirths)
 	app.HandleFunc("GET /reproduction/pregnancy-test/dashboard/ranked-results", handler.GetRankedResults)
 
-	app.HandleFunc("POST /reproduction/pregnancy-test/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("POST /reproduction/pregnancy-test/entries/page/foot", handler.GetEntriesFoot)
+	app.HandleFunc("GET /reproduction/pregnancy-test/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("GET /reproduction/pregnancy-test/entries/page/foot", handler.GetEntriesFoot)
 	app.HandleFunc("PUT /reproduction/pregnancy-test/entries/add", handler.Add)
 	app.HandleFunc("PUT /reproduction/pregnancy-test/entries/replace", handler.Replace)
 	app.HandleFunc("PUT /reproduction/pregnancy-test/entries/update", handler.Update)

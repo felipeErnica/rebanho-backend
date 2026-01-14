@@ -322,7 +322,7 @@ func (r *AnimalRepository) FindPage(
 	cursor string,
 	sort string,
 	order string,
-	filter AnimalFilter,
+	filter *AnimalFilter,
 ) (page *entity.Page[Animal], err error) {
 
 	sort = repositoriesUtil.AddCommonFields(sort)
@@ -330,7 +330,7 @@ func (r *AnimalRepository) FindPage(
 		"name":                   {Field: "coalesce(a.name, '')", Order: "asc"},
 		"average_birth_interval": {Field: "coalesce(b.average_birth_interval, 0)", Order: "asc"},
 		"average_lac_interval":   {Field: "coalesce(l.average_lac_interval, 0)", Order: "asc"},
-		"average_prod":           {Field: "coalesce(milk.average_prod, 0)", Order: "asc"},
+		"average_prod":           {Field: "coalesce(l.average_prod, 0)", Order: "asc"},
 		"average_peak":           {Field: "coalesce(l.average_peak, 0)", Order: "asc"},
 		"death_date":             {Field: "coalesce(a.death_date, '-infinity')", Order: "asc"},
 		"weaning_date":           {Field: "coalesce(a.weaning_date, '-infinity')", Order: "asc"},
@@ -457,7 +457,7 @@ func (r *AnimalRepository) FindPage(
 	return repositoriesUtil.GetPage[Animal](r.DB, query, sort, 200, args...)
 }
 
-func (r *AnimalRepository) GetPageFoot(userId string, filter AnimalFilter) (*AnimalFoot, error) {
+func (r *AnimalRepository) GetPageFoot(userId string, filter *AnimalFilter) (*AnimalFoot, error) {
 
 	query := `
 		with milk_stats as (
@@ -512,7 +512,7 @@ func (r *AnimalRepository) GetPageFoot(userId string, filter AnimalFilter) (*Ani
 			select
 				mother_id,
 				count(*) as children_number,
-				avg(birth_interval) as average_birth_interval,
+				avg(birth_interval) as average_birth_interval
 			from birth_interval_cte
 			group by mother_id
 		),
@@ -542,7 +542,6 @@ func (r *AnimalRepository) GetPageFoot(userId string, filter AnimalFilter) (*Ani
 				left join lac_stats l on l.animal_id = a.id
 			where a.user_id = $1 
 				and a.is_outside_animal = false
-				and a.death_date is not null
 				and a.deleted_at is null
 		)
 
@@ -614,8 +613,7 @@ func (r *AnimalRepository) FindById(id string, userId string) (*Animal, error) {
 	return repositoriesUtil.GetOne[Animal](r.DB, query, id, userId)
 }
 
-func (r *AnimalRepository) Search(sort string, order string, filter AnimalFilter, userId string) (*[]Animal, error) {
-	sort = repositoriesUtil.AddCommonFields(sort)
+func (r *AnimalRepository) Search(sort string, order string, filter *AnimalFilter, userId string) (*[]Animal, error) {
 	sortMap := map[string]repositoriesUtil.SortField{
 		"name":         {Field: "coalesce(a.name, '')", Order: "asc"},
 		"birth_date":   {Field: "coalesce(a.birth_date, '-infinity')", Order: "desc"},
@@ -628,10 +626,23 @@ func (r *AnimalRepository) Search(sort string, order string, filter AnimalFilter
 			a.ring_number,
 			a.name,
 			a.sex,
+			a.father_id,
+			a.mother_id,
+            concat_ws(' - ', f.ring_number, f.name) as father_name, 
+            concat_ws(' - ', m.ring_number, m.name) as mother_name,
+			a.animal_type,
 			a.birth_date,
-			a.death_date
+			a.death_date,
+			a.weaning_date,
+			a.observation,
+			a.is_embryo_donor,
+			a.is_transfer_bull,
+			a.is_breeding_bull,
+			a.is_insemination_bull,
+			a.is_outside_animal
         from animals a
-		where a.user_id = $1 and a.deleted_at is null
+			left join animals f on f.id = a.father_id
+			left join animals m on m.id = a.mother_id
 	`
 
 	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "a", 2)
@@ -639,18 +650,23 @@ func (r *AnimalRepository) Search(sort string, order string, filter AnimalFilter
 		return nil, err
 	}
 
+	whereExp := repositoriesUtil.GetWhereExpression("a.user_id = $1 and a.deleted_at is null", filterExpression)
 	sortExpression, err := repositoriesUtil.GetSortExpression(sortMap, sort, order)
 	if err != nil {
 		return nil, err
 	}
 
-	query += filterExpression + " order by " + sortExpression
-	return repositoriesUtil.GetList[Animal](r.DB, query)
+	args := []any{userId}
+	filterArgs := repositoriesUtil.GetFilterArgs(filter)
+	args = append(args, filterArgs...)
+
+	query += whereExp + " order by " + sortExpression
+	return repositoriesUtil.GetList[Animal](r.DB, query, args...)
 }
 
 func (r *AnimalRepository) Delete(id string, userId string) *apiError.APIError {
 
-	validateErr := validDelete(r.DB, id, userId)
+	validateErr := ValidateDelete(r.DB, id, userId)
 	if validateErr != nil {
 		return validateErr
 	}
@@ -782,7 +798,7 @@ func (r *AnimalRepository) Delete(id string, userId string) *apiError.APIError {
 
 func (r *AnimalRepository) Update(newEntry *AnimalSave) (*Animal, *apiError.APIError) {
 
-	validateErr := validateUpdate(r.DB, newEntry)
+	validateErr := ValidateSave(r.DB, newEntry)
 	if validateErr != nil {
 		return nil, validateErr
 	}
@@ -851,11 +867,13 @@ func (r *AnimalRepository) Update(newEntry *AnimalSave) (*Animal, *apiError.APIE
 
 }
 
-func (r *AnimalRepository) Add(entry *AnimalSave) *apiError.APIError {
+func (r *AnimalRepository) Add(entry *AnimalSave, ignoreValidation bool) *apiError.APIError {
 
-	validateErr := validateAdd(r.DB, entry)
-	if validateErr != nil {
-		return validateErr
+	if !ignoreValidation {
+		validateErr := ValidateSave(r.DB, entry)
+		if validateErr != nil {
+			return validateErr
+		}
 	}
 
 	query := `

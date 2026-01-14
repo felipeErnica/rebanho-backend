@@ -625,7 +625,7 @@ func (r *BreedingRepository) GetLastEntries(userId string) (*LastEntry, *apiErro
 
 func (r *BreedingRepository) FindEntriesPage(
 	userId string,
-	filter BreedingEntryFilter,
+	filter *BreedingEntryFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -753,7 +753,7 @@ func (r *BreedingRepository) FindEntriesPage(
 
 func (r *BreedingRepository) GetEntriesFoot(
 	userId string,
-	filter BreedingEntryFilter,
+	filter *BreedingEntryFilter,
 ) (*BreedingFoot, error) {
 
 	statusQuery := `

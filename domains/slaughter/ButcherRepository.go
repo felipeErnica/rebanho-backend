@@ -78,7 +78,7 @@ func (r *ButcherRepository) FindEntriesPage(
 	sort string,
 	order string,
 	cursor string,
-	filter SlaughterEntryFilter,
+	filter *SlaughterEntryFilter,
 	butcherId string,
 	userId string,
 ) (*entity.Page[SlaughterEntry], error) {
@@ -171,7 +171,7 @@ func (r *ButcherRepository) FindEntriesPage(
 }
 
 func (r *ButcherRepository) FindEntriesPageFoot(
-	filter SlaughterEntryFilter,
+	filter *SlaughterEntryFilter,
 	butcherId string,
 	userId string,
 ) (*SlaughterFoot, error) {

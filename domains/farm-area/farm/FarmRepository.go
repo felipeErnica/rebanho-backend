@@ -17,7 +17,7 @@ type FarmRepository struct {
 func (r *FarmRepository) FindFarmAnimals(
 	farmId string,
 	userId string,
-	filter FarmAnimalFilter,
+	filter *FarmAnimalFilter,
 	sort string,
 	order string,
 	cursor string,
@@ -98,7 +98,7 @@ func (r *FarmRepository) FindFarmAnimals(
 func (r *FarmRepository) FindFarmAnimalsTotal(
 	farmId string,
 	userId string,
-	filter FarmAnimalFilter,
+	filter *FarmAnimalFilter,
 ) (*FarmAnimalTotal, error) {
 
 	query := `

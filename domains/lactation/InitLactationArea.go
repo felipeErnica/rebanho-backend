@@ -27,26 +27,26 @@ func InitLactationArea(app *app.App) {
 	app.HandleFunc("GET /lactation/dashboard/last-entries", handler.GetLastEntries)
 	app.HandleFunc("GET /lactation/dashboard/last-groups", handler.GetLastGroups)
 
-	app.HandleFunc("POST /lactation/lac-hist/page", handler.FindLactationPage)
-	app.HandleFunc("POST /lactation/lac-hist/page/foot", handler.GetLactationPageFoot)
-	app.HandleFunc("POST /lactation/lac-hist/long-lactations/page", handler.FindLongLactationPage)
-	app.HandleFunc("POST /lactation/lac-hist/long-lactations/page/foot", handler.GetLongLactationPageFoot)
-	app.HandleFunc("POST /lactation/lac-hist/dry-animals/page", handler.FindDryAnimalsPage)
-	app.HandleFunc("POST /lactation/lac-hist/dry-animals/page/foot", handler.GetDryAnimalsFoot)
-	app.HandleFunc("POST /lactation/lac-hist/lac-animals/page", handler.FindLacAnimalsPage)
-	app.HandleFunc("POST /lactation/lac-hist/lac-animals/page/foot", handler.GetLacAnimalsFoot)
-	app.HandleFunc("GET /lactation/lac-hist/{id}", handler.FindById)
-	app.HandleFunc("GET /lactation/lac-hist/{id}/entries", handler.GetLactationEntries)
-	app.HandleFunc("GET /lactation/lac-hist/{id}/entries/foot", handler.GetLactationEntriesFoot)
-	app.HandleFunc("GET /lactation/lac-hist/search-lactating", handler.SearchLactatingAnimals)
-	app.HandleFunc("GET /lactation/lac-hist/search-dry", handler.SearchDryAnimals)
-	app.HandleFunc("GET /lactation/lac-hist/search-calfs-new", handler.SearchNewLactationCalf)
-	app.HandleFunc("GET /lactation/lac-hist/search-calfs", handler.SearchLactationCalf)
+	app.HandleFunc("GET /lactation/page", handler.FindLactationPage)
+	app.HandleFunc("GET /lactation/page/foot", handler.GetLactationPageFoot)
+	app.HandleFunc("GET /lactation/long-lactations/page", handler.FindLongLactationPage)
+	app.HandleFunc("GET /lactation/long-lactations/page/foot", handler.GetLongLactationPageFoot)
+	app.HandleFunc("GET /lactation/dry-animals/page", handler.FindDryAnimalsPage)
+	app.HandleFunc("GET /lactation/dry-animals/page/foot", handler.GetDryAnimalsFoot)
+	app.HandleFunc("GET /lactation/lac-animals/page", handler.FindLacAnimalsPage)
+	app.HandleFunc("GET /lactation/lac-animals/page/foot", handler.GetLacAnimalsFoot)
+	app.HandleFunc("GET /lactation/{id}", handler.FindById)
+	app.HandleFunc("GET /lactation/{id}/entries", handler.GetLactationEntries)
+	app.HandleFunc("GET /lactation/{id}/entries/foot", handler.GetLactationEntriesFoot)
+	app.HandleFunc("GET /lactation/search-lactating", handler.SearchLactatingAnimals)
+	app.HandleFunc("GET /lactation/search-dry", handler.SearchDryAnimals)
+	app.HandleFunc("GET /lactation/search-calfs-new", handler.SearchNewLactationCalf)
+	app.HandleFunc("GET /lactation/search-calfs", handler.SearchLactationCalf)
 
 
-	app.HandleFunc("PUT /lactation/lac-hist/add", handler.AddLactation)
-	app.HandleFunc("PUT /lactation/lac-hist/update", handler.UpdateLactation)
-	app.HandleFunc("DELETE /lactation/lac-hist/{id}/delete", handler.DeleteLactation)
+	app.HandleFunc("PUT /lactation/add", handler.AddLactation)
+	app.HandleFunc("PUT /lactation/update", handler.UpdateLactation)
+	app.HandleFunc("DELETE /lactation/{id}/delete", handler.DeleteLactation)
 	util.LogDomainsInit("Lactações")
 }
 
@@ -54,15 +54,15 @@ func InitMilk(app *app.App) {
 	repository := NewMilkRepository(app.DBconn)
 	handler := MilkHandler{repository}
 
-	app.HandleFunc("POST /lactation/groups/page", handler.FindGroupsPage)
+	app.HandleFunc("GET /lactation/groups/page", handler.FindGroupsPage)
 	app.HandleFunc("GET /lactation/groups/{entryDate}/entries", handler.GetGroupEntries)
 	app.HandleFunc("GET /lactation/groups/{entryDate}/entries/foot", handler.GetGroupEntriesFoot)
 
 	app.HandleFunc("PUT /lactation/groups/{entryDate}/update", handler.UpdateGroup)
 	app.HandleFunc("DELETE /lactation/groups/{entryDate}/delete", handler.DeleteGroup)
 
-	app.HandleFunc("POST /lactation/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("POST /lactation/entries/page/foot", handler.GetEntriesPageFoot)
+	app.HandleFunc("GET /lactation/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("GET /lactation/entries/page/foot", handler.GetEntriesPageFoot)
 
 	app.HandleFunc("PUT /lactation/entries/add", handler.Add)
 	app.HandleFunc("DELETE /lactation/entries/{id}/delete", handler.Delete)

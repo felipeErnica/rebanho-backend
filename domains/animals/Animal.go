@@ -6,7 +6,7 @@ type Animal struct {
 	Id                   string     `json:"id" db:"id"`
 	Name                 *string    `json:"name" db:"name"`
 	RingNumber           *string    `json:"ringNumber" db:"ring_number"`
-	AnimalOrder          int        `json:"animalOrder" db:"animal_order"`
+	AnimalOrder          int        `json:"-" db:"animal_order"`
 	WeightBirth          *float64   `json:"weightBirth" db:"weight_birth"`
 	Sex                  string     `json:"sex" db:"sex"`
 	BirthDate            *time.Time `json:"birthDate" db:"birth_date"`
@@ -30,7 +30,7 @@ type Animal struct {
 	AveragePeak          *float64   `json:"averagePeak" db:"average_peak"`
 	ChildrenNumber       *int       `json:"childrenNumber" db:"children_number"`
 	Observation          *string    `json:"observation" db:"observation"`
-	CreatedAt            time.Time  `json:"createdAt" db:"created_at"`
+	CreatedAt            time.Time  `json:"-" db:"created_at"`
 	UserId               string     `json:"-" db:"user_id"`
 }
 
@@ -64,35 +64,34 @@ type AnimalSave struct {
 }
 
 type AnimalFilter struct {
-	IsFiltered              bool       `json:"isFiltered"`
-	Name                    *string    `json:"name" db:"name"`
-	Number                  *string    `json:"ringNumber" db:"ring_number"`
-	Sex                     *string    `json:"sex" db:"sex"`
-	MinWeaningDate          *time.Time `json:"minWeaningDate" db:"weaning_date"`
-	MaxWeaningDate          *time.Time `json:"maxWeaningDate" db:"weaning_date"`
-	Fathers                 *[]string  `json:"fathers" db:"father_id"`
-	Mothers                 *[]string  `json:"mothers" db:"mother_id"`
-	MinBirthDate            *time.Time `json:"minBirthDate" db:"birth_date"`
-	MaxBirthDate            *time.Time `json:"maxBirthDate" db:"birth_date"`
-	MinDeathDate            *time.Time `json:"minDeathDate" db:"death_date"`
-	MaxDeathDate            *time.Time `json:"maxDeathDate" db:"death_date"`
-	Pastures                *[]string  `json:"pastures" db:"pasture_id"`
-	Farms                   *[]string  `json:"farms" db:"farm_id" table:"pastures"`
-	Types                   *[]string  `json:"types" db:"type"`
-	MinAverageProd          *float64   `json:"minAverageProd" db:"average_prod"`
-	MaxAverageProd          *float64   `json:"maxAverageProd" db:"average_prod"`
-	MinAverageBirthInterval *float64   `json:"minAverageBirthInterval" db:"average_birth_interval"`
-	MaxAverageBirthInterval *float64   `json:"maxAverageBirthInterval" db:"average_birth_interval"`
-	MinAveragePeak          *float64   `json:"minAveragePeak" db:"average_peak"`
-	MaxAveragePeak          *float64   `json:"maxAveragePeak" db:"average_peak"`
-	MinChildrenQuantity     *int       `json:"minChildrenQuantity" db:"children_quantity"`
-	MaxChildrenQuantity     *int       `json:"maxChildrenQuantity" db:"children_quantity"`
-	DeathIsNull             *bool      `json:"isAlive" db:"death_date"`
-	IsBreedingBull          *bool      `json:"isBreedingBull" db:"is_breeding_bull"`
-	IsInsemininationBull    *bool      `json:"isInseminationBull" db:"is_insemination_bull"`
-	IsTransferBull          *bool      `json:"isTransferBull" db:"is_transfer_bull"`
-	IsEmbryoDonor           *bool      `json:"isEmbryoDonor" db:"is_embryo_donor"`
-	IsOutsideAnimal         *bool      `json:"isOutsideAnimal" db:"is_outside_animal"`
+	Name                    *string    `schema:"name" db:"name"`
+	Number                  *string    `schema:"ringNumber" db:"ring_number"`
+	Sex                     *string    `schema:"sex" db:"sex"`
+	MinWeaningDate          *time.Time `schema:"minWeaningDate" db:"weaning_date"`
+	MaxWeaningDate          *time.Time `schema:"maxWeaningDate" db:"weaning_date"`
+	Fathers                 *[]string  `schema:"fathers" db:"father_id"`
+	Mothers                 *[]string  `schema:"mothers" db:"mother_id"`
+	MinBirthDate            *time.Time `schema:"minBirthDate" db:"birth_date"`
+	MaxBirthDate            *time.Time `schema:"maxBirthDate" db:"birth_date"`
+	MinDeathDate            *time.Time `schema:"minDeathDate" db:"death_date"`
+	MaxDeathDate            *time.Time `schema:"maxDeathDate" db:"death_date"`
+	Pastures                *[]string  `schema:"pastures" db:"pasture_id"`
+	Farms                   *[]string  `schema:"farms" db:"farm_id" table:"pastures"`
+	Types                   *[]string  `schema:"types" db:"animal_type"`
+	MinAverageProd          *float64   `schema:"minAverageProd" db:"average_prod"`
+	MaxAverageProd          *float64   `schema:"maxAverageProd" db:"average_prod"`
+	MinAverageBirthInterval *float64   `schema:"minAverageBirthInterval" db:"average_birth_interval"`
+	MaxAverageBirthInterval *float64   `schema:"maxAverageBirthInterval" db:"average_birth_interval"`
+	MinAveragePeak          *float64   `schema:"minAveragePeak" db:"average_peak"`
+	MaxAveragePeak          *float64   `schema:"maxAveragePeak" db:"average_peak"`
+	MinChildrenQuantity     *int       `schema:"minChildrenQuantity" db:"children_quantity"`
+	MaxChildrenQuantity     *int       `schema:"maxChildrenQuantity" db:"children_quantity"`
+	HasDeath                *bool      `schema:"isAlive" db:"death_date"`
+	IsBreedingBull          *bool      `schema:"isBreedingBull" db:"is_breeding_bull"`
+	IsInsemininationBull    *bool      `schema:"isInseminationBull" db:"is_insemination_bull"`
+	IsTransferBull          *bool      `schema:"isTransferBull" db:"is_transfer_bull"`
+	IsEmbryoDonor           *bool      `schema:"isEmbryoDonor" db:"is_embryo_donor"`
+	IsOutsideAnimal         *bool      `schema:"isOutsideAnimal" db:"is_outside_animal"`
 }
 
 type CardEntry struct {

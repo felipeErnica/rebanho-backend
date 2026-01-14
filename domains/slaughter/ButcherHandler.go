@@ -19,7 +19,7 @@ func (h *ButcherHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindAll(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *ButcherHandler) FindById(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.FindById(id, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *ButcherHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.Repository.Search(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -68,14 +68,15 @@ func (h *ButcherHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 	order := r.URL.Query().Get("order")
 	cursor := r.URL.Query().Get("cursor")
 
-	filter, ok := handlersUtil.DecodeEntity(w, r, &SlaughterEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, SlaughterEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
-	result, err := h.Repository.FindEntriesPage(sort, order, cursor, *filter, butcherId, userId)
+	result, err := h.Repository.FindEntriesPage(sort, order, cursor, filter, butcherId, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -89,14 +90,15 @@ func (h *ButcherHandler) FindPageFoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	butcherId := r.PathValue("id")
-	filter, ok := handlersUtil.DecodeEntity(w, r, &SlaughterEntryFilter{})
-	if !ok {
+	filter, err := handlersUtil.DecodeFilter(r, SlaughterEntryFilter{})
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
-	result, err := h.Repository.FindEntriesPageFoot(*filter, butcherId, userId)
+	result, err := h.Repository.FindEntriesPageFoot(filter, butcherId, userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 

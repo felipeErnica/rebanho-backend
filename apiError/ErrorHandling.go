@@ -38,7 +38,7 @@ func DatabaseSendError(err error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
-func WriteError(err error, w http.ResponseWriter) {
+func WriteError(w http.ResponseWriter, err error) {
 	apiErr := InternalServerAPIError(err)
 	WriteAPIError(apiErr, w)
 }

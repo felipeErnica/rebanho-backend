@@ -9,8 +9,8 @@ func InitBirth(app *app.App) {
 	repository := NewRepository(app.DBconn)
 	handler := BirthHandler{repository}
 
-	app.HandleFunc("POST /reproduction/births/table/page/footer", handler.FindPageFooter)
-	app.HandleFunc("POST /reproduction/births/table/page", handler.FindPage)
+	app.HandleFunc("GET /reproduction/births/table/page/footer", handler.FindPageFooter)
+	app.HandleFunc("GET /reproduction/births/table/page", handler.FindPage)
 
 	app.HandleFunc("POST /reproduction/births/add/get-father", handler.GetFather)
 	app.HandleFunc("PUT /reproduction/births/add", handler.AddBirth)

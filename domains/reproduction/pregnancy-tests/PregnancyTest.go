@@ -20,7 +20,6 @@ type TestEntry struct {
 }
 
 type TestEntryFilter struct {
-	IsFiltered       bool       `json:"isFiltered"`
 	MinTestDate      *time.Time `json:"minTestDate" db:"test_date"`
 	MaxTestDate      *time.Time `json:"maxTestDate" db:"test_date"`
 	Animals          *[]string  `json:"animals" db:"animal_id"`

@@ -22,7 +22,6 @@ type BirthEntry struct {
 }
 
 type BirthEntryFilter struct {
-	IsFiltered       bool       `json:"isFiltered"`
 	Mothers          *[]string  `json:"mothers" db:"mother_id"`
 	MinBirthDate     *time.Time `json:"minBirthDate" db:"calf_birth_date"`
 	MaxBirthDate     *time.Time `json:"maxBirthDate" db:"calf_birth_date"`

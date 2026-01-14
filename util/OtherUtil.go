@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"github.com/felipeErnica/rebanho-backend/entity"
 )
@@ -26,4 +27,12 @@ func GetResults(result entity.Result, resultVar any) (error) {
 
     v.Set(resultValue)
     return nil
+}
+
+func ParseBool(str string) (bool, error) {
+	if str == "" {
+		return false, nil
+	}
+	bln, err := strconv.ParseBool(str)
+	return bln, err
 }

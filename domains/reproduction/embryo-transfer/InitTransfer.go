@@ -20,8 +20,8 @@ func InitTransfer(app *app.App) {
 	app.HandleFunc("GET /reproduction/embryo-transfer/dashboard/last-groups", handler.GetLastGroups)
 	app.HandleFunc("GET /reproduction/embryo-transfer/dashboard/last-entries", handler.GetLastEntries)
 
-	app.HandleFunc("POST /reproduction/embryo-transfer/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("POST /reproduction/embryo-transfer/entries/page/foot", handler.GetEntriesFoot)
+	app.HandleFunc("GET /reproduction/embryo-transfer/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("GET /reproduction/embryo-transfer/entries/page/foot", handler.GetEntriesFoot)
 	app.HandleFunc("PUT /reproduction/embryo-transfer/entries/add", handler.AddTransfer)
 	app.HandleFunc("PUT /reproduction/embryo-transfer/entries/replace", handler.Replace)
 	app.HandleFunc("PUT /reproduction/embryo-transfer/entries/update", handler.Update)

@@ -18,9 +18,9 @@ func InitAnimal(app *app.App) {
     app.HandleFunc("GET /animals/stats/age-and-sex", handler.GetAgeAndSex)
 
 	app.HandleFunc("GET /animals/{id}", handler.FindById)
-	app.HandleFunc("POST /animals/page/foot", handler.GetPageFoot)
-	app.HandleFunc("POST /animals/page", handler.FindPage)
-	app.HandleFunc("POST /animals/search", handler.Search)
+	app.HandleFunc("GET /animals/page/foot", handler.GetPageFoot)
+	app.HandleFunc("GET /animals/page", handler.FindPage)
+	app.HandleFunc("GET /animals/search", handler.Search)
 
 	app.HandleFunc("DELETE /animals/{id}", handler.Delete)
 	app.HandleFunc("PUT /animals/{id}", handler.Update)

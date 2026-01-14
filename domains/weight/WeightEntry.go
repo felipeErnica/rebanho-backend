@@ -29,7 +29,6 @@ type WeightEntrySave struct {
 }
 
 type WeightFilter struct {
-	IsFiltered   bool       `json:"isFiltered"`
 	Animals      *[]string  `json:"animals" db:"animal_id"`
 	Fathers      *[]string  `json:"fathers" db:"father_id" table:"a"`
 	Mothers      *[]string  `json:"mothers" db:"mother_id" table:"a"`

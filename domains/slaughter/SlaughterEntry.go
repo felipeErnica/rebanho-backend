@@ -36,7 +36,6 @@ type SlaughterEntrySave struct {
 }
 
 type SlaughterEntryFilter struct {
-	IsFiltered      bool       `json:"IsFiltered" db:"is_filtered"`
 	Animals         *[]string  `json:"animals" db:"animal_id"`
 	Fathers         *[]string  `json:"fathers" db:"father_id" table:"a"`
 	Mothers         *[]string  `json:"mothers" db:"mother_id" table:"a"`

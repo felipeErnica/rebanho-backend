@@ -49,7 +49,7 @@ func (r *PastureEntryRepository) SearchPastureAnimals(pastureId string, userId s
 func (r *PastureEntryRepository) FindByPasture(
 	pastureId string,
 	userId string,
-	filter PastureEntryFilter,
+	filter *PastureEntryFilter,
 	cursor string,
 	sort string,
 	order string,
@@ -130,7 +130,7 @@ func (r *PastureEntryRepository) FindByPasture(
 func (r *PastureEntryRepository) FindByPastureTotal(
 	pastureId string,
 	userId string,
-	filter PastureEntryFilter,
+	filter *PastureEntryFilter,
 ) (*PastureTotal, error) {
 
 	query := "select count(pasture_entries.id) as total from pasture_entries"

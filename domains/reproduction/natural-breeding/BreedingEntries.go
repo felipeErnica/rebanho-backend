@@ -30,7 +30,6 @@ type BreedingEntrySave struct {
 }
 
 type BreedingEntryFilter struct {
-	IsFiltered      bool       `json:"isFiltered"`
 	Animals         *[]string  `json:"animals" db:"animal_id"`
 	Bulls           *[]string  `json:"bulls" db:"bull_id"`
 	MinBreedingDate *time.Time `json:"minBreedingDate" db:"breeding_date"`

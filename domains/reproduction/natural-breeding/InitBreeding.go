@@ -18,8 +18,8 @@ func InitBreeding(app *app.App) {
 	app.HandleFunc("GET /reproduction/breeding/dashboard/last-groups", handler.GetLastGroups)
 	app.HandleFunc("GET /reproduction/breeding/dashboard/last-entries", handler.GetLastEntries)
 
-	app.HandleFunc("POST /reproduction/breeding/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("POST /reproduction/breeding/entries/page/foot", handler.GetEntriesFoot)
+	app.HandleFunc("GET /reproduction/breeding/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("GET /reproduction/breeding/entries/page/foot", handler.GetEntriesFoot)
 	app.HandleFunc("DELETE /reproduction/breeding/entries/{id}/delete", handler.Delete)
 	app.HandleFunc("DELETE /reproduction/breeding/entries/{id}/delete-no-validation", handler.DeleteNoValidation)
 	app.HandleFunc("DELETE /reproduction/breeding/entries/{id}/delete-change-father", handler.DeleteAndChangeFather)

@@ -12,17 +12,20 @@ type PastureHandler struct {
 }
 
 func (h *PastureHandler) SearchPasture(w http.ResponseWriter, r *http.Request) {
-	farmId := r.URL.Query().Get("farmId")
-	farmArray := handlersUtil.ParseArray(farmId)
-
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	list, err := h.Repository.SearchPasture(userId, farmArray)
+	filter, err := handlersUtil.DecodeFilter(r, PastureFilter{})
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
+		return
+	}
+
+	list, err := h.Repository.SearchPasture(filter, userId)
+	if err != nil {
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -37,7 +40,7 @@ func (h *PastureHandler) SearchAllPastures(w http.ResponseWriter, r *http.Reques
 
 	list, err := h.Repository.SearchAllPastures(userId)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 
@@ -54,7 +57,7 @@ func (h *PastureHandler) FindAnimalsByPasture(w http.ResponseWriter, r *http.Req
 	}
 	result, err := h.Repository.FindAnimalsByPasture(pastureId, userId, sort, order)
 	if err != nil {
-		apiError.WriteError(err, w)
+		apiError.WriteError(w, err)
 		return
 	}
 	handlersUtil.SendList(w, result)

@@ -18,8 +18,8 @@ func InitInsemination(app *app.App) {
 	app.HandleFunc("GET /reproduction/insemination/dashboard/last-groups", handler.GetLastGroups)
 	app.HandleFunc("GET /reproduction/insemination/dashboard/last-entries", handler.GetLastEntries)
 
-	app.HandleFunc("POST /reproduction/insemination/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("POST /reproduction/insemination/entries/page/foot", handler.GetEntriesFoot)
+	app.HandleFunc("GET /reproduction/insemination/entries/page", handler.FindEntriesPage)
+	app.HandleFunc("GET /reproduction/insemination/entries/page/foot", handler.GetEntriesFoot)
 	app.HandleFunc("PUT /reproduction/insemination/entries/add", handler.AddInsemination)
 	app.HandleFunc("PUT /reproduction/insemination/entries/replace", handler.ReplaceInsemination)
 	app.HandleFunc("POST /reproduction/insemination/entries/{id}/delete", handler.Delete)

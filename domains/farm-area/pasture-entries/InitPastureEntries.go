@@ -10,8 +10,8 @@ func InitPastureEntries(app *app.App) {
 	handler := PastureEntryHandler{repository}
 
 	app.HandleFunc("GET /farm-area/pastures/{pastureId}/search/animals", handler.SearchPastureAnimals)
-	app.HandleFunc("POST /farm-area/pastures/{pastureId}/entries", handler.FindByPasture)
-	app.HandleFunc("POST /farm-area/pastures/{pastureId}/entries/total", handler.FindByPastureTotal)
+	app.HandleFunc("GET /farm-area/pastures/{pastureId}/entries", handler.FindByPasture)
+	app.HandleFunc("GET /farm-area/pastures/{pastureId}/entries/total", handler.FindByPastureTotal)
 	app.HandleFunc("GET /farm-area/entries/animal/{animalId}", handler.FindByAnimalId)
 	app.HandleFunc("PUT /farm-area/entries/add", handler.AddEntry)
 	app.HandleFunc("PUT /farm-area/entries/transfer", handler.TransferEntry)
