@@ -417,6 +417,13 @@ func (r *AnimalRepository) FindPage(
 			l.average_peak,
 			b.average_birth_interval,
 			a.observation,
+			exists (
+				select 1
+				from lactations
+				where user_id = $1
+					and deleted_at is null
+					and animal_id = a.id
+			) as is_lactating,
 			a.created_at
 		from animals a
 			left join animals m on m.id = a.mother_id
@@ -440,7 +447,7 @@ func (r *AnimalRepository) FindPage(
 		return nil, err
 	}
 
-	mainExpression := "a.is_outside_animal = false and a.deleted_at is null and a.user_id = $1"
+	mainExpression := "a.deleted_at is null and a.user_id = $1"
 	whereExpression := repositoriesUtil.GetWhereExpression(mainExpression, filterExpression, cursorExpression)
 
 	args := []any{userId}
@@ -534,15 +541,25 @@ func (r *AnimalRepository) GetPageFoot(userId string, filter *AnimalFilter) (*An
 				l.average_lac_interval,
 				l.average_peak,
 				b.average_birth_interval,
-				a.observation
+				a.observation,
+				exists (
+					select 1
+					from lactations
+					where user_id = $1
+						and deleted_at is null
+						and animal_id = a.id
+				) as is_lactating,
+				a.is_outside_animal,
+				a.is_embryo_donor,
+				a.is_breeding_bull,
+				a.is_insemination_bull,
+				a.is_transfer_bull
 			from animals a
 				left join animals m on m.id = a.mother_id
 				left join animals f on f.id = a.father_id
 				left join birth_stats b on b.mother_id = a.id
 				left join lac_stats l on l.animal_id = a.id
-			where a.user_id = $1 
-				and a.is_outside_animal = false
-				and a.deleted_at is null
+			where a.user_id = $1 and a.deleted_at is null
 		)
 
 		select 
@@ -578,7 +595,6 @@ func (r *AnimalRepository) FindById(id string, userId string) (*Animal, error) {
 			from pasture_entries 
 			where user_id = $2 
 				and animal_id = $1
-				and
 			order by entry_date desc
 			limit 1
 		)
@@ -614,6 +630,7 @@ func (r *AnimalRepository) FindById(id string, userId string) (*Animal, error) {
 }
 
 func (r *AnimalRepository) Search(sort string, order string, filter *AnimalFilter, userId string) (*[]Animal, error) {
+
 	sortMap := map[string]repositoriesUtil.SortField{
 		"name":         {Field: "coalesce(a.name, '')", Order: "asc"},
 		"birth_date":   {Field: "coalesce(a.birth_date, '-infinity')", Order: "desc"},
@@ -621,6 +638,18 @@ func (r *AnimalRepository) Search(sort string, order string, filter *AnimalFilte
 	}
 
 	query := `
+		with pasture_cte as (
+			select distinct on (animal_id)
+				pasture_id,
+				p.name as pasture_name
+			from pasture_entries pe
+				join pastures p on p.id = pe.pasture_id
+			where user_id = $1 
+				and deleted_at is null
+				and exit_date is null
+			order by animal_id, entry_date
+		)
+		
         select 
 			a.id,
 			a.ring_number,
@@ -628,13 +657,13 @@ func (r *AnimalRepository) Search(sort string, order string, filter *AnimalFilte
 			a.sex,
 			a.father_id,
 			a.mother_id,
-            concat_ws(' - ', f.ring_number, f.name) as father_name, 
-            concat_ws(' - ', m.ring_number, m.name) as mother_name,
 			a.animal_type,
 			a.birth_date,
 			a.death_date,
 			a.weaning_date,
 			a.observation,
+			p.pasture_id,
+			p.pasture_name,
 			a.is_embryo_donor,
 			a.is_transfer_bull,
 			a.is_breeding_bull,
@@ -643,6 +672,7 @@ func (r *AnimalRepository) Search(sort string, order string, filter *AnimalFilte
         from animals a
 			left join animals f on f.id = a.father_id
 			left join animals m on m.id = a.mother_id
+			left join pasture_cte as p on p.animal_id = a.id
 	`
 
 	filterExpression, _, err := repositoriesUtil.GetFilterExpressions(filter, "a", 2)

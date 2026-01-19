@@ -32,21 +32,6 @@ func (h *PastureHandler) SearchPasture(w http.ResponseWriter, r *http.Request) {
 	handlersUtil.SendList(w, list)
 }
 
-func (h *PastureHandler) SearchAllPastures(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	list, err := h.Repository.SearchAllPastures(userId)
-	if err != nil {
-		apiError.WriteError(w, err)
-		return
-	}
-
-	handlersUtil.SendList(w, list)
-}
-
 func (h *PastureHandler) FindAnimalsByPasture(w http.ResponseWriter, r *http.Request) {
 	pastureId := r.PathValue("id")
 	sort := r.URL.Query().Get("sort")

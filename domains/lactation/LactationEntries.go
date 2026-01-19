@@ -36,7 +36,7 @@ type MilkEntrySave struct {
 	AnimalId  string    `json:"animalId" db:"animal_id"`
 	PastureId *string   `json:"pastureId" db:"pasture_id"`
 	EntryDate time.Time `json:"entryDate" db:"entry_date"`
-	Quantity  float64   `json:"quantity"`
+	Quantity  float64   `json:"quantity" db:"quantity"`
 	UserId    string    `json:"userId" db:"user_id"`
 }
 
@@ -94,15 +94,17 @@ type LactationHistFoot struct {
 	AveragePeak       *float64 `json:"averagePeak" db:"avg_peak"`
 }
 
-type AddLactationStruct struct {
-	Id          string     `json:"id"`
-	AnimalId    string     `json:"animalId"`
-	CalfId      *string    `json:"calfId"`
-	PastureId   *string    `json:"pastureId"`
-	StartDate   time.Time  `json:"startDate"`
-	EndDate     *time.Time `json:"endDate"`
-	Observation *string    `json:"observation"`
-	UserId      string     `json:"-"`
+type LactationHistSave struct {
+	Id              *string    `json:"id" db:"id"`
+	AnimalId        string     `json:"animalId" db:"animal_id"`
+	CalfId          *string    `json:"calfId" db:"calf_id"`
+	PastureId       *string    `json:"pastureId" db:"pasture_id"`
+	StartDate       time.Time  `json:"startDate" db:"start_date"`
+	EndDate         *time.Time `json:"endDate" db:"end_date"`
+	Observation     *string    `json:"observation" db:"observation"`
+	Overwrite       bool       `json:"overwrite" db:"overwrite"`
+	TransferPasture bool       `json:"transferPasture" db:"transfer_pasture"`
+	UserId          string     `json:"-" db:"user_id"`
 }
 
 type AverageMilkEntry struct {

@@ -1,7 +1,6 @@
 package pasture
 
 import (
-	"github.com/felipeErnica/rebanho-backend/entity"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
@@ -17,10 +16,10 @@ func NewRepository(db *sqlx.DB) *PastureRepository {
 func (r *PastureRepository) SearchPasture(filter *PastureFilter, userId string) (*[]Pasture, error) {
 	query := `
         select 
-			id, 
-			name,
-			farm_id,
-			bull_id,
+			p.id, 
+			p.name,
+			p.farm_id,
+			p.bull_id,
 			f.name as farm_name,
 			concat_ws(' - ', b.ring_number, b.name) as bull_name
         from pastures p
@@ -42,21 +41,6 @@ func (r *PastureRepository) SearchPasture(filter *PastureFilter, userId string) 
 	return repositoriesUtil.GetList[Pasture](r.DB, query, args...)
 }
 
-func (r *PastureRepository) SearchAllPastures(userId string) (*[]entity.SearchEntity, error) {
-
-	query := `
-        select 
-			p.id, 
-			format('%s (%s)', p.name, f.name) as label 
-        from pastures p
-			join farms f on f.id = p.farm_id
-        where p.user_id = $1 and p.deleted_at is null
-        order by label
-    `
-
-	return repositoriesUtil.GetList[entity.SearchEntity](r.DB, query, userId)
-}
-
 func (r *PastureRepository) FindAnimalsByPasture(
 	pastureId string,
 	userId string,
@@ -66,7 +50,7 @@ func (r *PastureRepository) FindAnimalsByPasture(
 
 	sort = repositoriesUtil.AddCommonFields(sort)
 	sortMap := map[string]repositoriesUtil.SortField{
-		"ring_number": {Field: "coalesce(regexp_replace(animals.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"ring_number": {Field: "coalesce(nullif(regexp_replace(animals.ring_number, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
 		"name":        {Field: "coalesce(animals.name, '')", Order: "asc"},
 		"birth_date":  {Field: "coalesce(animals.birth_date, '-infinity')", Order: "asc"},
 		"death_date":  {Field: "coalesce(animals.death_date, '-infinity')", Order: "asc"},

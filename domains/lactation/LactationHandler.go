@@ -2,6 +2,7 @@ package lactation
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/felipeErnica/rebanho-backend/apiError"
 	handlersUtil "github.com/felipeErnica/rebanho-backend/util/handlers-util"
@@ -12,12 +13,18 @@ type LactationHandler struct {
 }
 
 func (h *LactationHandler) GetLongLactations(w http.ResponseWriter, r *http.Request) {
+	lacPeriod, err := strconv.Atoi(r.URL.Query().Get("lacPeriod"))
+	if err != nil {
+		apiError.WriteError(w, err)
+		return
+	}
+
 	userId, ok := handlersUtil.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	result, err := h.Repository.GetLongLactations(userId)
+	result, err := h.Repository.GetLongLactations(lacPeriod, userId)
 	if err != nil {
 		apiError.WriteError(w, err)
 		return
@@ -291,31 +298,6 @@ func (h *LactationHandler) FindLactationPage(w http.ResponseWriter, r *http.Requ
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *LactationHandler) FindLongLactationPage(w http.ResponseWriter, r *http.Request) {
-	sort := r.URL.Query().Get("sort")
-	order := r.URL.Query().Get("order")
-	cursor := r.URL.Query().Get("cursor")
-
-	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
-	if err != nil {
-		apiError.WriteError(w, err)
-		return
-	}
-
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	result, err := h.Repository.FindLongLactationPage(filter, sort, order, cursor, userId)
-	if err != nil {
-		apiError.WriteError(w, err)
-		return
-	}
-
-	handlersUtil.WriteEntity(w, result)
-}
-
 func (h *LactationHandler) FindLacAnimalsPage(w http.ResponseWriter, r *http.Request) {
 	sort := r.URL.Query().Get("sort")
 	order := r.URL.Query().Get("order")
@@ -446,27 +428,6 @@ func (h *LactationHandler) GetLactationPageFoot(w http.ResponseWriter, r *http.R
 	handlersUtil.WriteEntity(w, result)
 }
 
-func (h *LactationHandler) GetLongLactationPageFoot(w http.ResponseWriter, r *http.Request) {
-	filter, err := handlersUtil.DecodeFilter(r, LactationHistFilter{})
-	if err != nil {
-		apiError.WriteError(w, err)
-		return
-	}
-
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	result, err := h.Repository.GetLongLactationPageFoot(filter, userId)
-	if err != nil {
-		apiError.WriteError(w, err)
-		return
-	}
-
-	handlersUtil.WriteEntity(w, result)
-}
-
 func (h *LactationHandler) GetLactationEntries(w http.ResponseWriter, r *http.Request) {
 	lacId := r.PathValue("id")
 	result, err := h.Repository.GetLactationEntries(lacId)
@@ -555,40 +516,19 @@ func (h *LactationHandler) AddLactation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	lac, ok := handlersUtil.DecodeEntity(w, r, &AddLactationStruct{})
+	lac, ok := handlersUtil.DecodeEntity(w, r, &LactationHistSave{})
 	if !ok {
 		return
 	}
 
 	lac.UserId = userId
-	err := h.Repository.AddLactation(lac)
-	if err != nil {
-		apiError.WriteAPIError(err, w)
+	apiErr := h.Repository.AddLactation(lac)
+	if apiErr != nil {
+		apiError.WriteAPIError(apiErr, w)
 		return
 	}
 
 	handlersUtil.WriteCreatedResponse(w)
-}
-
-func (h *LactationHandler) UpdateLacAndTransfer(w http.ResponseWriter, r *http.Request) {
-	userId, ok := handlersUtil.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	lac, ok := handlersUtil.DecodeEntity(w, r, &AddLactationStruct{})
-	if !ok {
-		return
-	}
-
-	lac.UserId = userId
-	err := h.Repository.EndLactation(lac)
-	if err != nil {
-		apiError.WriteAPIError(err, w)
-		return
-	}
-
-	handlersUtil.WriteUpdateResponse(w)
 }
 
 func (h *LactationHandler) UpdateLactation(w http.ResponseWriter, r *http.Request) {
@@ -597,7 +537,7 @@ func (h *LactationHandler) UpdateLactation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	lac, ok := handlersUtil.DecodeEntity(w, r, &LactationHist{})
+	lac, ok := handlersUtil.DecodeEntity(w, r, &LactationHistSave{})
 	if !ok {
 		return
 	}

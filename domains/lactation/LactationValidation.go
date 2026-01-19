@@ -1,356 +1,155 @@
 package lactation
 
 import (
+	"bytes"
+	"fmt"
+
 	"github.com/felipeErnica/rebanho-backend/apiError"
 	repositoriesUtil "github.com/felipeErnica/rebanho-backend/util/repositories-util"
 	"github.com/jmoiron/sqlx"
 )
 
-func validateAddLacation(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-
-	err := lacExists(db, lac)
-	if err != nil {
-		return err
-	}
-
-	err = invalidBirthDate(db, lac)
-	if err != nil {
-		return err
-	}
-
-	err = invalidDates(lac)
-	if err != nil {
-		return err
-	}
-
-	err = invalidStartDate(db, lac)
-	if err != nil {
-		return err
-	}
-
-	err = invalidEmptyEndDate(db, lac)
-	if err != nil {
-		return err
-	}
-
-	err = invalidEndDate(db, lac)
-	if err != nil {
-		return err
-	}
-
-	return nil
+type SaveValidation struct {
+	LactationExists  *string `db:"lac_exists"`
+	InvalidNew       bool    `db:"invalid_new"`
+	InvalidStart     bool    `db:"invalid_start"`
+	InvalidEnd       bool    `db:"invalid_end"`
+	InvalidCalf      bool    `db:"invalid_calf"`
+	InvalidEmptyEnd  bool    `db:"invalid_empty_end"`
+	DifferentPasture bool    `db:"different_pasture"`
 }
 
-func lacExists(db *sqlx.DB, lac LactationHist) *apiError.APIError {
+func ValidateSave(db *sqlx.DB, lac LactationHistSave) *apiError.APIError {
+
 	query := `
-		select exists (
-			select 1
-			from lactations
-			where animal_id = $1 
-				and start_date = $2
-				and deleted_at is null
-				and user_id = $3
-		)
+		select 
+			(
+				select id
+				from lactations 
+				where animal_id = :animal_id
+					and id is distinct from :id
+					and start_date = :start_date
+					and user_id = :user_id
+					and deleted_at is null
+			) as lac_exists,
+			exists (
+				select 1 
+				from lactations
+				where :end_date is null
+					and id is distinct from :id
+					and animal_id = :animal_id
+					and end_date is null
+					and  user_id = :user_id
+					and deleted_at is null
+			) as invalid_new,
+			exists (
+				select 1 
+				from lactations l
+				where l.animal_id = :animal_id
+					and l.id is distinct from :id
+					and l.start_date < :start_date
+					and l.end_date >= :start_date
+					and l.deleted_at is null
+					and l.user_id = :user_id
+			) as invalid_start,
+			exists (
+				select 1 
+				from lactations l
+				where :end_date is null
+					and l.animal_id = :animal_id
+					and l.id is distinct from :id
+					and l.start_date > :start_date
+					and l.user_id = :user_id
+					and l.deleted_at is null
+			) as invalid_empty_end,
+			exists (
+				select 1 
+				from lactations l
+				where l.animal_id = :animal_id
+					and l.id is distinct from :id
+					and l.start_date > :start_date
+					and l.start_date <= :end_date
+					and l.deleted_at is null
+					and l.user_id = :user_id
+			) as invalid_end,
+			exists (
+				select 1
+				from lactations 	
+				where id is distinct from :id
+					and calf_id = :calf_id
+					and user_id = :user_id
+					and deleted_at is null
+			) as invalid_calf,
+			(
+				select coalesce(pasture_id <> :pasture_id, false)
+				from pasture_entries
+				where animal_id = :animal_id
+					and exit_date is null
+					and user_id = :user_id
+					and deleted_at is null
+			) as different_pasture
 	`
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.AnimalId, lac.StartDate, lac.UserId)
+	validate, err := repositoriesUtil.NamedGet(db, query, SaveValidation{}, lac)
 	if err != nil {
 		return apiError.InternalServerAPIError(err)
 	}
 
-	if exists {
-		return apiError.ConflictAPIError("Esta lactação já existe! Deseja substitui-lá por esta?")
+	apiErrors := make([]string, 0)
+
+	if lac.EndDate != nil && lac.StartDate.After(*lac.EndDate) {
+		apiErrors = append(apiErrors, "A data de início não pode ser maior que a data de encerramento!")
 	}
 
-	return nil
-}
-
-func invalidBirthDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-
-	query := `
-		select exists (
-			select 1
-			from animals a
-			where a.id = $1 and a.birth_date >= $2
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.CalfId, lac.StartDate)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.IncorrectEntityAPIError("A data de nascimento do bezerro não pode ser maior que a data de início!")
-	}
-
-	return nil
-}
-
-func invalidStartDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-	query := `
-		select exists (
-			select 1 
-			from lactations l
-			where l.animal_id = $1
-				and l.start_date < $2
-				and l.end_date >= $2
-				and l.deleted_at is null
-				and l.user_id = $3
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.AnimalId, lac.StartDate, lac.UserId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.IncorrectEntityAPIError(
-			"A data de início informada está em conflito com a data final " +
-			"da lactação anterior. A data final anterior é maior que a data de início informada!",
+	if validate.InvalidStart {
+		apiErrors = append(apiErrors,
+			"A data de início informada está em conflito com a data de encerramento "+
+				"da lactação anterior. A data de início informada é menor que a data de encerramento anterior!",
 		)
 	}
 
-	return nil
-}
-
-func invalidEmptyEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-
-	if lac.EndDate != nil {
-		return nil
+	if validate.InvalidNew {
+		apiErrors = append(apiErrors, "Não é possível adicionar uma nova lactação enquanto a antiga não for encerrada!")
 	}
 
-	query := `
-		select exists (
-			select 1 
-			from lactations l
-			where l.animal_id = $1
-				and l.start_date > $2
-				and l.deleted_at is null
-				and l.user_id = $3
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.AnimalId, lac.StartDate, lac.UserId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
+	if validate.InvalidEmptyEnd {
+		apiErrors = append(apiErrors, "Não é possível adicionar uma lactação em aberto (sem encerramento), pois já existe uma lactação posterior!")
 	}
 
-	if exists {
-		return apiError.IncorrectEntityAPIError(
-			"Não é possível adicionar uma lactação em aberto (sem data final), pois já existe uma lactação posterior!",
+	if validate.InvalidEnd {
+		apiErrors = append(apiErrors,
+			"A data de encerramento informada está em conflito com a data de início " +
+			"de uma lactação posterior. A data de encerramento informada é maior que a data de início da lactação posterior!",
 		)
 	}
 
-	return nil
-}
-
-func invalidEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-
-	if lac.EndDate == nil {
-		return nil
+	if validate.InvalidCalf {
+		apiErrors = append(apiErrors, "O bezerro selecionado está vinculado a outra lactação!")
 	}
 
-	query := `
-		select exists (
-			select 1 
-			from lactations l
-			where l.animal_id = $1
-				and l.start_date > $2
-				and l.start_date <= $3
-				and l.deleted_at is null
-				and l.user_id = $4
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.AnimalId, lac.StartDate, lac.EndDate, lac.UserId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.IncorrectEntityAPIError(
-			"A data de fim informada está em conflito com a data de início " +
-			"de uma lactação posterior. A data inicial posterior é menor que a data de fim informada!",
-		)
-	}
-
-	return nil
-}
-
-func invalidDates(lac LactationHist) *apiError.APIError {
-
-	if lac.EndDate == nil {
-		return nil
-	}
-
-	if lac.StartDate.After(*lac.EndDate) {
-		return apiError.IncorrectEntityAPIError("A data final não pode ser maior que a inicial!")
-	}
-
-	return nil
-}
-
-func validateUpdateLacation(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-
-	err := invalidDates(lac)
-	if err != nil {
-		return err
-	}
-
-	if lac.CalfId != nil {
-		err = invalidBirthDate(db, lac)
-		if err != nil {
-			return err
+	if len(apiErrors) != 0 {
+		var errBuff bytes.Buffer
+		for i, msg := range apiErrors {
+			errPoint := fmt.Sprintf("\n%d - %s", i + 1, msg)
+			errBuff.WriteString(errPoint)
 		}
-
-		err = invalidCalf(db, lac)
-		if err != nil {
-			return err
-		}
+		errMsg := fmt.Sprintf("Os seguintes erros foram encontrados: %s", errBuff.String())
+		return apiError.IncorrectEntityAPIError(errMsg)
 	}
 
-	err = invalidUpdateStartDate(db, lac)
-	if err != nil {
-		return err
-	}
-
-	err = invalidUpdateEmptyEndDate(db, lac)
-	if err != nil {
-		return err
-	}
-
-	err = invalidUpdateEndDate(db, lac)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func invalidCalf(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-	query := `
-		select exists (
-			select 1
-			from lactations 	
-			where id <> $1
-				and calf_id = $2
-				and deleted_at is null
-				and user_id = $3
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.Id, lac.CalfId, lac.UserId)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.IncorrectEntityAPIError("Este animal já está vinculado a outra lactação!")
-	}
-
-	return nil
-}
-
-func invalidUpdateStartDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-	query := `
-		select exists (
-			select 1 
-			from lactations l
-			where l.animal_id = $1
-				and l.start_date < $2
-				and l.end_date >= $2
-				and l.deleted_at is null
-				and l.user_id = $3
-				and l.id <> $4
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.AnimalId, lac.StartDate, lac.UserId, lac.Id)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.IncorrectEntityAPIError(
-			"A data de início informada está em conflito com a data final " +
-			"da lactação anterior. A data final anterior é maior que a data de início informada!",
+	if validate.DifferentPasture && !lac.TransferPasture {
+		return apiError.NewAPIWarning(
+			"Pasto diferente!",
+			"A vaca não está no pasto selecionado! Deseja transferí-la?",
+			"PastureWarning",
 		)
 	}
 
-	return nil
-}
-
-func invalidUpdateEmptyEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-
-	if lac.EndDate != nil {
-		return nil
+	if validate.LactationExists != nil && lac.Id != nil {
+		return apiError.ConflictAPIError("Já existe uma lactação desta vaca na mesma data!")
 	}
 
-	query := `
-		select exists (
-			select 1 
-			from lactations l
-			where l.animal_id = $1
-				and l.start_date > $2
-				and l.deleted_at is null
-				and l.user_id = $3
-				and l.id = $4
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.AnimalId, lac.StartDate, lac.UserId, lac.Id)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.IncorrectEntityAPIError(
-			"Não é possível adicionar uma lactação em aberto (sem data final), pois já existe uma lactação posterior!",
-		)
-	}
-
-	return nil
-}
-
-func invalidUpdateEndDate(db *sqlx.DB, lac LactationHist) *apiError.APIError {
-
-	if lac.EndDate == nil {
-		return nil
-	}
-
-	query := `
-		select exists (
-			select 1 
-			from lactations l
-			where l.animal_id = $1
-				and l.start_date > $2
-				and l.start_date <= $3
-				and l.deleted_at is null
-				and l.user_id = $4
-				and l.id = $5
-		)
-	`
-
-	var exists bool
-	err := repositoriesUtil.GetPrimitive(db, query, &exists, lac.AnimalId, lac.StartDate, lac.EndDate, lac.UserId, lac.Id)
-	if err != nil {
-		return apiError.InternalServerAPIError(err)
-	}
-
-	if exists {
-		return apiError.IncorrectEntityAPIError(
-			"A data de fim informada está em conflito com a data de início " +
-			"de uma lactação posterior. A data inicial posterior é menor que a data de fim informada!",
-		)
+	if validate.LactationExists != nil && !lac.Overwrite {
+		return apiError.ReplaceAPIWarning("Esta lactação já existe! Deseja substituí-la por esta?", validate.LactationExists)
 	}
 
 	return nil

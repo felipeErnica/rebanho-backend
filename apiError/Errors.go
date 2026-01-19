@@ -7,12 +7,12 @@ import (
 )
 
 type APIError struct {
-	Code        int     `json:"-"`
-	Kind        string  `json:"kind"`
-	ErrType     string  `json:"errType"`
-	Title       string  `json:"title"`
-	Message     string  `json:"message"`
-	ReplacingId *string `json:"replacingId"`
+	Code       int     `json:"-"`
+	Kind       string  `json:"kind"`
+	ErrType    string  `json:"errType"`
+	Title      string  `json:"title"`
+	Message    string  `json:"message"`
+	ExistingId *string `json:"replacingId"`
 }
 
 const ERROR_TYPE = "Error"
@@ -97,14 +97,14 @@ func ConflictAPIWarning(message string) *APIError {
 	}
 }
 
-func ReplaceAPIWarning(message string, replacingId string) *APIError {
+func ReplaceAPIWarning(message string, replacingId *string) *APIError {
 	return &APIError{
-		Code:    http.StatusConflict,
-		ErrType: WARNING_TYPE,
-		Kind:    CONFLICT_WARNING,
-		Title:   "AVISO: Informação já existe!",
-		Message: message,
-		ReplacingId: &replacingId,
+		Code:       http.StatusConflict,
+		ErrType:    WARNING_TYPE,
+		Kind:       CONFLICT_WARNING,
+		Title:      "AVISO: Informação já existe!",
+		Message:    message,
+		ExistingId: replacingId,
 	}
 }
 

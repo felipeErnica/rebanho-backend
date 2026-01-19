@@ -30,6 +30,7 @@ type Animal struct {
 	AveragePeak          *float64   `json:"averagePeak" db:"average_peak"`
 	ChildrenNumber       *int       `json:"childrenNumber" db:"children_number"`
 	Observation          *string    `json:"observation" db:"observation"`
+	IsLactating          *bool      `json:"-" db:"is_lactating"`
 	CreatedAt            time.Time  `json:"-" db:"created_at"`
 	UserId               string     `json:"-" db:"user_id"`
 }
@@ -92,6 +93,7 @@ type AnimalFilter struct {
 	IsTransferBull          *bool      `schema:"isTransferBull" db:"is_transfer_bull"`
 	IsEmbryoDonor           *bool      `schema:"isEmbryoDonor" db:"is_embryo_donor"`
 	IsOutsideAnimal         *bool      `schema:"isOutsideAnimal" db:"is_outside_animal"`
+	IsLactating             *bool      `schema:"isLactating" db:"is_lactating"`
 }
 
 type CardEntry struct {
