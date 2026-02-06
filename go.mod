@@ -11,4 +11,4 @@ require (
 
 require github.com/jmoiron/sqlx v1.4.0
 
-require github.com/gorilla/schema v1.4.1 // indirect
+require github.com/gorilla/schema v1.4.1

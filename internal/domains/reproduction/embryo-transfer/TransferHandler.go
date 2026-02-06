@@ -1,0 +1,387 @@
+package embryoTransfer
+
+import (
+	"net/http"
+	"time"
+
+	"github.com/felipeErnica/rebanho-backend/internal/log"
+	"github.com/felipeErnica/rebanho-backend/internal/util"
+)
+
+type TransferHandler struct {
+	Repository *TransferRepository
+}
+
+func (h *TransferHandler) GetBirthRateStats(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetBirthRateStats(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) GetPregnancyRateStats(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetPregnancyRateStats(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) GetTransferHist(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetTransferHist(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.SendList(w, result)
+}
+
+func (h *TransferHandler) GetAnimalsNumber(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetAnimalsNumber(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) GetFutureBirths(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetFutureBirths(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetLastGroups(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetLastEntries(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) GetBestBull(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetBestBull(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.SendList(w, result)
+}
+
+func (h *TransferHandler) GetBestReceivers(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetBestReceivers(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.SendList(w, result)
+}
+
+func (h *TransferHandler) GetBestDonors(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetBestDonors(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.SendList(w, result)
+}
+
+func (h *TransferHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
+	cursor := r.URL.Query().Get("cursor")
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+
+	filter, err := util.DecodeFilter(r, TransferEntryFilter{})
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindEntriesPage(userId, filter, sort, order, cursor)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) FindEntriesByGroup(w http.ResponseWriter, r *http.Request) {
+	queryDate := r.PathValue("transferDate")
+
+	transferDate, err := time.Parse(time.RFC3339Nano, queryDate)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindEntriesByGroup(userId, transferDate)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.SendList(w, result)
+}
+
+func (h *TransferHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.FindGroups(userId)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.SendList(w, result)
+}
+
+func (h *TransferHandler) GetEntriesByGroupFoot(w http.ResponseWriter, r *http.Request) {
+	queryDate := r.PathValue("transferDate")
+
+	transferDate, err := time.Parse(time.RFC3339Nano, queryDate)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Repository.GetEntriesByGroupFoot(userId, transferDate)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	filter, err := util.DecodeFilter(r, TransferEntryFilter{})
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	result, err := h.Repository.GetEntriesFoot(userId, filter)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *TransferHandler) AddTransfer(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := util.DecodeEntity(w, r, &EmbryoTransferSave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.AddTransfer(entry)
+	if err != nil {
+		log.WriteAPIError(err, w)
+		return
+	}
+
+	util.WriteCreatedResponse(w)
+}
+
+func (h *TransferHandler) Replace(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := util.DecodeEntity(w, r, &EmbryoTransferSave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	err := h.Repository.Replace(entry)
+	if err != nil {
+		log.WriteAPIError(err, w)
+		return
+	}
+
+	util.WriteUpdateResponse(w)
+}
+
+func (h *TransferHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.Delete(id, userId)
+	if err != nil {
+		log.WriteAPIError(err, w)
+		return
+	}
+
+	util.WriteDeleteResponse(w)
+}
+
+func (h *TransferHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := util.DecodeEntity(w, r, &EmbryoTransferSave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	res, err := h.Repository.Update(entry)
+	if err != nil {
+		log.WriteAPIError(err, w)
+		return
+	}
+
+	util.WriteEntity(w, res)
+}
+
+func (h *TransferHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
+	dateStr := r.PathValue("transferDate")
+	transferDate, _ := time.Parse(time.RFC3339Nano, dateStr)
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.Repository.DeleteGroup(transferDate, userId)
+	if err != nil {
+		log.WriteAPIError(err, w)
+		return
+	}
+
+	util.WriteDeleteResponse(w)
+}
+
+func (h *TransferHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	entry, ok := util.DecodeEntity(w, r, &TransferGroupSave{})
+	if !ok {
+		return
+	}
+
+	entry.UserId = userId
+	res, err := h.Repository.UpdateGroup(entry)
+	if err != nil {
+		log.WriteAPIError(err, w)
+		return
+	}
+
+	util.WriteEntity(w, res)
+}

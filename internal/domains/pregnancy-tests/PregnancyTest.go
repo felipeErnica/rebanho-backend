@@ -1,0 +1,111 @@
+package pregnancyTests
+
+import "time"
+
+type TestEntry struct {
+	Id               string     `json:"id,omitempty" db:"id"`
+	TestDate         time.Time  `json:"testDate" db:"test_date"`
+	AnimalId         string     `json:"animalId,omitempty" db:"animal_id"`
+	AnimalName       string     `json:"-" db:"animal_name"`
+	AnimalInfo       string     `json:"animalInfo" db:"animal_info"`
+	AnimalOrder      int        `json:"animalOrder,omitempty" db:"animal_order"`
+	BirthForecast    *time.Time `json:"birthForecast,omitempty" db:"birth_forecast"`
+	BirthStatus      string     `json:"birthStatus" db:"birth_status"`
+	PregnancyStatus  string     `json:"pregnancyStatus" db:"pregnancy_status"`
+	Observation      *string    `json:"observation" db:"observation"`
+	ChildInformation *string    `json:"childInformation" db:"child_information"`
+	CreatedAt        time.Time  `json:"-" db:"created_at"`
+	DeletedAt        *time.Time `json:"-" db:"deleted_at"`
+	UserId           string     `json:"-" db:"user_id"`
+}
+
+type TestEntryFilter struct {
+	MinTestDate      *time.Time `json:"minTestDate" db:"test_date"`
+	MaxTestDate      *time.Time `json:"maxTestDate" db:"test_date"`
+	Animals          *[]string  `json:"animals" db:"animal_id"`
+	MinBirthForecast *time.Time `json:"minBirthForecast" db:"birth_forecast"`
+	MaxBirthForecast *time.Time `json:"maxBirthForecast" db:"birth_forecast"`
+	BirthStatus      *string    `json:"birthStatus" db:"birth_status"`
+	PregnancyStatus  *string    `json:"pregnancyStatus" db:"pregnancy_status"`
+}
+
+type TestEntryFoot struct {
+	Totals        int     `json:"totals" db:"totals"`
+	PregnancyRate float64 `json:"pregnancyRate" db:"pregnancy_rate"`
+	BirthRate     float64 `json:"birthRate" db:"birth_rate"`
+}
+
+type TestEntrySave struct {
+	Id              string    `json:"id" db:"id"`
+	TestDate        time.Time `json:"testDate" db:"test_date"`
+	AnimalId        string    `json:"animalId" db:"animal_id"`
+	PregnancyStatus string    `json:"pregnancyStatus" db:"pregnancy_status"`
+	PregnancyTime   *int      `json:"pregnancyTime" db:"pregnancy_time"`
+	Observation     *string   `json:"observation" db:"observation"`
+	Overwrite       bool      `json:"overwrite"`
+	UserId          string    `json:"-" db:"user_id"`
+}
+
+type TestGroups struct {
+	TestDate            time.Time `json:"testDate" db:"test_date"`
+	OldTestDate         time.Time `json:"oldTestDate" db:"old_test_date"`
+	AnimalsNumber       int       `json:"animalsNumber" db:"animals_number"`
+	PregnancyRate       float64   `json:"pregnancyRate" db:"pregnancy_rate"`
+	PregnancyComparison float64   `json:"pregnancyComparison" db:"pregnancy_comparison"`
+	BirthRate           float64   `json:"birthRate" db:"birth_rate"`
+	BirthComparison     float64   `json:"birthComparison" db:"birth_comparison"`
+	UserId              string    `json:"-" db:"user_id"`
+}
+
+type LastEntries struct {
+	TestDate time.Time   `json:"testDate"`
+	Entries  []TestEntry `json:"entries"`
+}
+
+type NextBirths struct {
+	BirthForecast time.Time `json:"birthForecast" db:"birth_forecast"`
+	BirthNumbers  int       `json:"birthNumbers" db:"birth_numbers"`
+}
+
+type TestAnimal struct {
+	AnimalName          string  `json:"animalName" db:"animal_name"`
+	Totals              int     `json:"totals" db:"totals"`
+	PregnancyRate       float64 `json:"pregnancyRate" db:"pregnancy_rate"`
+	BirthRate           float64 `json:"birthRate" db:"birth_rate"`
+	PregnancyComparison float64 `json:"pregnancyComparison" db:"pregnancy_comparison"`
+	BirthComparison     float64 `json:"birthComparison" db:"birth_comparison"`
+}
+
+type PregnancyHist struct {
+	TestDate      time.Time `json:"testDate" db:"test_date"`
+	PregnancyRate float64   `json:"pregnancyRate" db:"pregnancy_rate"`
+}
+
+type AnimalsNumberHist struct {
+	TestDate      time.Time `json:"testDate" db:"test_date"`
+	AnimalsNumber float64   `json:"animalsNumber" db:"totals"`
+}
+
+type CardStats struct {
+	Current float64 `json:"current"`
+	Trend   float64 `json:"trend"`
+	Hist    any     `json:"hist"`
+}
+
+type BirthHist struct {
+	TestDate  time.Time `json:"testDate" db:"test_date"`
+	BirthRate float64   `json:"birthRate" db:"birth_rate"`
+}
+
+type BirthStats struct {
+	Current float64     `json:"current"`
+	Trend   float64     `json:"trend"`
+	Hist    []BirthHist `json:"hist"`
+}
+
+type PregnancyTestHist struct {
+	TestDate    time.Time `json:"testDate" db:"test_date"`
+	Totals      int       `json:"totals" db:"totals"`
+	Pregnancies int       `json:"pregnancies" db:"pregnancies"`
+	Births      int       `json:"births" db:"births"`
+}
