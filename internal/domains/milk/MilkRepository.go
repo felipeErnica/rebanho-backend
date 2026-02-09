@@ -1,9 +1,9 @@
 package milk
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/felipeErnica/rebanho-backend/internal/entity"
 	"github.com/felipeErnica/rebanho-backend/internal/util"
 	"github.com/jmoiron/sqlx"
 )
@@ -74,8 +74,9 @@ func (r *MilkRepository) FindGroupsPage(
 	filter *LactationGroupFilter,
 	order string,
 	cursor string,
+	limit int,
 	userId string,
-) (*entity.Page[LactationGroup], error) {
+) (*[]LactationGroup, error) {
 
 	sortMap := map[string]util.SortField{
 		"entry_date": {Field: "cte.entry_date", Order: "asc"},
@@ -115,109 +116,108 @@ func (r *MilkRepository) FindGroupsPage(
 	}
 
 	whereExpression := util.GetWhereExpression(filterExpression, cursorExpression)
-	query += whereExpression + " ORDER BY cte.entry_date " + order
+	query += whereExpression + " ORDER BY cte.entry_date " + order + fmt.Sprintf(" LIMIT %d", limit)
 	args := []any{userId}
 	filterArgs := util.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
-	return util.GetPage[LactationGroup](r.DB, query, "entry_date", 100, args...)
+	return util.GetList[LactationGroup](r.DB, query, args...)
 }
 
-func (r *MilkRepository) GetLastMilkEntries(userId string) (*[]TotalMilkEntry, error) {
+func (r *MilkRepository) GetLastMilkEntries(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
 			SELECT
-				l.entry_date,
-				SUM(l.quantity) AS total_milk
+				l.entry_date AS date,
+				SUM(l.quantity) AS value
 			FROM milk_entries l
 			WHERE l.user_id = $1 AND l.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
 			LIMIT 10
 		)
-		SELECT * FROM cte ORDER BY entry_date
+		SELECT * FROM cte ORDER BY date
     `
-	return util.GetList[TotalMilkEntry](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *MilkRepository) GetYearMilkEntries(userId string) (*[]TotalMilkEntry, error) {
+func (r *MilkRepository) GetYearMilkEntries(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
 			SELECT
-				DATE_TRUNC('year', l.entry_date) AS entry_date,
-				SUM(l.quantity) AS total_milk
+				DATE_TRUNC('year', l.entry_date) AS date,
+				SUM(l.quantity) AS date
 			FROM milk_entries l
 			WHERE l.user_id = $1 AND l.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
 			LIMIT 30
 		)
-		SELECT * FROM cte ORDER BY entry_date
+		SELECT * FROM cte ORDER BY date
     `
-	return util.GetList[TotalMilkEntry](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *MilkRepository) GetMilkProduction(userId string) (*[]MilkProductionEntry, error) {
+func (r *MilkRepository) GetMilkProduction(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
 			SELECT
-				DATE_TRUNC('month', l.entry_date) AS entry_date,
-				SUM(l.quantity) AS total_milk,
-				COUNT(l.animal_id) animals_number
+				DATE_TRUNC('month', l.entry_date) AS date,
+				SUM(l.quantity) AS value
 			FROM milk_entries l
 			WHERE l.user_id = $1 AND l.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
 			LIMIT 60
 		)
-		SELECT * FROM cte ORDER BY entry_date
+		SELECT * FROM cte ORDER BY date
     `
-	return util.GetList[MilkProductionEntry](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *MilkRepository) GetLastAverageMilkEntries(userId string) (*[]AverageMilkEntry, error) {
+func (r *MilkRepository) GetLastAverageMilkEntries(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
 			SELECT
-				l.entry_date,
-				AVG(l.quantity) AS avg_milk
+				l.entry_date AS date,
+				AVG(l.quantity) AS value
 			FROM milk_entries l
 			WHERE l.user_id = $1 AND l.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
 			LIMIT 10
 		)
-		SELECT * FROM cte ORDER BY entry_date
+		SELECT * FROM cte ORDER BY date
     `
 
-	return util.GetList[AverageMilkEntry](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *MilkRepository) GetYearAverageMilkEntries(userId string) (*[]AverageMilkEntry, error) {
+func (r *MilkRepository) GetYearAverageMilkEntries(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
 			SELECT
-				DATE_TRUNC('year', l.entry_date) AS entry_date,
-				AVG(l.quantity) AS avg_milk
+				DATE_TRUNC('year', l.entry_date) AS date,
+				AVG(l.quantity) AS value
 			FROM milk_entries l
 			WHERE l.user_id = $1 AND l.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
 			LIMIT 30
 		)
-		SELECT * FROM cte ORDER BY entry_date
+		SELECT * FROM cte ORDER BY value
     `
 
-	return util.GetList[AverageMilkEntry](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *MilkRepository) GetLactationEntries(lacId string) (*[]MilkEntry, error) {
+func (r *MilkRepository) GetLactationEntries(lacId string) (*[]MilkDB, error) {
 	query := `
 		SELECT
 			m.id,
 			m.animal_id,
-			CONCAT_WS(' - ', a.ring_number, a.name) AS animal_info,
-			COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0) AS animal_order,
+			CONCAT_WS(' - ', a.tag, a.name) AS animal_info,
+			COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0) AS animal_order,
 			COALESCE(p.name, 'Sem Pasto') AS pasture_name,
 			m.entry_date,
 			m.quantity
@@ -236,7 +236,7 @@ func (r *MilkRepository) GetLactationEntries(lacId string) (*[]MilkEntry, error)
 		WHERE m.deleted_at IS NULL
 		ORDER BY m.entry_date
     `
-	return util.GetList[MilkEntry](r.DB, query, lacId)
+	return util.GetList[MilkDB](r.DB, query, lacId)
 }
 
 func (r *MilkRepository) GetLactationEntriesFoot(lacId string) (*MilkEntryFoot, error) {
@@ -256,33 +256,42 @@ func (r *MilkRepository) GetLactationEntriesFoot(lacId string) (*MilkEntryFoot, 
 	return util.GetOne[MilkEntryFoot](r.DB, query, lacId)
 }
 
-func (r *MilkRepository) GetLastEntries(userId string) (*[]MilkEntry, error) {
+func (r *MilkRepository) GetLastEntries(userId string) (*[]MilkDB, error) {
 	query := `
 		WITH max_tbl AS (
 			SELECT MAX(entry_date) max_date 
 			FROM milk_entries 
 			WHERE user_id = $1 AND deleted_at IS NULL
 		)
+
 		SELECT 
 			m.id,
-			CONCAT_WS(' - ', a.ring_number, a.name) AS animal_info,
-			COALESCE(p.name, 'Sem Pasto') AS pasture_name,
 			m.entry_date,
-			m.quantity
+			m.quantity,
+			
+			m.animal_id,
+			a.tag AS animal_tag,
+			a.name AS animal_name,
+
+			p.id AS pasture_id,
+			p.name AS pasture_name,
+			f.id AS farm_id,
+			f.name AS farm_name
 		FROM milk_entries m 
-			CROSS JOIN max_tbl
+			CROSS JOIN max_tbl max
 			JOIN animals a ON a.id = m.animal_id
 			LEFT JOIN pasture_entries pe ON pe.animal_id = m.animal_id
 				AND m.entry_date >= pe.entry_date
 				AND m.entry_date < COALESCE(pe.exit_date, NOW())
 				AND pe.deleted_at IS NULL
 			LEFT JOIN pastures p ON p.id = pe.pasture_id
+			LEFT JOIN farms f ON f.id = p.farm_id
 		WHERE m.user_id = $1 
 			AND m.deleted_at IS NULL 
-			AND m.entry_date = max_date
-		ORDER BY COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0)
+			AND m.entry_date = max.max_date
+		ORDER BY COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0)
 	`
-	return util.GetList[MilkEntry](r.DB, query, userId)
+	return util.GetList[MilkDB](r.DB, query, userId)
 }
 
 func (r *MilkRepository) GetLastGroups(userId string) (*[]LactationGroup, error) {
@@ -314,13 +323,13 @@ func (r *MilkRepository) FindPage(
 	sort string,
 	order string,
 	cursor string,
+	limit int,
 	userId string,
-) (*entity.Page[MilkEntry], error) {
+) (*[]MilkDB, error) {
 
-	sort = util.AddCommonFields(sort)
 	sortMap := map[string]util.SortField{
 		"animal_name":  {Field: "a.name", Order: "asc"},
-		"animal_order": {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
+		"animal_order": {Field: "coalesce(regexp_replace(a.tag, '[^0-9]', '', 'g')::int, 0)", Order: "asc"},
 		"entry_date":   {Field: "m.entry_date", Order: "desc"},
 		"quantity":     {Field: "m.quantity", Order: "asc"},
 		"id":           {Field: "m.id", Order: "asc"},
@@ -330,14 +339,21 @@ func (r *MilkRepository) FindPage(
 	query := `
 		SELECT
 			m.id,
-			m.animal_id,
-			a.name AS animal_name,
-			CONCAT_WS(' - ', a.ring_number, a.name) AS animal_info,
-			COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0) AS animal_order,
-			COALESCE(p.name, 'Sem Pasto') AS pasture_name,
 			m.entry_date,
 			m.quantity,
-			m.created_at
+			m.created_at,
+
+			m.animal_id,
+			a.tag AS animal_tag,
+			a.name AS animal_name,
+			COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0) AS animal_order,
+
+			p.id AS pasture_id,
+			p.name AS pasture_name,
+
+			p.farm_id,
+			f.name AS farm_name
+
 		FROM milk_entries m
 			JOIN animals a ON a.id = m.animal_id
 			LEFT JOIN pasture_entries pe ON pe.animal_id = m.animal_id
@@ -345,6 +361,7 @@ func (r *MilkRepository) FindPage(
 				AND m.entry_date < COALESCE(pe.exit_date, NOW())
 				AND pe.deleted_at IS NULL
 			LEFT JOIN pastures p ON p.id = pe.pasture_id
+			LEFT JOIN farms f ON f.id = p.farm_id
     `
 
 	whereExpression := "m.user_id = $1 AND m.deleted_at IS NULL"
@@ -372,12 +389,12 @@ func (r *MilkRepository) FindPage(
 		return nil, err
 	}
 
-	query += " ORDER BY " + sortExpression
+	query += " ORDER BY " + sortExpression + fmt.Sprintf(" LIMIT %d", limit)
 	args := []any{userId}
 	filterArgs := util.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
-	return util.GetPage[MilkEntry](r.DB, query, sort, 100, args...)
+	return util.GetList[MilkDB](r.DB, query, args...)
 }
 
 func (r *MilkRepository) GetPageFoot(filter *MilkEntryFilter, userId string) (*MilkEntryFoot, error) {
@@ -406,28 +423,37 @@ func (r *MilkRepository) GetPageFoot(filter *MilkEntryFilter, userId string) (*M
 	return util.GetOne[MilkEntryFoot](r.DB, query, args...)
 }
 
-func (r *MilkRepository) GetGroupEntries(userId string, entryDate time.Time) (*[]MilkEntry, error) {
+func (r *MilkRepository) GetGroupEntries(userId string, entryDate time.Time) (*[]MilkDB, error) {
 
 	query := `
 		SELECT
 			m.id,
-			m.animal_id,
-			CONCAT_WS(' - ', a.ring_number, a.name) animal_info,
-			COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-			p.name pasture_name,
 			m.entry_date,
-			m.quantity
+			m.quantity,
+
+			m.animal_id,
+			a.tag AS animal_tag,
+			a.name AS animal_name,
+
+			p.id AS pasture_id,
+			p.name AS pasture_name,
+			p.farm_id,
+			f.name AS farm_name
+
 		FROM milk_entries m
 			JOIN animals a ON a.id = m.animal_id
-			JOIN pasture_entries pe ON pe.animal_id = m.animal_id
+			LEFT JOIN pasture_entries pe ON pe.animal_id = m.animal_id
 				AND pe.entry_date <= m.entry_date
 				AND COALESCE(pe.exit_date, NOW()) > m.entry_date
 				AND pe.deleted_at IS NULL
-			JOIN pastures p ON p.id = pe.pasture_id
-		WHERE m.user_id = $1 AND m.deleted_at IS NULL AND m.entry_date = $2
-		ORDER BY COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0)
+			LEFT JOIN pastures p ON p.id = pe.pasture_id
+			LEFT JOIN farms f ON f.id = p.farm_id
+		WHERE m.entry_date = $2
+			AND m.user_id = $1 
+			AND m.deleted_at IS NULL 
+		ORDER BY COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0)
     `
-	return util.GetList[MilkEntry](r.DB, query, userId, entryDate)
+	return util.GetList[MilkDB](r.DB, query, userId, entryDate)
 }
 
 func (r *MilkRepository) GetGroupEntriesFoot(userId string, entryDate time.Time) (*MilkEntryFoot, error) {
@@ -437,7 +463,8 @@ func (r *MilkRepository) GetGroupEntriesFoot(userId string, entryDate time.Time)
 			SUM(quantity) AS total_milk,
 			AVG(quantity) AS avg_milk
 		FROM milk_entries m
-		WHERE m.user_id = $1 AND deleted_at IS NULL AND m.entry_date = $2
+		WHERE m.user_id = $1 AND deleted_at IS NULL 
+			AND m.entry_date = $2
     `
 	return util.GetOne[MilkEntryFoot](r.DB, query, userId, entryDate)
 }
@@ -569,7 +596,7 @@ func (r *MilkRepository) Add(entry *MilkEntrySave) error {
 
 }
 
-func (r *MilkRepository) Update(entry *MilkEntrySave) (*MilkEntry, error) {
+func (r *MilkRepository) Update(entry *MilkEntrySave) (*MilkDB, error) {
 
 	query := `
 		UPDATE milk_entries 
@@ -586,7 +613,7 @@ func (r *MilkRepository) Update(entry *MilkEntrySave) (*MilkEntry, error) {
 		SELECT 
 			m.id,
 			m.animal_id,
-			CONCAT_WS(' - ', a.ring_number, a.name) AS animal_info,
+			CONCAT_WS(' - ', a.tag, a.name) AS animal_info,
 			COALESCE(p.name, 'Sem Pasto') AS pasture_name,
 			m.entry_date,
 			m.quantity
@@ -602,7 +629,7 @@ func (r *MilkRepository) Update(entry *MilkEntrySave) (*MilkEntry, error) {
 				AND deleted_at IS NULL
 	`
 
-	response, err := util.NamedGet(r.DB, returnQuery, MilkEntry{}, entry)
+	response, err := util.NamedGet(r.DB, returnQuery, MilkDB{}, entry)
 	if err != nil {
 		return nil, err
 	}

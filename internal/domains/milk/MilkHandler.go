@@ -48,7 +48,7 @@ func (h *MilkHandler) GetMilkProduction(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	result, err := h.Service.Repo.GetMilkProduction(userId)
+	result, err := h.Service.GetMilkProduction(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -93,7 +93,7 @@ func (h *MilkHandler) GetLastEntries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.Service.Repo.GetLastEntries(userId)
+	result, err := h.Service.GetLastEntries(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -108,7 +108,7 @@ func (h *MilkHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.Service.Repo.GetLastGroups(userId)
+	result, err := h.Service.GetLastGroups(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -132,7 +132,7 @@ func (h *MilkHandler) FindGroupsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.Service.Repo.FindGroupsPage(filter, order, cursor, userId)
+	result, err := h.Service.FindGroupsPage(filter, order, cursor, 100, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -143,7 +143,7 @@ func (h *MilkHandler) FindGroupsPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *MilkHandler) GetLactationEntries(w http.ResponseWriter, r *http.Request) {
 	lacId := r.PathValue("id")
-	result, err := h.Service.Repo.GetLactationEntries(lacId)
+	result, err := h.Service.GetLactationEntries(lacId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -154,7 +154,7 @@ func (h *MilkHandler) GetLactationEntries(w http.ResponseWriter, r *http.Request
 
 func (h *MilkHandler) GetLactationEntriesFoot(w http.ResponseWriter, r *http.Request) {
 	lacId := r.PathValue("id")
-	result, err := h.Service.Repo.GetLactationEntriesFoot(lacId)
+	result, err := h.Service.GetLactationEntriesFoot(lacId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -179,7 +179,7 @@ func (h *MilkHandler) FindEntriesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.Service.Repo.FindPage(filter, sort, order, cursor, userId)
+	result, err := h.Service.FindPage(filter, sort, order, cursor, 100, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -200,7 +200,7 @@ func (h *MilkHandler) GetEntriesPageFoot(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	result, err := h.Service.Repo.GetPageFoot(filter, userId)
+	result, err := h.Service.GetPageFoot(filter, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -222,7 +222,7 @@ func (h *MilkHandler) GetGroupEntries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.Service.Repo.GetGroupEntries(userId, entryDate)
+	result, err := h.Service.GetGroupEntries(userId, entryDate)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -240,7 +240,7 @@ func (h *MilkHandler) GetGroupEntriesFoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	result, err := h.Service.Repo.GetGroupEntriesFoot(userId, entryDate)
+	result, err := h.Service.GetGroupEntriesFoot(userId, entryDate)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -282,7 +282,7 @@ func (h *MilkHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.Service.Repo.DeleteGroup(entryDate, userId)
+	err := h.Service.DeleteGroup(entryDate, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -336,7 +336,7 @@ func (h *MilkHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *MilkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	err := h.Service.Repo.Delete(id)
+	err := h.Service.Delete(id)
 	if err != nil {
 		log.WriteError(w, err)
 		return

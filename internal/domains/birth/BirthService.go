@@ -1,6 +1,8 @@
 package birth
 
 import (
+	"encoding/json"
+	"fmt"
 	"math"
 
 	"github.com/felipeErnica/rebanho-backend/internal/log"
@@ -42,6 +44,15 @@ func (s *BirthService) toDTO(entry BirthDB) BirthDTO {
 	}
 
 	return dto
+}
+
+func (s *BirthService) listToDTO(list []BirthDB) []BirthDTO {
+	listDTO := make([]BirthDTO, 0)
+	for _, entry := range list {
+		dto := s.toDTO(entry)
+		listDTO = append(listDTO, dto)
+	}
+	return listDTO
 }
 
 func (s *BirthService) AddBirth(entry *BirthEntrySave) *log.APIError {
@@ -273,12 +284,21 @@ func (s *BirthService) GetDeathIndex(userId string) (*util.CardStats, error) {
 	return card, nil
 }
 
+func (s *BirthService) GetLastBirths(userId string) (*[]BirthDTO, error) {
+	list, err := s.Repo.GetLastBirths(userId)
+	if err != nil {
+		return nil, err
+	}
+	listDTO := s.listToDTO(*list)
+	return &listDTO, nil
+}
+
 func (s *BirthService) FindPage(
-	userId string, 
-	sort string, 
-	order string, 
-	filter *BirthEntryFilter, 
-	cursor string, 
+	userId string,
+	sort string,
+	order string,
+	filter *BirthEntryFilter,
+	cursor string,
 	limit int,
 ) (*util.Page[BirthDTO], error) {
 	sort = util.AddNewFields(sort, "id")
@@ -289,12 +309,9 @@ func (s *BirthService) FindPage(
 
 	newCursor := util.CreateCursorKey(sort, *list)
 
-	listDto := make([]BirthDTO, 0)
-	for _, entry := range *list {
-		dto := s.toDTO(entry)
-		listDto = append(listDto, dto)
-	}
-
+	listDto := s.listToDTO(*list)
+	json, _ := json.MarshalIndent(listDto, "", "	")
+	fmt.Println(string(json))
 	page := util.NewPage(listDto, newCursor, limit)
 	return page, err
 }

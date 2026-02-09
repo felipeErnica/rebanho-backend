@@ -506,20 +506,33 @@ func (r *BirthRepository) GetYearBySex(userId string) (*[]TotalBirthsBySex, erro
 
 func (r *BirthRepository) GetLastBirths(userId string) (*[]BirthDB, error) {
 	query := `
-        SELECT 
-            CONCAT_WS(' - ', m.tag, m.name) mother_info,
-            a.birth_date AS calf_birth_date,
-            a.sex AS calf_sex,
-            CONCAT_WS(' - ', f.tag, f.name) AS calf_father,
+		SELECT 
+			a.id AS calf_id,
+			a.sex AS calf_sex,
+			a.name AS calf_name,
+			a.tag AS calf_tag,
+			a.birth_date AS calf_birth_date,
+			a.observation AS calf_observation,
+
+			a.mother_id,
+			m.name AS mother_name,
+			m.tag AS mother_tag,
+			COALESCE(REGEXP_REPLACE(m.tag, '[^0-9]', '', 'g')::int, 0) AS mother_order,
+
+			a.father_id AS father_id,
+			f.name AS father_name,
+			f.tag AS father_tag,
+
 			EXTRACT(days FROM a.birth_date - LAG(a.birth_date) OVER win) AS birth_interval
-        FROM animals a
-            JOIN animals m ON m.id = a.mother_id AND m.is_outside_animal = FALSE
-            LEFT JOIN animals f ON f.id = a.father_id
+		FROM animals a
+			JOIN animals m ON m.id = a.mother_id AND m.is_outside_animal = FALSE
+			LEFT JOIN animals f ON f.id = a.father_id
 		WHERE 
 			a.user_id = $1 
-			AND a.deleted_at IS NULL
+			AND a.deleted_at IS NULL 
+			AND m.is_outside_animal = FALSE
 			AND a.birth_date IS NOT NULL
-			AND a.is_outside_animal = FALSE
+			AND a.mother_id IS NOT NULL
 		WINDOW win AS (PARTITION BY a.mother_id ORDER BY a.birth_date)
 		ORDER BY a.birth_date DESC, COALESCE(REGEXP_REPLACE(m.tag, '[^0-9]', '', 'g')::int, 0)
 		LIMIT 15

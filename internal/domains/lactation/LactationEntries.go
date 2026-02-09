@@ -2,26 +2,29 @@ package lactation
 
 import "time"
 
-type LactationHist struct {
-	Id                string     `json:"id" db:"id"`
-	AnimalId          string     `json:"animalId" db:"animal_id"`
-	Name              string     `json:"-" db:"name"`
-	AnimalName        string     `json:"animalName" db:"animal_name"`
-	AnimalOrder       int        `json:"-" db:"animal_order"`
-	CalfId            *string    `json:"calfId" db:"calf_id"`
-	CalfBirthDate     *time.Time `json:"-" db:"calf_birth_date"`
-	CalfInfo          *string    `json:"calfInfo" db:"calf_info"`
-	StartDate         time.Time  `json:"startDate" db:"start_date"`
-	EndDate           *time.Time `json:"endDate" db:"end_date"`
-	LacPeriod         *float64   `json:"lacPeriod" db:"lac_period"`
-	AverageProduction *float64   `json:"averageProduction" db:"avg_production"`
-	TotalProduction   *float64   `json:"totalProduction" db:"total_production"`
-	LacInterval       *int       `json:"lacInterval" db:"lac_interval"`
-	Peak              *float64   `json:"peak" db:"peak"`
-	Observation       *string    `json:"observation" db:"observation"`
-	CreatedAt         time.Time  `json:"-" db:"created_at"`
-	DeletedAt         *time.Time `json:"-" db:"deleted_at"`
-	UserId            string     `json:"-" db:"user_id"`
+type LactationDB struct {
+	Id                string     `db:"id"`
+	AnimalId          string     `db:"animal_id"`
+	AnimalTag         string     `db:"animal_tag"`
+	AnimalName        string     `db:"animal_name"`
+	AnimalOrder       int        `db:"animal_order"`
+	CalfId            *string    `db:"calf_id"`
+	CalfBirthDate     *time.Time `db:"calf_birth_date"`
+	CalfDeathDate     *time.Time `db:"calf_death_date"`
+	CalfTag           *string    `db:"calf_tag"`
+	CalfName          *string    `db:"calf_name"`
+	CalfSex           *string    `db:"calf_sex"`
+	StartDate         time.Time  `db:"start_date"`
+	EndDate           *time.Time `db:"end_date"`
+	LacPeriod         *float64   `db:"lac_period"`
+	AverageProduction *float64   `db:"avg_production"`
+	TotalProduction   *float64   `db:"total_production"`
+	LacInterval       *int       `db:"lac_interval"`
+	Peak              *float64   `db:"peak"`
+	Observation       *string    `db:"observation"`
+	CreatedAt         time.Time  `db:"created_at"`
+	DeletedAt         *time.Time `db:"deleted_at"`
+	UserId            string     `db:"user_id"`
 }
 
 type LactationHistFilter struct {
@@ -47,48 +50,53 @@ type LactationHistFilter struct {
 	Observation          *string    `json:"observation" db:"observation"`
 }
 
-type LactationAnimal struct {
-	Id                string     `json:"id" db:"id"`
-	Name              *string    `json:"-" db:"name"`
-	AnimalName        string     `json:"animalName" db:"animal_name"`
-	AnimalOrder       int        `json:"-" db:"animal_order"`
-	CalfId            *string    `json:"calfId" db:"calf_id"`
-	CalfBirthDate     *time.Time `json:"-" db:"calf_birth_date"`
-	CalfInfo          *string    `json:"calfInfo" db:"calf_info"`
-	StartDate         *time.Time `json:"startDate" db:"start_date"`
-	EndDate           *time.Time `json:"endDate" db:"end_date"`
-	LacPeriod         *float64   `json:"lacPeriod" db:"lac_period"`
-	AverageProduction *float64   `json:"averageProduction" db:"avg_production"`
-	TotalProduction   *float64   `json:"totalProduction" db:"total_production"`
-	LacInterval       *int       `json:"lacInterval" db:"lac_interval"`
-	Peak              *float64   `json:"peak" db:"peak"`
-	Observation       *string    `json:"observation" db:"observation"`
-	IsLactating       bool       `json:"-" db:"is_lactating"`
-	CreatedAt         time.Time  `json:"-" db:"created_at"`
+type AnimalDB struct {
+	Id             string     `db:"id"`
+	Tag            *string    `db:"tag"`
+	Name           *string     `db:"name"`
+	BirthDate      *time.Time `db:"birth_date"`
+	TagOrder       int        `db:"tag_order"`
+	CalfId         *string    `db:"calf_id"`
+	CalfTag        *string    `db:"calf_tag"`
+	CalfName       *string    `db:"calf_name"`
+	CalfSex        *string    `db:"calf_sex"`
+	CalfBirthDate  *time.Time `db:"calf_birth_date"`
+	CalfDeathDate  *time.Time `db:"calf_death_date"`
+	LacId          *string    `db:"lac_id"`
+	LacStart       *time.Time `db:"lac_start"`
+	LacEnd         *time.Time `db:"lac_end"`
+	LacPeriod      *float64   `db:"lac_period"`
+	LacAverage     *float64   `db:"lac_average"`
+	LacTotal       *float64   `db:"lac_total"`
+	LacInterval    *int       `db:"lac_interval"`
+	LacPeak        *float64   `db:"lac_peak"`
+	LacObservation *string    `db:"lac_observation"`
+	IsLactating    bool       `db:"is_lactating"`
+	CreatedAt      time.Time  `db:"created_at"`
 }
 
-type LactationAnimalFilter struct {
+type AnimalFilter struct {
 	Animals              *[]string  `json:"animals" db:"animal_id"`
 	IsLactating          *bool      `json:"isLactating" db:"is_lactating"`
-	HasLactation         *bool      `json:"hasLactation" db:"start_date"`
+	HasLactation         *bool      `json:"hasLactation" db:"lac_start"`
 	HasCalf              *bool      `json:"hasCalf" db:"calf_id"`
 	MinCalfBirthDate     *time.Time `json:"minCalfBirthDate" db:"calf_birth_date"`
 	MaxCalfBirthDate     *time.Time `json:"maxCalfBirthDate" db:"calf_birth_date"`
-	MinStartDate         *time.Time `json:"minStartDate" db:"start_date"`
-	MaxStartDate         *time.Time `json:"maxStartDate" db:"start_date"`
-	MinEndDate           *time.Time `json:"minEndDate" db:"end_date"`
-	MaxEndDate           *time.Time `json:"maxEndDate" db:"end_date"`
+	MinStartDate         *time.Time `json:"minStartDate" db:"lac_start"`
+	MaxStartDate         *time.Time `json:"maxStartDate" db:"lac_start"`
+	MinEndDate           *time.Time `json:"minEndDate" db:"lac_end"`
+	MaxEndDate           *time.Time `json:"maxEndDate" db:"lac_end"`
 	MinLacPeriod         *float64   `json:"minLacPeriod" db:"lac_period"`
 	MaxLacPeriod         *float64   `json:"maxLacPeriod" db:"lac_period"`
-	MinAverageProduction *float64   `json:"minAverageProduction" db:"avg_production"`
-	MaxAverageProduction *float64   `json:"maxAverageProduction" db:"avg_production"`
-	MinTotalProduction   *float64   `json:"minTotalProduction" db:"total_production"`
-	MaxTotalProduction   *float64   `json:"maxTotalProduction" db:"total_production"`
+	MinAverageProduction *float64   `json:"minAverageProduction" db:"lac_average"`
+	MaxAverageProduction *float64   `json:"maxAverageProduction" db:"lac_average"`
+	MinTotalProduction   *float64   `json:"minTotalProduction" db:"lac_total"`
+	MaxTotalProduction   *float64   `json:"maxTotalProduction" db:"lac_total"`
 	MinLacInterval       *int       `json:"minLacInterval" db:"lac_interval"`
 	MaxLacInterval       *int       `json:"maxLacInterval" db:"lac_interval"`
-	MinPeak              *float64   `json:"minPeak" db:"peak"`
-	MaxPeak              *float64   `json:"maxPeak" db:"peak"`
-	Observation          *string    `json:"observation" db:"observation"`
+	MinPeak              *float64   `json:"minPeak" db:"lac_peak"`
+	MaxPeak              *float64   `json:"maxPeak" db:"lac_peak"`
+	Observation          *string    `json:"observation" db:"lac_observation"`
 }
 
 type LactationHistFoot struct {
@@ -111,17 +119,6 @@ type LactationHistSave struct {
 	Overwrite       bool       `json:"overwrite"`
 	TransferPasture bool       `json:"transferPasture"`
 	UserId          string     `json:"-" db:"user_id"`
-}
-
-type AnimalsAverageHist struct {
-	EntryDate     time.Time `json:"entryDate" db:"entry_date"`
-	AnimalsNumber float64   `json:"animalsNumber" db:"animals_number"`
-}
-
-type CardContainer struct {
-	Current float64 `json:"current"`
-	Trend   float64 `json:"trend"`
-	Hist    any     `json:"hist"`
 }
 
 type AnimalsRating struct {

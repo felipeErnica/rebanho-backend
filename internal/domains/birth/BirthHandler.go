@@ -77,7 +77,7 @@ func (h *BirthHandler) GetLastBirths(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.Service.Repo.GetLastBirths(userId)
+	result, err := h.Service.GetLastBirths(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return

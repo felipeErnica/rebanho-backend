@@ -47,7 +47,7 @@ func (h *LactationHandler) GetDairyTypes(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	result, err := h.Service.Repo.GetDairyTypes(userId)
+	result, err := h.Service.GetDairyTypes(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -62,7 +62,7 @@ func (h *LactationHandler) GetBestAnimals(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	result, err := h.Service.Repo.GetBestAnimals(userId)
+	result, err := h.Service.GetBestAnimals(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -77,7 +77,7 @@ func (h *LactationHandler) GetWorstAnimals(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	result, err := h.Service.Repo.GetWorstAnimals(userId)
+	result, err := h.Service.GetWorstAnimals(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -92,7 +92,7 @@ func (h *LactationHandler) GetBestMothers(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	result, err := h.Service.Repo.GetBestMothers(userId)
+	result, err := h.Service.GetBestMothers(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -107,7 +107,7 @@ func (h *LactationHandler) GetWorstMothers(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	result, err := h.Service.Repo.GetWorstMothers(userId)
+	result, err := h.Service.GetWorstMothers(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -122,7 +122,7 @@ func (h *LactationHandler) GetBestFathers(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	result, err := h.Service.Repo.GetBestFathers(userId)
+	result, err := h.Service.GetBestFathers(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -137,7 +137,7 @@ func (h *LactationHandler) GetWorstFathers(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	result, err := h.Service.Repo.GetWorstFathers(userId)
+	result, err := h.Service.GetWorstFathers(userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -162,7 +162,7 @@ func (h *LactationHandler) FindLactationPage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	result, err := h.Service.Repo.FindLactationPage(filter, sort, order, cursor, userId)
+	result, err := h.Service.FindLactationPage(filter, sort, order, cursor, 100, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -183,7 +183,7 @@ func (h *LactationHandler) GetLactationPageFoot(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	result, err := h.Service.Repo.GetLactationPageFoot(filter, userId)
+	result, err := h.Service.GetLactationPageFoot(filter, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -197,7 +197,7 @@ func (h *LactationHandler) FindAnimalsPage(w http.ResponseWriter, r *http.Reques
 	order := r.URL.Query().Get("order")
 	cursor := r.URL.Query().Get("cursor")
 
-	filter, err := util.DecodeFilter(r, LactationAnimalFilter{})
+	filter, err := util.DecodeFilter(r, AnimalFilter{})
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -208,7 +208,7 @@ func (h *LactationHandler) FindAnimalsPage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	result, err := h.Service.Repo.FindAnimalsPage(filter, sort, order, cursor, userId)
+	result, err := h.Service.FindAnimalsPage(filter, sort, order, cursor, 100, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -218,7 +218,7 @@ func (h *LactationHandler) FindAnimalsPage(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *LactationHandler) GetAnimalsPageFoot(w http.ResponseWriter, r *http.Request) {
-	filter, err := util.DecodeFilter(r, LactationAnimalFilter{})
+	filter, err := util.DecodeFilter(r, AnimalFilter{})
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -229,7 +229,7 @@ func (h *LactationHandler) GetAnimalsPageFoot(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	result, err := h.Service.Repo.GetAnimalsPageFoot(filter, userId)
+	result, err := h.Service.GetAnimalsPageFoot(filter, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -245,7 +245,7 @@ func (h *LactationHandler) FindById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.Service.Repo.FindById(lacId, userId)
+	result, err := h.Service.FindById(lacId, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -303,9 +303,9 @@ func (h *LactationHandler) DeleteLactation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err := h.Service.Repo.DeleteLactation(id, userId)
+	err := h.Service.DeleteLactation(id, userId)
 	if err != nil {
-		log.WriteAPIError(err, w)
+		log.WriteError(w, err)
 		return
 	}
 

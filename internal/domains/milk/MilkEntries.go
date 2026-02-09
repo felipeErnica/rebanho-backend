@@ -2,19 +2,21 @@ package milk
 
 import "time"
 
-type MilkEntry struct {
-	Id          string     `json:"id" db:"id"`
-	AnimalId    string     `json:"animalId" db:"animal_id"`
-	AnimalOrder int        `json:"-" db:"animal_order"`
-	AnimalName  string     `json:"-" db:"animal_name"`
-	AnimalInfo  string     `json:"animalInfo" db:"animal_info"`
-	PastureId   string     `json:"pastureId" db:"pasture_id"`
-	PastureName string     `json:"pastureName" db:"pasture_name"`
-	EntryDate   time.Time  `json:"entryDate" db:"entry_date"`
-	Quantity    float64    `json:"quantity" db:"quantity"`
-	CreatedAt   time.Time  `json:"-" db:"created_at"`
-	DeletedAt   *time.Time `json:"-" db:"deleted_at"`
-	UserId      string     `json:"-" db:"user_id"`
+type MilkDB struct {
+	Id          string     `db:"id"`
+	AnimalId    string     `db:"animal_id"`
+	AnimalTag   *string    `db:"animal_tag"`
+	AnimalName  *string    `db:"animal_name"`
+	AnimalOrder int        `db:"animal_order"`
+	PastureId   *string    `db:"pasture_id"`
+	PastureName *string     `db:"pasture_name"`
+	FarmId      *string     `db:"farm_id"`
+	FarmName    *string     `db:"farm_name"`
+	EntryDate   time.Time  `db:"entry_date"`
+	Quantity    float64    `db:"quantity"`
+	CreatedAt   time.Time  `db:"created_at"`
+	DeletedAt   *time.Time `db:"deleted_at"`
+	UserId      string     `db:"user_id"`
 }
 
 type MilkEntryFilter struct {
@@ -43,22 +45,6 @@ type MilkEntrySave struct {
 	UserId          string    `json:"-" db:"user_id"`
 }
 
-type AverageMilkEntry struct {
-	EntryDate   time.Time `json:"entryDate" db:"entry_date"`
-	AverageMilk float64   `json:"averageMilk" db:"avg_milk"`
-}
-
-type TotalMilkEntry struct {
-	EntryDate time.Time `json:"entryDate" db:"entry_date"`
-	TotalMilk float64   `json:"totalMilk" db:"total_milk"`
-}
-
-type MilkProductionEntry struct {
-	EntryDate     time.Time `json:"entryDate" db:"entry_date"`
-	TotalMilk     float64   `json:"totalMilk" db:"total_milk"`
-	AnimalsNumber float64   `json:"animalsNumber" db:"animals_number"`
-}
-
 type LactationGroup struct {
 	EntryDate        time.Time `json:"entryDate" db:"entry_date"`
 	AnimalsNumber    int       `json:"animalsNumber" db:"animals_number"`
@@ -78,10 +64,4 @@ type LactationGroupSave struct {
 type LactationGroupFilter struct {
 	MinEntryDate *time.Time `json:"minEntryDate" db:"entry_date"`
 	MaxEntryDate *time.Time `json:"maxEntryDate" db:"entry_date"`
-}
-
-type CardContainer struct {
-	Current float64 `json:"current"`
-	Trend   float64 `json:"trend"`
-	Hist    any     `json:"hist"`
 }

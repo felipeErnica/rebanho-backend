@@ -2,9 +2,10 @@ package animals
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/felipeErnica/rebanho-backend/internal/log"
 	"github.com/felipeErnica/rebanho-backend/internal/util"
-	"strings"
 )
 
 type AnimalService struct {
@@ -19,7 +20,7 @@ const DELETE_OBSERVATION = "\n\nOBS.: A exclusão de animais só é recomendada 
 	"Em caso de morte e/ou abate, faça o registro apropriado." +
 	"Lembre-se, apagar um animal do sistema apagará, PERMANENTEMENTE, todas as informções ligadas a ele."
 
-func (s *AnimalService) mapToDTO(entry AnimalDB) AnimalDTO {
+func (s *AnimalService) toDTO(entry AnimalDB) AnimalDTO {
 
 	dto := AnimalDTO{
 		Id:                   entry.Id,
@@ -75,32 +76,40 @@ func (s *AnimalService) mapToDTO(entry AnimalDB) AnimalDTO {
 
 }
 
-func (s *AnimalService) GetDairyHist(userId string) (*CardEntry, error) {
+func (s *AnimalService) listToDTO(list []AnimalDB) []AnimalDTO {
+	listDTO := make([]AnimalDTO, 0)
+	for _, entry := range list {
+		dto := s.toDTO(entry)
+		listDTO = append(listDTO, dto)
+	}
+	return listDTO
+}
+
+func (s *AnimalService) GetDairyHist(userId string) (*util.CardStats, error) {
 	hist, err := s.Repo.GetDairyHist(userId)
 	if err != nil {
 		return nil, err
 	}
 
-	var current, past int
-	var trend float64
-
 	histEntries := *hist
+	var current, past, trend float64
+
 	switch lenght := len(histEntries); lenght {
 	case 0:
 		current = 0
 		past = 0
 		trend = 0
 	case 1:
-		current = histEntries[0].AnimalsNumber
+		current = histEntries[0].Value
 		past = 0
 		trend = 0
 	default:
-		current = histEntries[lenght-1].AnimalsNumber
-		past = histEntries[lenght-2].AnimalsNumber
+		current = histEntries[lenght-1].Value
+		past = histEntries[lenght-2].Value
 		trend = util.CalculatePercentageTrend(float64(current), float64(past))
 	}
 
-	cardEntry := &CardEntry{
+	cardEntry := &util.CardStats{
 		Current: current,
 		Trend:   trend,
 		Hist:    histEntries,
@@ -109,13 +118,13 @@ func (s *AnimalService) GetDairyHist(userId string) (*CardEntry, error) {
 	return cardEntry, nil
 }
 
-func (s *AnimalService) GetBirthHist(userId string) (*CardEntry, error) {
+func (s *AnimalService) GetBirthHist(userId string) (*util.CardStats, error) {
 	hist, err := s.Repo.GetBirthHist(userId)
 	if err != nil {
 		return nil, err
 	}
 
-	var current, past, trend int
+	var current, past, trend float64
 
 	histEntries := *hist
 	switch lenght := len(histEntries); lenght {
@@ -124,17 +133,17 @@ func (s *AnimalService) GetBirthHist(userId string) (*CardEntry, error) {
 		past = 0
 		trend = 0
 	case 1:
-		current = histEntries[0].AnimalsNumber
+		current = histEntries[0].Value
 		past = 0
 		trend = 0
 	default:
-		current = histEntries[lenght-1].AnimalsNumber
-		past = histEntries[lenght-2].AnimalsNumber
+		current = histEntries[lenght-1].Value
+		past = histEntries[lenght-2].Value
 		trend = current - past
 	}
 
-	cardEntry := &CardEntry{
-		Current: current,
+	cardEntry := &util.CardStats{
+		Current: float64(current),
 		Trend:   float64(trend),
 		Hist:    histEntries,
 	}
@@ -142,13 +151,13 @@ func (s *AnimalService) GetBirthHist(userId string) (*CardEntry, error) {
 	return cardEntry, nil
 }
 
-func (s *AnimalService) GetDeathHist(userId string) (*CardEntry, error) {
+func (s *AnimalService) GetDeathHist(userId string) (*util.CardStats, error) {
 	hist, err := s.Repo.GetDeathHist(userId)
 	if err != nil {
 		return nil, err
 	}
 
-	var current, past, trend int
+	var current, past, trend float64
 
 	histEntries := *hist
 	switch lenght := len(histEntries); lenght {
@@ -157,50 +166,49 @@ func (s *AnimalService) GetDeathHist(userId string) (*CardEntry, error) {
 		past = 0
 		trend = 0
 	case 1:
-		current = histEntries[0].AnimalsNumber
+		current = histEntries[0].Value
 		past = 0
 		trend = 0
 	default:
-		current = histEntries[lenght-1].AnimalsNumber
-		past = histEntries[lenght-2].AnimalsNumber
+		current = histEntries[lenght-1].Value
+		past = histEntries[lenght-2].Value
 		trend = current - past
 	}
 
-	cardEntry := &CardEntry{
+	cardEntry := &util.CardStats{
 		Current: current,
-		Trend:   float64(trend),
+		Trend:   trend,
 		Hist:    histEntries,
 	}
 
 	return cardEntry, nil
 }
 
-func (s *AnimalService) GetSlaughterHist(userId string) (*CardEntry, error) {
+func (s *AnimalService) GetSlaughterHist(userId string) (*util.CardStats, error) {
 	hist, err := s.Repo.GetSlaughterHist(userId)
 	if err != nil {
 		return nil, err
 	}
 
-	var current, past int
-	var trend float64
-
 	histEntries := *hist
+	var current, past, trend float64
+
 	switch lenght := len(histEntries); lenght {
 	case 0:
 		current = 0
 		past = 0
 		trend = 0
 	case 1:
-		current = histEntries[0].AnimalsNumber
+		current = histEntries[0].Value
 		past = 0
 		trend = 0
 	default:
-		current = histEntries[lenght-1].AnimalsNumber
-		past = histEntries[lenght-2].AnimalsNumber
+		current = histEntries[lenght-1].Value
+		past = histEntries[lenght-2].Value
 		trend = util.CalculatePercentageTrend(float64(current), float64(past))
 	}
 
-	cardEntry := &CardEntry{
+	cardEntry := &util.CardStats{
 		Current: current,
 		Trend:   trend,
 		Hist:    histEntries,
@@ -213,8 +221,14 @@ func (s *AnimalService) GetAnimalTypes(userId string) (*AnimalByType, error) {
 	return s.Repo.GetAnimalTypes(userId)
 }
 
-func (s *AnimalService) GetLastDeaths(userId string) (*[]AnimalDB, error) {
-	return s.Repo.GetLastDeaths(userId)
+func (s *AnimalService) GetLastDeaths(userId string) (*[]AnimalDTO, error) {
+	list, err := s.Repo.GetLastDeaths(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	listDto := s.listToDTO(*list)
+	return &listDto, nil
 }
 
 func (s *AnimalService) GetAgeAndSex(userId string) (*[]AnimalsByAge, error) {
@@ -236,14 +250,9 @@ func (s *AnimalService) FindPage(
 	}
 
 	newCursor := util.CreateCursorKey(sort, *list)
+	listDTO := s.listToDTO(*list)
 
-	listDto := make([]AnimalDTO, 0)
-	for _, entry := range *list {
-		dto := s.mapToDTO(entry)
-		listDto = append(listDto, dto)
-	}
-
-	page := util.NewPage(listDto, newCursor, limit)
+	page := util.NewPage(listDTO, newCursor, limit)
 	return page, nil
 }
 
@@ -257,12 +266,24 @@ func (s *AnimalService) FindById(id string, userId string) (*AnimalDTO, error) {
 		return nil, err
 	}
 
-	dto := s.mapToDTO(*entry)
+	dto := s.toDTO(*entry)
 	return &dto, nil
 }
 
-func (s *AnimalService) Search(sort string, order string, filter *AnimalFilter, userId string) (*[]AnimalDB, error) {
-	return s.Repo.Search(sort, order, filter, userId)
+func (s *AnimalService) Search(
+	sort string,
+	order string,
+	filter *AnimalFilter,
+	userId string,
+) (*[]AnimalDTO, error) {
+
+	list, err := s.Repo.Search(sort, order, filter, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	listDTO := s.listToDTO(*list)
+	return &listDTO, nil
 }
 
 func (s *AnimalService) Delete(skipValidation bool, id string, userId string) *log.APIError {
@@ -350,7 +371,7 @@ func (s *AnimalService) Delete(skipValidation bool, id string, userId string) *l
 	return s.Repo.Delete(id, userId)
 }
 
-func (s *AnimalService) Update(newEntry *AnimalSave) (*AnimalDB, *log.APIError) {
+func (s *AnimalService) Update(newEntry *AnimalSave) (*AnimalDTO, *log.APIError) {
 
 	res, err := s.Repo.CheckSaveConflicts(newEntry)
 	if err != nil {
@@ -387,8 +408,8 @@ func (s *AnimalService) Update(newEntry *AnimalSave) (*AnimalDB, *log.APIError) 
 		return nil, log.InternalServerAPIError(err)
 	}
 
-	return response, nil
-
+	dto := s.toDTO(*response)
+	return &dto, nil
 }
 
 func (s *AnimalService) Add(newEntry *AnimalSave) *log.APIError {

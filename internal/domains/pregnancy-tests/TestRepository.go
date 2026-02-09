@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/felipeErnica/rebanho-backend/internal/entity"
 	"github.com/felipeErnica/rebanho-backend/internal/log"
 	"github.com/felipeErnica/rebanho-backend/internal/util"
 	"github.com/jmoiron/sqlx"
@@ -18,7 +17,7 @@ func NewRepository(db *sqlx.DB) *TestEntryRepository {
 	return &TestEntryRepository{db}
 }
 
-func (r *TestEntryRepository) GetPregnancyRate(userId string) (*[]PregnancyHist, error) {
+func (r *TestEntryRepository) GetPregnancyRate(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
             SELECT 
@@ -32,34 +31,34 @@ func (r *TestEntryRepository) GetPregnancyRate(userId string) (*[]PregnancyHist,
             LIMIT 10
         )
         SELECT 
-            test_date,
-            (pregnancies::float / NULLIF(totals, 0)) * 100 pregnancy_rate
+            test_date AS date,
+            (pregnancies::float / NULLIF(totals, 0)) * 100 AS value
         FROM cte
         ORDER BY test_date
     `
-	return util.GetList[PregnancyHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *TestEntryRepository) GetAnimalsNumber(userId string) (*[]AnimalsNumberHist, error) {
+func (r *TestEntryRepository) GetAnimalsNumber(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
             SELECT 
-                test_date,
-                COUNT(*) AS totals
+                test_date AS date,
+                COUNT(*) AS value
             FROM pregnancy_tests
             WHERE deleted_at IS NULL AND user_id = $1 
 			GROUP BY 1
 			ORDER BY test_date DESC
             LIMIT 10
         )
-        SELECT test_date, totals
+        SELECT date, value
         FROM cte
-        ORDER BY test_date
+        ORDER BY date
     `
-	return util.GetList[AnimalsNumberHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *TestEntryRepository) GetBirthRate(userId string) (*[]BirthHist, error) {
+func (r *TestEntryRepository) GetBirthRate(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
             SELECT
@@ -81,12 +80,12 @@ func (r *TestEntryRepository) GetBirthRate(userId string) (*[]BirthHist, error) 
             LIMIT 10
         )
         SELECT 
-            test_date,
-            (births::float / NULLIF(totals, 0)) * 100 AS birth_rate
+            test_date AS date,
+            (births::float / NULLIF(totals, 0)) * 100 AS value
         FROM cte
         ORDER BY test_date
     `
-	return util.GetList[BirthHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) GetPregnancyTestHist(userId string) (*[]PregnancyTestHist, error) {
@@ -122,27 +121,20 @@ func (r *TestEntryRepository) GetPregnancyTestHist(userId string) (*[]PregnancyT
 	return util.GetList[PregnancyTestHist](r.DB, query, userId)
 }
 
-func (r *TestEntryRepository) GetLastEntries(userId string) (*LastEntries, error) {
-	dateQuery := `
-		SELECT MAX(test_date)
-		FROM pregnancy_tests 
-		WHERE user_id = $1 AND deleted_at IS NULL
-	`
+func (r *TestEntryRepository) GetLastEntries(userId string) (*[]TestDB, error) {
+	query := fmt.Sprintf(`
+		WITH max_cte AS (
+			SELECT MAX(test_date) AS max_date
+			FROM pregnancy_tests 
+			WHERE user_id = $1 AND deleted_at IS NULL
+		)
 
-	var lastDate time.Time
-	err := util.GetPrimitive(r.DB, dateQuery, &lastDate, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	query := `
         SELECT
 			t.id,
-			t.animal_id,
-            CONCAT_WS(' - ', a.ring_number, a.name) animal_info,
             t.test_date,
-            test_date + (pregnancy_time*INTERVAL '1 day') AS birth_forecast,
+			test_date::date + pregnancy_time AS birth_forecast,
             t.pregnancy_status,
+            t.observation,
 			CASE
 				WHEN pregnancy_status = 'FAILED' THEN 'FAILED'
 				WHEN EXISTS (
@@ -150,30 +142,24 @@ func (r *TestEntryRepository) GetLastEntries(userId string) (*LastEntries, error
 					FROM animals a
 					WHERE a.mother_id = t.animal_id
 						AND a.birth_date > t.test_date
-						AND age(a.birth_date, t.test_date) <= INTERVAL '340 days'
+						AND age(a.birth_date, t.test_date) <= INTERVAL '%[1]d days'
 				) THEN 'SUCCESS'
-				WHEN age(t.test_date) < INTERVAL '340 days' THEN 'STAND_BY'
+				WHEN age(t.test_date) < INTERVAL '%[1]d days' THEN 'STAND_BY'
 				ELSE 'FAILED'
 			END AS birth_status,
-            t.observation
+
+			t.animal_id,
+			a.tag AS animal_tag,
+			a.name AS animal_name
         FROM pregnancy_tests t
+			CROSS JOIN max_cte m
             LEFT JOIN animals a ON a.id = t.animal_id
-        WHERE t.user_id = $1 
-			AND t.test_date = $2
+        WHERE t.test_date = m.max_date
+			AND t.user_id = $1 
 			AND t.deleted_at IS NULL
-        ORDER BY COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0)
-    `
-	result, err := util.GetList[TestEntry](r.DB, query, userId, lastDate)
-	if err != nil {
-		return nil, err
-	}
-
-	lastEntry := &LastEntries{
-		TestDate: lastDate,
-		Entries:  *result,
-	}
-
-	return lastEntry, nil
+        ORDER BY COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0)
+    `, util.MaxGestationDays)
+	return util.GetList[TestDB](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) GetLastGroups(userId string) (*[]TestGroups, error) {
@@ -223,11 +209,11 @@ func (r *TestEntryRepository) GetLastGroups(userId string) (*[]TestGroups, error
 	return util.GetList[TestGroups](r.DB, query, userId)
 }
 
-func (r *TestEntryRepository) GetNextBirths(userId string) (*[]NextBirths, error) {
+func (r *TestEntryRepository) GetNextBirths(userId string) (*[]util.GraphData, error) {
 	query := `
         SELECT 
-            DATE_TRUNC('month', t.test_date + (t.pregnancy_time * INTERVAL '1 day')) AS birth_forecast,
-            COUNT(*) birth_numbers
+			DATE_TRUNC('month', t.test_date::date + t.pregnancy_time) AS date,
+            COUNT(*) AS value
         FROM pregnancy_tests t
         WHERE 
             deleted_at IS NULL 
@@ -245,7 +231,7 @@ func (r *TestEntryRepository) GetNextBirths(userId string) (*[]NextBirths, error
         GROUP BY 1
         ORDER BY 1
     `
-	return util.GetList[NextBirths](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
 func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, error) {
@@ -308,7 +294,7 @@ func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, erro
 			FROM rates 
 		)
 		SELECT
-			CONCAT_WS(' - ', a.ring_number, a.name) AS animal_name,
+			CONCAT_WS(' - ', a.tag, a.name) AS animal_name,
 			s.totals,
 			s.pregnancy_rate,
 			s.birth_rate,
@@ -371,7 +357,7 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
 			SELECT
 				(pregnancy_success::float / NULLIF(totals, 0)) * 100 AS total_pregnancy_rate,
 				(birth_success::float / NULLIF(totals, 0)) * 100 AS total_birth_rate
-			FROM general_rates
+			FROM general_totals
 		),
 		scores AS (
 			SELECT
@@ -384,7 +370,7 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
 			FROM rates 
 		)
 		SELECT
-			CONCAT_WS(' - ', a.ring_number, a.name) AS animal_name,
+			CONCAT_WS(' - ', a.tag, a.name) AS animal_name,
 			totals,
 			pregnancy_rate,
 			birth_rate,
@@ -401,14 +387,14 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
 }
 
 func (r *TestEntryRepository) FindEntriesPage(
-	filter *TestEntryFilter,
+	filter *TestFilter,
 	sort string,
 	order string,
 	cursor string,
+	limit int,
 	userId string,
-) (*entity.Page[TestEntry], error) {
+) (*[]TestDB, error) {
 
-	sort = util.AddCommonFields(sort)
 	sortMap := map[string]util.SortField{
 		"animal_order":   {Field: "cte.animal_order", Order: "asc"},
 		"test_date":      {Field: "cte.test_date", Order: "desc"},
@@ -418,50 +404,53 @@ func (r *TestEntryRepository) FindEntriesPage(
 		"created_at":     {Field: "cte.created_at", Order: "asc"},
 	}
 
-	query := `
+	query := fmt.Sprintf(`
         WITH cte AS (
 			SELECT
 				t.id,
 				t.test_date,
-				t.animal_id,
-				a.name AS animal_name,
-				CONCAT_WS(' - ', a.ring_number, a.name) animal_info,
-				COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0) animal_order,
-				t.test_date + (t.pregnancy_time*INTERVAL '1 day') AS birth_forecast,
+				t.test_date::date + t.pregnancy_time AS birth_forecast,
 				t.pregnancy_status,
+				t.observation,
 				CASE
-					WHEN pregnancy_status = 'FAILED' THEN 'FAILED'
-					WHEN child_name IS NOT NULL THEN 'SUCCESS'
-					WHEN age(t.test_date) < INTERVAL '340 days' THEN 'STAND_BY'
+					WHEN c.id IS NOT NULL THEN 'SUCCESS'
+					WHEN age(t.test_date) < INTERVAL '%[1]d days' THEN 'STAND_BY'
 					ELSE 'FAILED'
 				END AS birth_status,
-				CASE 
-					WHEN pregnancy_status = 'FAILED' THEN 'Sem Cria'
-					WHEN child_name IS NOT NULL THEN child_name
-					ELSE 'Sem Cria'
-				END AS child_information,
-				t.observation,
+
+				t.animal_id,
+				a.name AS animal_name,
+				a.tag AS animal_tag,
+				COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0) animal_order,
+
+				c.id AS calf_id,
+				c.tag AS calf_tag,
+				c.name AS calf_name,
+				c.sex AS calf_sex,
+				c.birth_date AS calf_birth_date,
+				c.death_date AS calf_death_date,
+
 				t.created_at
 			FROM pregnancy_tests t 
 				LEFT JOIN animals a ON a.id = t.animal_id
-				LEFT JOIN LATERAL (
-					SELECT CONCAT_WS(
-						' - ',
-						a.ring_number,
-						COALESCE(a.name, a.sex),
-						TO_CHAR(a.birth_date, 'DD/MM/YYYY')
-					) AS child_name
-					FROM animals a
-					WHERE a.mother_id = t.animal_id
-						AND a.birth_date > t.test_date
-						AND age(a.birth_date, t.test_date) <= INTERVAL '340 days'
-					LIMIT 1
-				) c ON TRUE
+				LEFT JOIN animals c ON t.pregnancy_status = 'SUCCESS'
+					AND c.mother_id = t.animal_id
+					AND c.birth_date > t.test_date
+					AND age(a.birth_date, t.test_date) <= INTERVAL '%[1]d days'
+					AND NOT EXISTS (
+						SELECT 1
+						FROM pregnancy_tests t1
+						WHERE t.pregnancy_status = 'FAILED'
+							AND t1.animal_id = c.mother_id
+							AND t1.test_date < c.birth_date
+							AND t1.test_date BETWEEN t.test_date AND c.birth_date
+					)
 			WHERE t.user_id = $1 AND t.deleted_at IS NULL
 		)
-		SELECT *
-		FROM cte
-    `
+
+		SELECT * FROM cte
+    `, util.MaxGestationDays)
+
 	filterExpression, nextParam, err := util.GetFilterExpressions(filter, "cte", 2)
 	if err != nil {
 		return nil, err
@@ -478,9 +467,9 @@ func (r *TestEntryRepository) FindEntriesPage(
 	if err != nil {
 		return nil, err
 	}
-	sortExpression = " ORDER BY " + sortExpression
+	sortExpression = " ORDER BY " + sortExpression 
 
-	query += whereExpression + sortExpression
+	query += whereExpression + sortExpression + fmt.Sprintf(" LIMIT %d", limit)
 	args := []any{userId}
 	filterArgs := util.GetFilterArgs(filter)
 
@@ -491,10 +480,10 @@ func (r *TestEntryRepository) FindEntriesPage(
 
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
-	return util.GetPage[TestEntry](r.DB, query, sort, 100, args...)
+	return util.GetList[TestDB](r.DB, query, args...)
 }
 
-func (r *TestEntryRepository) GetEntriesFoot(filter *TestEntryFilter, userId string) (*TestEntryFoot, error) {
+func (r *TestEntryRepository) GetEntriesFoot(filter *TestFilter, userId string) (*TestFoot, error) {
 
 	countQuery := `
 		WITH cte AS (
@@ -542,7 +531,7 @@ func (r *TestEntryRepository) GetEntriesFoot(filter *TestEntryFilter, userId str
 	args := []any{userId}
 	filterArgs := util.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
-	return util.GetOne[TestEntryFoot](r.DB, query, args...)
+	return util.GetOne[TestFoot](r.DB, query, args...)
 }
 
 func (r *TestEntryRepository) FindGroups(userId string) (*[]TestGroups, error) {
@@ -592,62 +581,69 @@ func (r *TestEntryRepository) FindEntriesByGroup(
 	order string,
 	testDate time.Time,
 	userId string,
-) (*[]TestEntry, error) {
+) (*[]TestDB, error) {
 
 	sortMap := map[string]util.SortField{
-		"animal_order":   {Field: "coalesce(regexp_replace(a.ring_number, '[^0-9]', '', 'g')::int, 0)", Order: "desc"},
+		"animal_order":   {Field: "coalesce(regexp_replace(a.tag, '[^0-9]', '', 'g')::int, 0)", Order: "desc"},
 		"birth_forecast": {Field: "coalesce(t.birth_forecast, '-infinity')", Order: "desc"},
 		"animal_name":    {Field: "a.name", Order: "asc"},
 	}
 
-	query := `
-        SELECT
-            t.id,
-            t.test_date,
-            t.animal_id,
-            CONCAT_WS(' - ', a.ring_number, a.name) AS animal_info,
-            COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0) AS animal_order,
-            t.test_date + (t.pregnancy_time * INTERVAL '1 day') AS birth_forecast,
-            t.pregnancy_status,
+	query := fmt.Sprintf(`
+		SELECT
+			t.id,
+			t.test_date,
+			t.test_date::date + t.pregnancy_time AS birth_forecast,
+			t.pregnancy_status,
+			t.observation,
 			CASE
-				WHEN pregnancy_status = 'FAILED' THEN 'FAILED'
-				WHEN child_name IS NOT NULL THEN 'SUCCESS'
-				WHEN age(t.test_date) < INTERVAL '340 days' THEN 'STAND_BY'
+				WHEN c.id IS NOT NULL THEN 'SUCCESS'
+				WHEN age(t.test_date) < INTERVAL '%[1]d days' THEN 'STAND_BY'
 				ELSE 'FAILED'
 			END AS birth_status,
-			CASE 
-				WHEN pregnancy_status = 'FAILED' THEN 'Sem Cria'
-				WHEN child_name IS NOT NULL THEN child_name
-				ELSE 'Sem Cria'
-			END AS child_information,
-            t.observation
-        FROM pregnancy_tests t 
+
+			t.animal_id,
+			a.name AS animal_name,
+			a.tag AS animal_tag,
+			COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0) animal_order,
+
+			c.id AS calf_id,
+			c.tag AS calf_tag,
+			c.name AS calf_name,
+			c.sex AS calf_sex,
+			c.birth_date AS calf_birth_date,
+			c.death_date AS calf_death_date,
+
+			t.created_at
+		FROM pregnancy_tests t 
 			LEFT JOIN animals a ON a.id = t.animal_id
-			LEFT JOIN LATERAL (
-				SELECT CONCAT_WS(
-					' - ',
-					a.ring_number,
-					COALESCE(a.name, a.sex),
-					TO_CHAR(a.birth_date, 'DD/MM/YYYY')
-				) AS child_name
-				FROM animals a
-				WHERE a.mother_id = t.animal_id
-					AND a.birth_date > t.test_date
-					AND age(a.birth_date, t.test_date) <= INTERVAL '340 days'
-				LIMIT 1
-			) c ON TRUE
-		WHERE t.user_id = $1 AND t.test_date = $2 AND t.deleted_at IS NULL
-    `
+			LEFT JOIN animals c ON t.pregnancy_status = 'SUCCESS'
+				AND c.mother_id = t.animal_id
+				AND c.birth_date > t.test_date
+				AND age(a.birth_date, t.test_date) <= INTERVAL '%[1]d days'
+				AND NOT EXISTS (
+					SELECT 1
+					FROM pregnancy_tests t1
+					WHERE t.pregnancy_status = 'FAILED'
+						AND t1.animal_id = c.mother_id
+						AND t1.test_date < c.birth_date
+						AND t1.test_date BETWEEN t.test_date AND c.birth_date
+				)
+		WHERE t.user_id = $1 
+			AND t.test_date = $2
+			AND t.deleted_at IS NULL
+    `, util.MaxGestationDays)
+
 	sortExpression, err := util.GetSortExpression(sortMap, sort, order)
 	if err != nil {
 		return nil, err
 	}
 
 	query = query + " ORDER BY " + sortExpression
-	return util.GetList[TestEntry](r.DB, query, userId, testDate)
+	return util.GetList[TestDB](r.DB, query, userId, testDate)
 }
 
-func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId string) (*TestEntryFoot, error) {
+func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId string) (*TestFoot, error) {
 	query := `
         WITH count_query AS (
             SELECT 
@@ -671,10 +667,10 @@ func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId s
             COALESCE(pregnancy_success::float / NULLIF(totals, 0), 0) * 100 pregnancy_rate
         FROM count_query
     `
-	return util.GetOne[TestEntryFoot](r.DB, query, testDate, userId)
+	return util.GetOne[TestFoot](r.DB, query, testDate, userId)
 }
 
-func (r *TestEntryRepository) CheckEntryExistence(entry *TestEntrySave) (bool, error) {
+func (r *TestEntryRepository) CheckEntryExistence(entry *TestSave) (bool, error) {
 	query := `
 		SELECT EXISTS (
 			SELECT 1
@@ -691,7 +687,7 @@ func (r *TestEntryRepository) CheckEntryExistence(entry *TestEntrySave) (bool, e
 	return exists, err
 }
 
-func (r *TestEntryRepository) CheckGroupExistence(entry *TestGroups) (bool, error) {
+func (r *TestEntryRepository) CheckGroupExistence(entry *TestGroupSave) (bool, error) {
 	query := `
 		SELECT EXISTS (
 			SELECT 1
@@ -706,7 +702,7 @@ func (r *TestEntryRepository) CheckGroupExistence(entry *TestGroups) (bool, erro
 	return exists, err
 }
 
-func (r *TestEntryRepository) Add(entry *TestEntrySave) *log.APIError {
+func (r *TestEntryRepository) Add(entry *TestSave) *log.APIError {
 
 	var query string
 	if entry.Overwrite {
@@ -734,7 +730,7 @@ func (r *TestEntryRepository) Add(entry *TestEntrySave) *log.APIError {
 	return nil
 }
 
-func (r *TestEntryRepository) Update(entry *TestEntrySave) (*TestEntry, *log.APIError) {
+func (r *TestEntryRepository) Update(entry *TestSave) (*TestDB, error) {
 
 	query := `
 		UPDATE pregnancy_tests 
@@ -747,49 +743,56 @@ func (r *TestEntryRepository) Update(entry *TestEntrySave) (*TestEntry, *log.API
 
 	err := util.NamedExec(r.DB, query, entry)
 	if err != nil {
-		return nil, log.InternalServerAPIError(err)
+		return nil, err
 	}
 
-	selectQuery := `
+	selectQuery := fmt.Sprintf(`
 		SELECT
 			t.id,
 			t.test_date,
-			t.animal_id,
-			CONCAT_WS(' - ', a.ring_number, a.name) animal_info,
-			t.test_date + (INTERVAL '1 day' * t.pregnancy_time) AS t.birth_forecast,
+			t.test_date::date + t.pregnancy_time AS birth_forecast,
 			t.pregnancy_status,
+			t.observation,
 			CASE
-				WHEN pregnancy_status = 'FAILED' THEN 'FAILED'
-				WHEN child_name IS NOT NULL THEN 'SUCCESS'
-				WHEN age(t.test_date) < INTERVAL '340 days' THEN 'STAND_BY'
+				WHEN c.id IS NOT NULL THEN 'SUCCESS'
+				WHEN age(t.test_date) < INTERVAL '%[1]d days' THEN 'STAND_BY'
 				ELSE 'FAILED'
 			END AS birth_status,
-			CASE 
-				WHEN pregnancy_status = 'FAILED' THEN 'Sem Cria'
-				WHEN child_name IS NOT NULL THEN child_name
-				ELSE 'Sem Cria'
-			END AS child_information,
-			t.observation
+
+			t.animal_id,
+			a.name AS animal_name,
+			a.tag AS animal_tag,
+			COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0) animal_order,
+
+			c.id AS calf_id,
+			c.tag AS calf_tag,
+			c.name AS calf_name,
+			c.sex AS calf_sex,
+			c.birth_date AS calf_birth_date,
+			c.death_date AS calf_death_date,
+
+			t.created_at
 		FROM pregnancy_tests t 
 			LEFT JOIN animals a ON a.id = t.animal_id
-			LEFT JOIN LATERAL (
-				SELECT CONCAT_WS(
-					' - ',
-					a.ring_number,
-					COALESCE(a.name, a.sex),
-					TO_CHAR(a.birth_date, 'DD/MM/YYYY')
-				) AS child_name
-				FROM animals a
-				WHERE a.mother_id = t.animal_id
-					AND a.birth_date > t.test_date
-					AND age(a.birth_date, t.test_date) <= INTERVAL '340 days'
-				LIMIT 1
-			) c ON TRUE
-		WHERE t.id = $1 AND t.user_id = $2
-	`
-	result, err := util.GetOne[TestEntry](r.DB, selectQuery, entry.Id, entry.UserId)
+			LEFT JOIN animals c ON t.pregnancy_status = 'SUCCESS'
+				AND c.mother_id = t.animal_id
+				AND c.birth_date > t.test_date
+				AND age(a.birth_date, t.test_date) <= INTERVAL '%[1]d days'
+				AND NOT EXISTS (
+					SELECT 1
+					FROM pregnancy_tests t1
+					WHERE t.pregnancy_status = 'FAILED'
+						AND t1.animal_id = c.mother_id
+						AND t1.test_date < c.birth_date
+						AND t1.test_date BETWEEN t.test_date AND c.birth_date
+				)
+				WHERE t.id = :id
+					AND t.user_id = :user_id 
+					AND t.deleted_at IS NULL
+	`, util.MaxGestationDays)
+	result, err := util.NamedGet(r.DB, selectQuery, TestDB{}, entry)
 	if err != nil {
-		return nil, log.InternalServerAPIError(err)
+		return nil, err
 	}
 
 	return result, nil
@@ -810,7 +813,7 @@ func (r *TestEntryRepository) Delete(id string, userId string) *log.APIError {
 	return nil
 }
 
-func (r *TestEntryRepository) UpdateBatch(group *TestGroups) (*TestGroups, *log.APIError) {
+func (r *TestEntryRepository) UpdateGroup(group *TestGroupSave) (*TestGroups, *log.APIError) {
 
 	query := `
 		UPDATE pregnancy_tests
@@ -869,7 +872,7 @@ func (r *TestEntryRepository) UpdateBatch(group *TestGroups) (*TestGroups, *log.
 	return response, nil
 }
 
-func (r *TestEntryRepository) DeleteBatch(testDate time.Time, userId string) *log.APIError {
+func (r *TestEntryRepository) DeleteGroup(testDate time.Time, userId string) *log.APIError {
 	query := `
 		UPDATE pregnancy_tests
 		SET deleted_at = NOW()

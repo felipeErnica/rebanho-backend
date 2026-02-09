@@ -188,13 +188,13 @@ func (r *AnimalRepository) CheckDeleteWarningConditions(id string, userId string
 	return util.GetOne[WarnRecordValidations](r.DB, query, id, userId)
 }
 
-func (r *AnimalRepository) GetBirthHist(userId string) (*[]AnimalsNumberHist, error) {
+func (r *AnimalRepository) GetBirthHist(userId string) (*[]util.GraphData, error) {
 
 	query := `
 		WITH cte AS (
 			SELECT
-				DATE_TRUNC('month', birth_date) AS entry_date,
-				COUNT(*) AS animals_number
+				DATE_TRUNC('month', birth_date) AS date,
+				COUNT(*) AS value
 			FROM animals
 			WHERE user_id = $1 
 				AND deleted_at IS NULL
@@ -203,13 +203,13 @@ func (r *AnimalRepository) GetBirthHist(userId string) (*[]AnimalsNumberHist, er
 			ORDER BY 1 DESC
 			LIMIT 12
 		)
-		SELECT * FROM cte ORDER BY entry_date
+		SELECT * FROM cte ORDER BY date
 	`
 
-	return util.GetList[AnimalsNumberHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) GetDairyHist(userId string) (*[]AnimalsNumberHist, error) {
+func (r *AnimalRepository) GetDairyHist(userId string) (*[]util.GraphData, error) {
 
 	query := `
 		WITH calendar AS (
@@ -221,8 +221,8 @@ func (r *AnimalRepository) GetDairyHist(userId string) (*[]AnimalsNumberHist, er
 			FROM lactations
 		)
 		SELECT
-			c.entry_date,
-			COUNT(*) AS animals_number
+			c.entry_date AS date,
+			COUNT(*) AS value
 		FROM lactations 
 			JOIN calendar c ON start_date <= c.entry_date
 				AND c.entry_date <= COALESCE(end_date, NOW())
@@ -231,16 +231,16 @@ func (r *AnimalRepository) GetDairyHist(userId string) (*[]AnimalsNumberHist, er
 		ORDER BY 1
 	`
 
-	return util.GetList[AnimalsNumberHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) GetDeathHist(userId string) (*[]AnimalsNumberHist, error) {
+func (r *AnimalRepository) GetDeathHist(userId string) (*[]util.GraphData, error) {
 
 	query := `
 		WITH cte AS (
 			SELECT
-				DATE_TRUNC('month', death_date) AS entry_date,
-				COUNT(*) AS animals_number
+				DATE_TRUNC('month', death_date) AS date,
+				COUNT(*) AS value
 			FROM animals a
 			WHERE user_id = $1 
 				AND deleted_at IS NULL
@@ -258,19 +258,19 @@ func (r *AnimalRepository) GetDeathHist(userId string) (*[]AnimalsNumberHist, er
 		)
 		SELECT *
 		FROM cte 
-		ORDER BY entry_date
+		ORDER BY date
 	`
 
-	return util.GetList[AnimalsNumberHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *AnimalRepository) GetSlaughterHist(userId string) (*[]AnimalsNumberHist, error) {
+func (r *AnimalRepository) GetSlaughterHist(userId string) (*[]util.GraphData, error) {
 
 	query := `
 		WITH cte AS (
 			SELECT
-				entry_date,
-				COUNT(*) AS animals_number
+				entry_date AS date,
+				COUNT(*) AS value
 			FROM slaughter_entries
 			WHERE user_id = $1 AND deleted_at IS NULL
 			GROUP BY 1
@@ -279,10 +279,10 @@ func (r *AnimalRepository) GetSlaughterHist(userId string) (*[]AnimalsNumberHist
 		)
 		SELECT *
 		FROM cte
-		ORDER BY entry_date
+		ORDER BY date
 	`
 
-	return util.GetList[AnimalsNumberHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
 func (r *AnimalRepository) GetAnimalTypes(userId string) (*AnimalByType, error) {
@@ -312,17 +312,24 @@ func (r *AnimalRepository) GetLastDeaths(userId string) (*[]AnimalDB, error) {
 	query := `
 		SELECT
 			id,
-			CONCAT_WS(
-				' - ', 
-				tag, 
-				COALESCE(name, sex),
-				TO_CHAR(birth_date, 'DD/MM/YYYY')
-			) AS name,
+			tag,
+			name,
 			sex,
 			animal_type,
+			birth_date,
 			death_date,
-			observation
+			observation,
+
+			a.father_id,
+			f.tag,
+			f.name,
+			
+			a.mother_id,
+			m.tag,
+			m.name
 		FROM animals a
+		LEFT JOIN animals f ON f.id = a.father_id
+		LEFT JOIN animals m ON m.id = a.mother_id
 		WHERE user_id = $1 
 			AND deleted_at IS NULL
 			AND is_outside_animal = FALSE
@@ -728,23 +735,25 @@ func (r *AnimalRepository) Search(
 ) (*[]AnimalDB, error) {
 
 	sortMap := map[string]util.SortField{
-		"name":         {Field: "coalesce(cte.name, '')", Order: "asc"},
-		"birth_date":   {Field: "coalesce(cte.birth_date, '-infinity')", Order: "desc"},
-		"animal_order": {Field: "coalesce(nullif(regexp_replace(cte.tag, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
+		"name":         {Field: "COALESCE(cte.name, '')", Order: "ASC"},
+		"birth_date":   {Field: "COALESCE(cte.birth_date, '-infinity')", Order: "DESC"},
+		"animal_order": {Field: "COALESCE(NULLIF(REGEXP_REPLACE(cte.tag, '[^0-9]', '', 'g'), '')::int, 0)", Order: "ASC"},
 	}
 
 	query := `
 		WITH pasture_cte AS (
-			SELECT DISTINCT ON (pe.animal_id)
+			SELECT 
 				pe.animal_id,
 				pe.pasture_id,
-				p.name AS pasture_name
+				p.name AS pasture_name,
+				p.farm_id,
+				f.name AS farm_name
 			FROM pasture_entries pe
-				JOIN pastures p ON p.id = pe.pasture_id
+			JOIN pastures p ON p.id = pe.pasture_id
+			JOIN farms f ON f.id = p.farm_id
 			WHERE pe.user_id = $1 
 				AND pe.deleted_at IS NULL
 				AND pe.exit_date IS NULL
-			ORDER BY pe.animal_id, pe.entry_date
 		),
 		
         cte AS (
@@ -753,20 +762,30 @@ func (r *AnimalRepository) Search(
 				a.tag,
 				a.name,
 				a.sex,
-				a.father_id,
-				a.mother_id,
 				a.animal_type,
 				a.birth_date,
 				a.death_date,
 				a.weaning_date,
-				a.observation,
-				p.pasture_id,
-				p.pasture_name,
 				a.is_embryo_donor,
 				a.is_transfer_bull,
 				a.is_breeding_bull,
 				a.is_insemination_bull,
 				a.is_outside_animal,
+				a.observation,
+
+				a.father_id,
+				f.name AS father_name,
+				f.tag AS father_tag,
+
+				a.mother_id,
+				m.tag AS mother_tag,
+				m.name AS mother_name,
+
+				p.pasture_id,
+				p.pasture_name,
+				p.farm_id,
+				p.farm_name,
+
 				(
 					SELECT COUNT(*)
 					FROM animals 
@@ -775,9 +794,9 @@ func (r *AnimalRepository) Search(
 						AND deleted_at IS NULL
 				) AS children_number
 			FROM animals a
-				LEFT JOIN animals f ON f.id = a.father_id
-				LEFT JOIN animals m ON m.id = a.mother_id
-				LEFT JOIN pasture_cte AS p ON p.animal_id = a.id
+			LEFT JOIN animals f ON f.id = a.father_id
+			LEFT JOIN animals m ON m.id = a.mother_id
+			LEFT JOIN pasture_cte p ON p.animal_id = a.id
 			WHERE a.user_id = $1 AND a.deleted_at IS NULL
 		)
 		SELECT 
@@ -785,14 +804,23 @@ func (r *AnimalRepository) Search(
 			tag,
 			name,
 			sex,
-			father_id,
-			mother_id,
 			animal_type,
 			birth_date,
 			death_date,
 			weaning_date,
+
+			father_id,
+			father_tag,
+			father_name,
+
+			mother_id,
+			mother_tag,
+			mother_name,
+
 			pasture_id,
-			pasture_name
+			pasture_name,
+			farm_id,
+			farm_name
 		FROM cte
 	`
 
@@ -969,43 +997,56 @@ func (r *AnimalRepository) Update(newEntry *AnimalSave) (*AnimalDB, error) {
 	}
 
 	selectQuery := `
+		WITH pature_cte AS (
+			SELECT
+				pe.animal_id,
+				pe.pasture_id,
+				p.name AS pasture_name,
+				p.farm_id,
+				f.name AS farm_name
+			FROM pasture_entries pe
+			WHERE pe.animal_id = :id
+				AND pe.exit_date IS NULL
+				AND pe.user_id = :user_id
+				AND pe.deleted_at IS NULL
+		)	
+
         SELECT 
 			a.id,
 			a.tag,
 			a.name,
 			a.sex,
-			a.father_id,
-			a.mother_id,
-            CONCAT_WS(' - ', f.tag, f.name) AS father_name, 
-            CONCAT_WS(' - ', m.tag, m.name) AS mother_name,
 			a.animal_type,
 			a.birth_date,
 			a.death_date,
 			a.weaning_date,
 			a.observation,
-            FORMAT('%s (%s)', p.name, fa.name) AS pasture_name
+
+			a.father_id,
+			f.tag AS father_tag,
+			f.name AS father_name,
+
+			a.mother_id,
+			m.tag AS mother_tag,
+			m.name AS mother_name,
+				
+			p.pasture_id,
+			p.pasture_name,
+			p.farm_id,
+			p.farm_name
         FROM animals a
-            LEFT JOIN animals f ON f.id = a.father_id
-            LEFT JOIN animals m ON m.id = a.mother_id
-			LEFT JOIN LATERAL (
-				SELECT pe.pasture_id
-				FROM pasture_entries pe
-				WHERE pe.user_id = $2 AND pe.animal_id = $1
-				ORDER BY entry_date DESC
-				LIMIT 1
-			) pe ON TRUE
-            LEFT JOIN pastures p ON p.id = pe.pasture_id
-            LEFT JOIN FARMS fa ON fa.id = p.farm_id
-		WHERE a.id = $1 AND a.user_id = $2
+		CROSS JOIN pasture_cte p
+		LEFT JOIN animals f ON f.id = a.father_id
+		LEFT JOIN animals m ON m.id = a.mother_id
+		WHERE a.id = :id AND a.user_id = :user_id
     `
 
-	response, err := util.GetOne[AnimalDB](r.DB, selectQuery, newEntry.Id, newEntry.UserId)
+	response, err := util.NamedGet(r.DB, selectQuery, AnimalDB{}, newEntry)
 	if err != nil {
 		return nil, err
 	}
 
 	return response, nil
-
 }
 
 func (r *AnimalRepository) Add(entry *AnimalSave) error {

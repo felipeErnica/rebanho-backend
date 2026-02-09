@@ -8,10 +8,10 @@ import (
 )
 
 type PastureHandler struct {
-	Repository *PastureRepository
+	Service *PastureService
 }
 
-func (h *PastureHandler) SearchPasture(w http.ResponseWriter, r *http.Request) {
+func (h *PastureHandler) Search(w http.ResponseWriter, r *http.Request) {
 	userId, ok := util.GetUserId(w, r)
 	if !ok {
 		return
@@ -23,7 +23,7 @@ func (h *PastureHandler) SearchPasture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.Repository.SearchPasture(filter, userId)
+	list, err := h.Service.Search(filter, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -32,7 +32,7 @@ func (h *PastureHandler) SearchPasture(w http.ResponseWriter, r *http.Request) {
 	util.SendList(w, list)
 }
 
-func (h *PastureHandler) FindAnimalsByPasture(w http.ResponseWriter, r *http.Request) {
+func (h *PastureHandler) FindAnimalsById(w http.ResponseWriter, r *http.Request) {
 	pastureId := r.PathValue("id")
 	sort := r.URL.Query().Get("sort")
 	order := r.URL.Query().Get("order")
@@ -40,7 +40,7 @@ func (h *PastureHandler) FindAnimalsByPasture(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	result, err := h.Repository.FindAnimalsByPasture(pastureId, userId, sort, order)
+	result, err := h.Service.FindAnimalsById(pastureId, userId, sort, order)
 	if err != nil {
 		log.WriteError(w, err)
 		return

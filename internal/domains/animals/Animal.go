@@ -102,17 +102,6 @@ type AnimalFilter struct {
 	IsLactating             *bool      `schema:"isLactating" db:"is_lactating"`
 }
 
-type CardEntry struct {
-	Current int     `json:"current"`
-	Trend   float64 `json:"trend"`
-	Hist    any     `json:"hist"`
-}
-
-type AnimalsNumberHist struct {
-	EntryDate     time.Time `json:"entryDate" db:"entry_date"`
-	AnimalsNumber int       `json:"animalsNumber" db:"animals_number"`
-}
-
 type TotalBySex struct {
 	TotalAnimals int `json:"totalAnimals" db:"total_animals"`
 	TotalMales   int `json:"totalMales" db:"total_males"`
@@ -123,11 +112,6 @@ type AnimalsByAge struct {
 	Category string `json:"category" db:"category"`
 	Female   int    `json:"female" db:"female"`
 	Male     int    `json:"male" db:"male"`
-}
-
-type TotalByYear struct {
-	Year         int `json:"year" db:"year"`
-	TotalAnimals int `json:"totalAnimals" db:"total_animals"`
 }
 
 type AnimalByType struct {

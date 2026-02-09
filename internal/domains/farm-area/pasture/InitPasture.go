@@ -7,9 +7,10 @@ import (
 
 func InitPasture(app *app.App) {
 	repository := NewRepository(app.DBconn)
-	handler := PastureHandler{repository}
+	service := NewService(repository)
+	handler := PastureHandler{service}
 
-	app.HandleFunc("GET /pastures/search", handler.SearchPasture)
-	app.HandleFunc("GET /pastures/{id}/animals", handler.FindAnimalsByPasture)
+	app.HandleFunc("GET /pastures/search", handler.Search)
+	app.HandleFunc("GET /pastures/{id}/animals", handler.FindAnimalsById)
 	log.LogDomainsInit("Pastos")
 }

@@ -13,33 +13,58 @@ func NewRepository(db *sqlx.DB) *PastureRepository {
 	return &PastureRepository{db}
 }
 
-func (r *PastureRepository) SearchPasture(filter *PastureFilter, userId string) (*[]Pasture, error) {
+func (r *PastureRepository) Search(filter *PastureFilter, userId string) (*[]PastureDB, error) {
 	query := `
-        SELECT 
-			p.id, 
-			p.name,
-			p.farm_id,
-			p.bull_id,
-			f.name AS farm_name
-        FROM pastures p 
-		JOIN farms f ON f.id = p.farm_id
+		WITH bull_cte AS (
+			SELECT DISTINCT ON (pe.animal_id)
+				pe.pasture_id,
+				pe.animal_id AS bull_id,
+				b.name AS bull_name,
+				b.tag AS bull_tag
+			FROM pasture_entries pe
+			JOIN animals b ON b.id = pe.animal_id
+			WHERE b.sex = 'M'
+				AND b.name IS NOT NULL
+				AND pe.exit_date IS NULL
+				AND pe.user_id = $1
+			ORDER BY pe.animal_id, pe.entry_date DESC
+		),
+
+        cte as (
+			SELECT 
+				p.id, 
+				p.name,
+
+				p.farm_id,
+				f.name AS farm_name,
+
+				b.bull_id,
+				b.bull_name,
+				b.bull_tag
+			FROM pastures p 
+			JOIN farms f ON f.id = p.farm_id
+			LEFT JOIN bull_cte b ON b.pasture_id = p.id
+			WHERE p.user_id = $1 AND p.deleted_at IS NULL
+		)
+
+		SELECT * FROM cte
     `
-	filterExpression, _, err := util.GetFilterExpressions(filter, "p", 2)
+	filterExpression, _, err := util.GetFilterExpressions(filter, "cte", 2)
 	if err != nil {
 		return nil, err
 	}
 
-	whereExpression := util.GetWhereExpression("p.user_id = $1 AND p.deleted_at IS NULL", filterExpression)
-	query += whereExpression + " ORDER BY p.name"
+	whereExpression := util.GetWhereExpression(filterExpression)
+	query += whereExpression + " ORDER BY cte.name"
 
 	args := []any{userId}
 	filterArgs := util.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 
-	return util.GetList[Pasture](r.DB, query, args...)
+	return util.GetList[PastureDB](r.DB, query, args...)
 }
 
-func (r *PastureRepository) FindAnimalsByPasture(
+func (r *PastureRepository) FindAnimalsById(
 	pastureId string,
 	userId string,
 	sort string,
@@ -48,12 +73,12 @@ func (r *PastureRepository) FindAnimalsByPasture(
 
 	sort = util.AddCommonFields(sort)
 	sortMap := map[string]util.SortField{
-		"ring_number": {Field: "coalesce(nullif(regexp_replace(animals.ring_number, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
-		"name":        {Field: "coalesce(animals.name, '')", Order: "asc"},
-		"birth_date":  {Field: "coalesce(animals.birth_date, '-infinity')", Order: "asc"},
-		"death_date":  {Field: "coalesce(animals.death_date, '-infinity')", Order: "asc"},
-		"id":          {Field: "animals.id", Order: "asc"},
-		"created_at":  {Field: "animals.created_at", Order: "asc"},
+		"tag":        {Field: "COALESCE(NULL_IF(REGEX_REPLACE(animals.tag, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
+		"name":       {Field: "COALESCE(animals.name, '')", Order: "asc"},
+		"birth_date": {Field: "COALESCE(animals.birth_date, '-infinity')", Order: "asc"},
+		"death_date": {Field: "COALESCE(animals.death_date, '-infinity')", Order: "asc"},
+		"id":         {Field: "animals.id", Order: "asc"},
+		"created_at": {Field: "animals.created_at", Order: "asc"},
 	}
 
 	expression, err := util.GetSortExpression(sortMap, sort, order)
@@ -62,22 +87,29 @@ func (r *PastureRepository) FindAnimalsByPasture(
 	}
 
 	query := `
+		WITH entries_cte AS (
+			SELECT DISTINCT ON (pe.animal_id)
+				pe.animal_id
+			FROM pasture_entries pe
+			WHERE pe.pasture_id = $1
+				AND pe.exit_date IS NULL
+				AND pe.user_id = $2
+				AND pe.deleted_at IS NULL
+			ORDER BY pe.animal_id, pe.entry_date DESC
+		)
+
         SELECT
-            animals.id, 
-            animals.name, 
-            animals.ring_number, 
-            animals.sex, 
-            animals.father_id, 
-            animals.mother_id, 
-            animals.birth_date, 
-            animals.death_date, 
-            animals.animal_type,
-            CONCAT_WS(' - ', father.ring_number, father.name) AS father_name, 
-            CONCAT_WS(' - ', mother.ring_number, mother.name) AS mother_name
-        FROM animals
-            LEFT JOIN animals AS father ON father.id = animals.father_id
-            LEFT JOIN animals AS mother ON mother.id = animals.mother_id
-        WHERE animals.pasture_id = $1 AND animals.user_id = $2 AND animals.deleted_at IS NULL
+            a.id, 
+            a.name, 
+            a.tag, 
+            a.sex, 
+            a.birth_date, 
+            a.animal_type,
+        FROM animals a
+		JOIN entries_cte e ON e.animal_id = a.id
+        WHERE a.death_date IS NULL
+			AND a.user_id = $2
+			AND a.deleted_at IS NULL
     `
 	orderExpression := " ORDER BY " + expression
 	query = query + orderExpression

@@ -9,7 +9,7 @@ import (
 )
 
 type TestEntryHandler struct {
-	Service *PregnancyTestService
+	Service *TestService
 }
 
 func (h *TestEntryHandler) GetPregnancyRates(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +138,7 @@ func (h *TestEntryHandler) FindEntriesPage(w http.ResponseWriter, r *http.Reques
 	order := r.URL.Query().Get("order")
 	cursor := r.URL.Query().Get("cursor")
 
-	filter, err := util.DecodeFilter(r, TestEntryFilter{})
+	filter, err := util.DecodeFilter(r, TestFilter{})
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -149,7 +149,7 @@ func (h *TestEntryHandler) FindEntriesPage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	result, err := h.Service.FindEntriesPage(filter, sort, order, cursor, userId)
+	result, err := h.Service.FindEntriesPage(filter, sort, order, cursor, 100, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -160,7 +160,7 @@ func (h *TestEntryHandler) FindEntriesPage(w http.ResponseWriter, r *http.Reques
 
 func (h *TestEntryHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
 
-	filter, err := util.DecodeFilter(r, TestEntryFilter{})
+	filter, err := util.DecodeFilter(r, TestFilter{})
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -249,7 +249,7 @@ func (h *TestEntryHandler) Add(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entry, ok := util.DecodeEntity(w, r, &TestEntrySave{})
+	entry, ok := util.DecodeEntity(w, r, &TestSave{})
 	if !ok {
 		return
 	}
@@ -270,7 +270,7 @@ func (h *TestEntryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entry, ok := util.DecodeEntity(w, r, &TestEntrySave{})
+	entry, ok := util.DecodeEntity(w, r, &TestSave{})
 	if !ok {
 		return
 	}
@@ -285,19 +285,19 @@ func (h *TestEntryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	util.WriteEntity(w, res)
 }
 
-func (h *TestEntryHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
+func (h *TestEntryHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	userId, ok := util.GetUserId(w, r)
 	if !ok {
 		return
 	}
 
-	group, ok := util.DecodeEntity(w, r, &TestGroups{})
+	group, ok := util.DecodeEntity(w, r, &TestGroupSave{})
 	if !ok {
 		return
 	}
 
 	group.UserId = userId
-	response, err := h.Service.UpdateBatch(group)
+	response, err := h.Service.UpdateGroup(group)
 	if err != nil {
 		log.WriteAPIError(err, w)
 		return
@@ -322,7 +322,7 @@ func (h *TestEntryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	util.WriteDeleteResponse(w)
 }
 
-func (h *TestEntryHandler) DeleteBatch(w http.ResponseWriter, r *http.Request) {
+func (h *TestEntryHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 	testDateString := r.PathValue("testDate")
 	testDate, _ := time.Parse(time.RFC3339Nano, testDateString)
 	userId, ok := util.GetUserId(w, r)
@@ -330,7 +330,7 @@ func (h *TestEntryHandler) DeleteBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.Service.DeleteBatch(testDate, userId)
+	err := h.Service.DeleteGroup(testDate, userId)
 	if err != nil {
 		log.WriteAPIError(err, w)
 		return

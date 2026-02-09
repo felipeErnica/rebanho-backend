@@ -3,8 +3,6 @@ package lactation
 import (
 	"fmt"
 
-	"github.com/felipeErnica/rebanho-backend/internal/entity"
-	"github.com/felipeErnica/rebanho-backend/internal/log"
 	"github.com/felipeErnica/rebanho-backend/internal/util"
 	"github.com/jmoiron/sqlx"
 )
@@ -99,30 +97,30 @@ func (r *LactationRepository) CheckLactationConflicts(lac LactationHistSave) (*S
 	return util.NamedGet(r.DB, query, SaveValidation{}, lac)
 }
 
-func (r *LactationRepository) GetLastLactatingEntries(userId string) (*[]AnimalsAverageHist, error) {
+func (r *LactationRepository) GetLastLactatingEntries(userId string) (*[]util.GraphData, error) {
 	query := `
         WITH cte AS (
             SELECT
-                entry_date,
-                COUNT(*) animals_number
+                entry_date AS date,
+                COUNT(*) value
             FROM milk_entries
             WHERE user_id = $1 AND deleted_at IS NULL
             GROUP BY 1
             ORDER BY 1 DESC
             LIMIT 10
         )
-        SELECT * FROM cte ORDER BY entry_date
+        SELECT * FROM cte ORDER BY date
     `
 
-	return util.GetList[AnimalsAverageHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *LactationRepository) GetLastDryEntries(userId string) (*[]AnimalsAverageHist, error) {
+func (r *LactationRepository) GetLastDryEntries(userId string) (*[]util.GraphData, error) {
 	query := `
 		WITH cte AS (
             SELECT
-                entry_date,
-                COUNT(*) animals_number
+                entry_date AS date,
+                COUNT(*) AS value
             FROM milk_entries m
 				JOIN lactations l ON l.animal_id = m.animal_id
 					AND m.entry_date = l.end_date
@@ -132,10 +130,10 @@ func (r *LactationRepository) GetLastDryEntries(userId string) (*[]AnimalsAverag
             ORDER BY 1 DESC
             LIMIT 10
         )
-        SELECT * FROM cte ORDER BY entry_date
+        SELECT * FROM cte ORDER BY date
     `
 
-	return util.GetList[AnimalsAverageHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
 func (r *LactationRepository) GetDairyTypes(userId string) (*DairyTypes, error) {
@@ -187,6 +185,7 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
                     AND m.user_id = $1
             GROUP BY 1
         ),
+
         lac_tbl AS (
             SELECT
                 l.animal_id,
@@ -205,7 +204,7 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
         ),
         lac_stats AS (
             SELECT
-                CONCAT_WS(' - ', a.ring_number, a.name) animal_name,
+                CONCAT_WS(' - ', a.tag, a.name) animal_name,
                 COUNT(l.*) lac_num,
                 AVG(l.period) FILTER (WHERE l.end_date IS NOT NULL) avg_period,
                 AVG(l.avg_prod) FILTER (WHERE l.end_date IS NOT NULL) avg_prod,
@@ -280,7 +279,7 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
         ),
         lac_stats AS (
             SELECT
-                CONCAT_WS(' - ', a.ring_number, a.name) animal_name,
+                CONCAT_WS(' - ', a.tag, a.name) animal_name,
                 COUNT(l.*) lac_num,
                 AVG(l.period) FILTER (WHERE l.end_date IS NOT NULL) avg_period,
                 AVG(l.avg_prod) FILTER (WHERE l.end_date IS NOT NULL)avg_prod,
@@ -361,7 +360,7 @@ func (r *LactationRepository) GetBestMothers(userId string) (*[]ParentsRating, e
         ),
         mother_stats AS (
             SELECT
-                CONCAT_WS(' - ', f.ring_number, f.name) parent_name,
+                CONCAT_WS(' - ', f.tag, f.name) parent_name,
 				COUNT(cte.*) children_number,
                 AVG(avg_period) avg_period,
                 AVG(avg_prod) avg_prod,
@@ -445,7 +444,7 @@ func (r *LactationRepository) GetWorstMothers(userId string) (*[]ParentsRating, 
         ),
         mother_stats AS (
             SELECT
-                CONCAT_WS(' - ', f.ring_number, f.name) parent_name,
+                CONCAT_WS(' - ', f.tag, f.name) parent_name,
 				COUNT(cte.*) children_number,
                 AVG(avg_period) avg_period,
                 AVG(avg_prod) avg_prod,
@@ -529,7 +528,7 @@ func (r *LactationRepository) GetBestFathers(userId string) (*[]ParentsRating, e
         ),
         mother_stats AS (
             SELECT
-                CONCAT_WS(' - ', f.ring_number, f.name) parent_name,
+                CONCAT_WS(' - ', f.tag, f.name) parent_name,
 				COUNT(cte.*) children_number,
                 AVG(avg_period) avg_period,
                 AVG(avg_prod) avg_prod,
@@ -613,7 +612,7 @@ func (r *LactationRepository) GetWorstFathers(userId string) (*[]ParentsRating, 
         ),
         mother_stats AS (
             SELECT
-                CONCAT_WS(' - ', f.ring_number, f.name) parent_name,
+                CONCAT_WS(' - ', f.tag, f.name) parent_name,
 				COUNT(cte.*) children_number,
                 AVG(avg_period) avg_period,
                 AVG(avg_prod) avg_prod,
@@ -664,13 +663,13 @@ func (r *LactationRepository) FindLactationPage(
 	sort string,
 	order string,
 	cursor string,
+	limit int,
 	userId string,
-) (*entity.Page[LactationHist], error) {
+) (*[]LactationDB, error) {
 
-	sort = util.AddCommonFields(sort)
 	sortMap := map[string]util.SortField{
 		"animal_order":     {Field: "cte.animal_order", Order: "asc"},
-		"name":             {Field: "cte.name", Order: "asc"},
+		"animal_name":      {Field: "cte.animal_name", Order: "asc"},
 		"start_date":       {Field: "cte.start_date", Order: "asc"},
 		"end_date":         {Field: "coalesce(cte.end_date, '-infinity')", Order: "asc"},
 		"calf_birth_date":  {Field: "coalesce(cte.calf_birth_date, -infinity)", Order: "asc"},
@@ -703,20 +702,17 @@ func (r *LactationRepository) FindLactationPage(
 			SELECT
 				l.id,
 				l.animal_id,
-				a.name,
-				CONCAT_WS(' - ', a.ring_number, a.name) AS animal_name,
-				COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0) AS animal_order,
+				a.tag AS animal_tag,
+				a.name AS animal_name,
+				COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0) AS animal_order,
+
 				l.calf_id,
+				c.tag AS calf_tag,
+				c.name AS calf_name,
+				c.sex AS calf_sex,
 				c.birth_date AS calf_birth_date,
-				CASE
-					WHEN l.calf_id IS NULL THEN 'Sem Bezerro'
-					WHEN c.name IS NOT NULL THEN FORMAT(
-						'%s (%s)',
-						CONCAT_WS(' - ', cm.ring_number, c.sex, TO_CHAR(c.birth_date, 'DD/MM/YYYY')),
-						CONCAT_WS(' - ', c.ring_number, c.name)
-					)
-					ELSE CONCAT_WS(' - ', cm.ring_number, c.sex, TO_CHAR(c.birth_date, 'DD/MM/YYYY'))
-				END AS calf_info,
+				c.death_date AS calf_death_date,
+
 				l.start_date,
 				l.end_date,
 				s.avg_prod AS avg_production,
@@ -754,7 +750,7 @@ func (r *LactationRepository) FindLactationPage(
 	}
 
 	orderBy := " ORDER BY " + sortExpression
-	query += whereExpression + orderBy
+	query += whereExpression + orderBy + fmt.Sprintf(" LIMIT %d", limit)
 	args := []any{userId}
 	filterArgs := util.GetFilterArgs(filter)
 	cursorArgs, err := util.GetCursorArgs(cursor)
@@ -764,7 +760,7 @@ func (r *LactationRepository) FindLactationPage(
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
 
-	return util.GetPage[LactationHist](r.DB, query, sort, 100, args...)
+	return util.GetList[LactationDB](r.DB, query, args...)
 }
 
 func (r *LactationRepository) GetLactationPageFoot(filter *LactationHistFilter, userId string) (*LactationHistFoot, error) {
@@ -833,35 +829,34 @@ func (r *LactationRepository) GetLactationPageFoot(filter *LactationHistFilter, 
 }
 
 func (r *LactationRepository) FindAnimalsPage(
-	filter *LactationAnimalFilter,
+	filter *AnimalFilter,
 	sort string,
 	order string,
 	cursor string,
+	limit int,
 	userId string,
-) (*entity.Page[LactationAnimal], error) {
-
-	sort = util.AddCommonFields(sort)
+) (*[]AnimalDB, error) {
 	sortMap := map[string]util.SortField{
-		"animal_order":     {Field: "cte.animal_order", Order: "asc"},
-		"name":             {Field: "cte.name", Order: "asc"},
-		"start_date":       {Field: "cte.start_date", Order: "asc"},
-		"end_date":         {Field: "coalesce(cte.end_date, '-infinity')", Order: "asc"},
-		"calf_birth_date":  {Field: "coalesce(cte.calf_birth_date, -infinity)", Order: "asc"},
-		"avg_production":   {Field: "coalesce(cte.avg_production, 0)", Order: "asc"},
-		"lac_period":       {Field: "cte.lac_period", Order: "asc"},
-		"total_production": {Field: "coalesce(cte.total_production, 0)", Order: "asc"},
-		"lac_interval":     {Field: "coalesce(cte.lac_interval, 0)", Order: "asc"},
-		"id":               {Field: "cte.id", Order: "asc"},
-		"created_at":       {Field: "cte.created_at", Order: "asc"},
+		"tag_order":       {Field: "cte.tag_order", Order: "asc"},
+		"name":            {Field: "cte.name", Order: "asc"},
+		"lac_start":       {Field: "cte.lac_start", Order: "asc"},
+		"lac_end":         {Field: "coalesce(cte.lac_end, '-infinity')", Order: "asc"},
+		"calf_birth_date": {Field: "coalesce(cte.calf_birth_date, -infinity)", Order: "asc"},
+		"lac_average":     {Field: "coalesce(cte.lac_average, 0)", Order: "asc"},
+		"lac_period":      {Field: "cte.lac_period", Order: "asc"},
+		"lac_total":       {Field: "coalesce(cte.lac_total, 0)", Order: "asc"},
+		"lac_interval":    {Field: "coalesce(cte.lac_interval, 0)", Order: "asc"},
+		"id":              {Field: "cte.id", Order: "asc"},
+		"created_at":      {Field: "cte.created_at", Order: "asc"},
 	}
 
 	query := `
         WITH lac_stats AS (
             SELECT
                 l.id,
-                AVG(COALESCE(m.quantity, 0)) avg_prod,
+				AVG(COALESCE(m.quantity, 0)) lac_average,
 				MAX(entry_date) max_date,
-				MAX(COALESCE(m.quantity, 0)) peak
+				MAX(COALESCE(m.quantity, 0)) lac_peak
             FROM lactations l
                 LEFT JOIN milk_entries m ON 
                     l.animal_id = m.animal_id
@@ -871,11 +866,13 @@ func (r *LactationRepository) FindAnimalsPage(
                     AND m.user_id = $1
             GROUP BY 1
         ),
+
 		lac_animals AS (
 			SELECT
 				a.id,
 				a.name,
-				a.ring_number,
+				a.tag,
+				a.birth_date,
 				EXISTS (
 					SELECT 1
 					FROM lactations l
@@ -891,38 +888,38 @@ func (r *LactationRepository) FindAnimalsPage(
 				AND a.user_id = $1
 				AND a.deleted_at IS NULL
 		),
+
 		cte AS (
 			SELECT DISTINCT ON (a.id)
 				a.id,
-				a.is_lactating,
+				a.tag,
 				a.name,
-				CONCAT_WS(' - ', a.ring_number, a.name) AS animal_name,
-				COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0) AS animal_order,
+				a.birth_date,
+				COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0) AS tag_order,
+				a.is_lactating,
+				
 				l.calf_id,
+				c.name AS calf_name,
+				c.tag AS calf_tag,
+				c.sex AS calf_sex,
 				c.birth_date AS calf_birth_date,
-				CASE
-					WHEN l.calf_id IS NULL THEN 'Sem Bezerro'
-					WHEN c.name IS NOT NULL THEN FORMAT(
-						'%s (%s)',
-						CONCAT_WS(' - ', cm.ring_number, c.sex, TO_CHAR(c.birth_date, 'DD/MM/YYYY')),
-						CONCAT_WS(' - ', c.ring_number, c.name)
-					)
-					ELSE CONCAT_WS(' - ', cm.ring_number, c.sex, TO_CHAR(c.birth_date, 'DD/MM/YYYY'))
-				END AS calf_info,
-				l.start_date,
-				l.end_date,
-				s.avg_prod AS avg_production,
+				c.death_date AS calf_death_date,
+
+				l.id AS lac_id,
+				l.start_date AS lac_start,
+				l.end_date AS lac_end,
+				s.lac_average,
 				EXTRACT(days FROM COALESCE(l.end_date, s.max_date) - l.start_date) + 1 AS lac_period,
-				(EXTRACT(days FROM COALESCE(l.end_date, s.max_date) - l.start_date) + 1) * s.avg_prod AS total_production,
+				(EXTRACT(days FROM COALESCE(l.end_date, s.max_date) - l.start_date) + 1) * s.lac_average AS lac_total,
 				EXTRACT(days FROM l.start_date - LAG(l.end_date) OVER (PARTITION BY l.animal_id ORDER BY l.start_date)) AS lac_interval,
-				s.peak,
-				l.observation,
+				s.lac_peak,
+				l.observation AS lac_observation,
+
 				a.created_at
 			FROM lac_animals a
 				LEFT JOIN lactations l ON a.id = l.animal_id
 				LEFT JOIN lac_stats s ON l.id = s.id
 				LEFT JOIN animals c ON c.id = l.calf_id
-				LEFT JOIN animals cm ON cm.id = c.mother_id
 			ORDER BY a.id, l.start_date DESC
 		)
 		SELECT * FROM cte
@@ -945,7 +942,7 @@ func (r *LactationRepository) FindAnimalsPage(
 		return nil, err
 	}
 
-	orderBy := " ORDER BY " + sortExpression
+	orderBy := " ORDER BY " + sortExpression + fmt.Sprintf(" LIMIT %d", limit)
 	query += whereExpression + orderBy
 	args := []any{userId}
 	filterArgs := util.GetFilterArgs(filter)
@@ -956,10 +953,10 @@ func (r *LactationRepository) FindAnimalsPage(
 	args = append(args, filterArgs...)
 	args = append(args, cursorArgs...)
 
-	return util.GetPage[LactationAnimal](r.DB, query, sort, 100, args...)
+	return util.GetList[AnimalDB](r.DB, query, args...)
 }
 
-func (r *LactationRepository) GetAnimalsPageFoot(filter *LactationAnimalFilter, userId string) (*LactationHistFoot, error) {
+func (r *LactationRepository) GetAnimalsPageFoot(filter *AnimalFilter, userId string) (*LactationHistFoot, error) {
 
 	lacQuery := "SELECT * FROM cte"
 
@@ -1042,7 +1039,7 @@ func (r *LactationRepository) GetAnimalsPageFoot(filter *LactationAnimalFilter, 
 
 	return util.GetOne[LactationHistFoot](r.DB, mainQuery, args...)
 }
-func (r *LactationRepository) FindById(id string, userId string) (*LactationHist, error) {
+func (r *LactationRepository) FindById(id string, userId string) (*LactationDB, error) {
 
 	query := `
         WITH lac_stats AS (
@@ -1060,24 +1057,23 @@ func (r *LactationRepository) FindById(id string, userId string) (*LactationHist
                     AND m.user_id = $1
             GROUP BY 1
         ),
+
 		cte AS (
 			SELECT
 				l.id,
+
 				l.animal_id,
-				a.name,
-				CONCAT_WS(' - ', a.ring_number, a.name) AS animal_name,
-				COALESCE(REGEXP_REPLACE(a.ring_number, '[^0-9]', '', 'g')::int, 0) AS animal_order,
+				a.tag AS animal_tag,
+				a.name AS animal_name,
+				COALESCE(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g')::int, 0) AS animal_order,
+
 				l.calf_id,
-				c.birth_date calf_birth_date,
-				CASE
-					WHEN l.calf_id IS NULL THEN 'Sem Bezerro'
-					WHEN c.name IS NOT NULL THEN FORMAT(
-						'%s (%s)',
-						CONCAT_WS(' - ', cm.ring_number, c.sex, TO_CHAR(c.birth_date, 'DD/MM/YYYY')),
-						CONCAT_WS(' - ', c.ring_number, c.name)
-					)
-					ELSE CONCAT_WS(' - ', cm.ring_number, c.sex, TO_CHAR(c.birth_date, 'DD/MM/YYYY'))
-				END AS calf_info,
+				c.tag AS calf_tag,
+				c.name AS calf_name,
+				c.sex AS calf_sex,
+				c.birth_date AS calf_birth_date,
+				c.death_date AS calf_death_date,
+
 				l.start_date,
 				l.end_date,
 				s.avg_prod avg_production,
@@ -1098,7 +1094,7 @@ func (r *LactationRepository) FindById(id string, userId string) (*LactationHist
 		)
 		SELECT * FROM cte
     `
-	return util.GetOne[LactationHist](r.DB, query, id, userId)
+	return util.GetOne[LactationDB](r.DB, query, id, userId)
 }
 
 func (r *LactationRepository) AddLactation(entry *LactationHistSave) error {
@@ -1169,7 +1165,7 @@ func (r *LactationRepository) AddLactation(entry *LactationHistSave) error {
 	return nil
 }
 
-func (r *LactationRepository) UpdateLactation(entry *LactationHistSave) (*LactationHist, error) {
+func (r *LactationRepository) UpdateLactation(entry *LactationHistSave) (*LactationDB, error) {
 
 	insertQuery := `
 		UPDATE lactations
@@ -1200,21 +1196,21 @@ func (r *LactationRepository) UpdateLactation(entry *LactationHistSave) (*Lactat
                     AND m.user_id = $1
 			WHERE l.id = $1
         )
+
 		SELECT
 			l.id,
+
 			l.animal_id,
-			CONCAT_WS(' - ', a.ring_number, a.name) AS animal_name,
+			a.tag AS animal_tag,
+			a.name AS animal_name,
+
 			l.calf_id,
+			c.name AS calf_name,
+			c.tag AS calf_tag,
+			c.sex AS calf_sex,
 			c.birth_date calf_birth_date,
-			CASE
-				WHEN l.calf_id IS NULL THEN 'Sem Bezerro'
-				WHEN c.name IS NOT NULL THEN FORMAT(
-					'%s (%s)',
-					CONCAT_WS(' - ', cm.ring_number, c.sex, TO_CHAR(c.birth_date, 'DD/MM/YYYY')),
-					CONCAT_WS(' - ', c.ring_number, c.name)
-				)
-				ELSE CONCAT_WS(' - ', cm.ring_number, c.sex, TO_CHAR(c.birth_date, 'DD/MM/YYYY'))
-			END AS calf_info,
+			c.death_date calf_death_date,
+
 			l.start_date,
 			l.end_date,
 			s.avg_prod AS avg_production,
@@ -1231,7 +1227,7 @@ func (r *LactationRepository) UpdateLactation(entry *LactationHistSave) (*Lactat
 		WHERE l.id = $1
 	`
 
-	response, err := util.GetOne[LactationHist](r.DB, selectQuery, entry.Id)
+	response, err := util.GetOne[LactationDB](r.DB, selectQuery, entry.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -1239,11 +1235,11 @@ func (r *LactationRepository) UpdateLactation(entry *LactationHistSave) (*Lactat
 	return response, nil
 }
 
-func (r *LactationRepository) DeleteLactation(id string, userId string) *log.APIError {
+func (r *LactationRepository) DeleteLactation(id string, userId string) error {
 
 	tx, err := r.DB.Beginx()
 	if err != nil {
-		return log.InternalServerAPIError(err)
+		return err
 	}
 
 	defer tx.Rollback()
@@ -1255,7 +1251,7 @@ func (r *LactationRepository) DeleteLactation(id string, userId string) *log.API
 	`
 	err = util.ExecTx(tx, query, id, userId)
 	if err != nil {
-		return log.InternalServerAPIError(err)
+		return err
 	}
 
 	entriesQuery := `
@@ -1269,12 +1265,12 @@ func (r *LactationRepository) DeleteLactation(id string, userId string) *log.API
 	`
 	err = util.ExecTx(tx, entriesQuery, id, userId)
 	if err != nil {
-		return log.InternalServerAPIError(err)
+		return err
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return log.InternalServerAPIError(err)
+		return err
 	}
 
 	return nil
