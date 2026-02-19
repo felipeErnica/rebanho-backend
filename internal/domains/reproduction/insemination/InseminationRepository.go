@@ -158,7 +158,7 @@ func (r *InseminationRepository) CheckGroupConflicts(group InseminationGroupSave
 	return exists, nil
 }
 
-func (r *InseminationRepository) GetBirthRateStats(userId string) (*[]BirthRateHist, error) {
+func (r *InseminationRepository) GetBirthRateStats(userId string) (*[]util.GraphData, error) {
 	query := fmt.Sprintf(`
 		WITH totals AS (
 			SELECT 
@@ -187,10 +187,10 @@ func (r *InseminationRepository) GetBirthRateStats(userId string) (*[]BirthRateH
 		FROM totals
 		ORDER BY 1
     `, util.MinGestantionDays, util.MaxGestationDays)
-	return util.GetList[BirthRateHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*[]PregnancyRateHist, error) {
+func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*[]util.GraphData, error) {
 	query := fmt.Sprintf(`
 		WITH insemination_status AS (
 			SELECT
@@ -242,21 +242,21 @@ func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*[]Pregna
 			LIMIT 10
 		)
 		SELECT 
-			insemination_date,
-			(pregnancy_success::float / NULLIF(total, 0)) * 100 AS pregnancy_rate
+			insemination_date AS date,
+			(pregnancy_success::float / NULLIF(total, 0)) * 100 AS value
 		FROM cte
 		ORDER BY 1
     `, util.MinGestantionDays, util.MaxGestationDays)
 
-	return util.GetList[PregnancyRateHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetAnimalsNumber(userId string) (*[]AnimalsHist, error) {
+func (r *InseminationRepository) GetAnimalsNumber(userId string) (*[]util.GraphData, error) {
 	query := `
 		WITH cte AS (
 			SELECT
-				insemination_date,
-				COUNT(*) AS animals_number
+				insemination_date AS date,
+				COUNT(*) AS value
 			FROM insemination_entries
 			WHERE user_id = $1 AND deleted_at IS NULL
 			GROUP BY 1
@@ -267,7 +267,7 @@ func (r *InseminationRepository) GetAnimalsNumber(userId string) (*[]AnimalsHist
 		FROM cte
 		ORDER BY 1
     `
-	return util.GetList[AnimalsHist](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
 func (r *InseminationRepository) GetInseminationStats(userId string) (*[]InseminationHist, error) {
@@ -343,7 +343,7 @@ func (r *InseminationRepository) GetInseminationStats(userId string) (*[]Insemin
 	return util.GetList[InseminationHist](r.DB, query, userId)
 }
 
-func (r *InseminationRepository) GetFutureBirths(userId string) (*[]FutureBirths, error) {
+func (r *InseminationRepository) GetFutureBirths(userId string) (*[]util.GraphData, error) {
 	query := fmt.Sprintf(`
 		WITH upcoming_births AS (
 			SELECT 
@@ -374,13 +374,13 @@ func (r *InseminationRepository) GetFutureBirths(userId string) (*[]FutureBirths
 				)
 		)
 		SELECT
-			DATE_TRUNC('month', birth_forecast) AS birth_forecast,
-			COUNT(DISTINCT id) AS births_number
+			DATE_TRUNC('month', birth_forecast) AS date,
+			COUNT(DISTINCT id) AS value
 		FROM upcoming_births
 		GROUP BY 1
 		ORDER BY 1;
 	`, util.MinGestantionDays, util.MaxGestationDays, util.MinGestantionDays)
-	return util.GetList[FutureBirths](r.DB, query, userId)
+	return util.GetList[util.GraphData](r.DB, query, userId)
 }
 
 func (r *InseminationRepository) GetBestBull(userId string) (*[]InseminationBulls, error) {

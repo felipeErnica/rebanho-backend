@@ -207,7 +207,7 @@ func buildFilterStatement(value any, sqlField string, structField string, numPar
 		statement, newNumParam := buildFilterMinNumberAndDate(sqlField, numParam)
 		return statement, newNumParam, nil
 	case []string:
-		statement, newNumParam := GetSliceExpressions(t, sqlField, numParam)
+		statement, newNumParam := GetInExpression(t, sqlField, numParam)
 		return statement, newNumParam, nil
 	case bool:
 		if strings.HasPrefix(structField, "Has") {
@@ -249,8 +249,7 @@ func buildFilterNull(hasField bool, field string, numParam int) (string, int) {
 	return fmt.Sprintf("%s IS NULL", field), numParam
 }
 
-func GetSliceExpressions(array []string, field string, numParam int) (string, int) {
-
+func GetInExpression[T any](array []T, field string, numParam int) (string, int) {
 	if len(array) == 0 {
 		return "", numParam
 	}
@@ -263,4 +262,33 @@ func GetSliceExpressions(array []string, field string, numParam int) (string, in
 	params = strings.TrimSuffix(params, ", ")
 	statement := fmt.Sprintf("%s IN (%s)", field, params)
 	return statement, numParam
+}
+
+func GetNotInExpression[T any](array []T, field string, numParam int) (string, int) {
+
+	if len(array) == 0 {
+		return "", numParam
+	}
+
+	params := make([]string, 0)
+	for range array {
+		param := fmt.Sprintf("$%d", numParam)
+		params = append(params, param)
+		numParam++
+	}
+
+	paramsStr := strings.Join(params, ",")
+	paramsStr = strings.TrimSuffix(paramsStr, ",")
+
+	statement := fmt.Sprintf("%s NOT IN (%s)", field, paramsStr)
+	return statement, numParam
+}
+
+func GenerateRowExpression(numParam int, rowArgs []any) string {
+	placeholders := make([]string, len(rowArgs))
+	for i := range rowArgs {
+		placeholders[i] = fmt.Sprintf("$%d", numParam + i)
+	}
+	placeholdersStr := strings.Join(placeholders, ",")
+	return fmt.Sprintf("(%s)", placeholdersStr)
 }

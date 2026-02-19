@@ -6,49 +6,37 @@ import (
 )
 
 func InitSlaughter(app *app.App) {
-	repository := NewSlaughterRepository(app.DBconn)
-	handler := SlaughterHandler{repository}
+	repository := NewRepository(app.DBconn)
+	service := NewService(repository)
+	handler := SlaughterHandler{service}
 
-	app.HandleFunc("GET /slaughter/dashboard/last-weight", handler.GetLastAverageWeight)
-	app.HandleFunc("GET /slaughter/dashboard/last-dead-weight", handler.GetLastDeadWeight)
-	app.HandleFunc("GET /slaughter/dashboard/last-performance", handler.GetLastPerformance)
-	app.HandleFunc("GET /slaughter/dashboard/weight-hist", handler.GetWeightHist)
-	app.HandleFunc("GET /slaughter/dashboard/rate-hist", handler.GetRateHist)
-	app.HandleFunc("GET /slaughter/dashboard/best-fathers", handler.GetBestFathers)
-	app.HandleFunc("GET /slaughter/dashboard/best-mothers", handler.GetBestMothers)
-	app.HandleFunc("GET /slaughter/dashboard/best-slaughterhouses", handler.GetBestSlaughterHouses)
-	app.HandleFunc("GET /slaughter/dashboard/last-entries", handler.GetLastEntries)
-	app.HandleFunc("GET /slaughter/dashboard/last-groups", handler.GetLastGroups)
+	app.HandleFunc("GET /slaughter/stats/last-weight", handler.GetLastAverageWeight)
+	app.HandleFunc("GET /slaughter/stats/last-dead-weight", handler.GetLastDeadWeight)
+	app.HandleFunc("GET /slaughter/stats/last-performance", handler.GetLastPerformance)
+	app.HandleFunc("GET /slaughter/stats/weight-hist", handler.GetWeightHist)
+	app.HandleFunc("GET /slaughter/stats/rate-hist", handler.GetRateHist)
+	app.HandleFunc("GET /slaughter/stats/best-fathers", handler.GetBestFathers)
+	app.HandleFunc("GET /slaughter/stats/best-mothers", handler.GetBestMothers)
+	app.HandleFunc("GET /slaughter/stats/best-slaughterhouses", handler.GetBestButchers)
+	app.HandleFunc("GET /slaughter/stats/last-entries", handler.GetLastEntries)
+	app.HandleFunc("GET /slaughter/stats/last-groups", handler.GetLastGroups)
 
-	app.HandleFunc("GET /slaughter/entries/page", handler.FindEntriesPage)
-	app.HandleFunc("GET /slaughter/entries/page/foot", handler.GetEntriesPageFoot)
-	app.HandleFunc("DELETE /slaughter/entries/{id}/delete", handler.Delete)
-	app.HandleFunc("PUT /slaughter/entries/update", handler.Update)
-	app.HandleFunc("PUT /slaughter/entries/add", handler.Add)
-	app.HandleFunc("PUT /slaughter/entries/replace", handler.Replace)
+	app.HandleFunc("GET /slaughter/page", handler.FindPage)
+	app.HandleFunc("GET /slaughter/page/foot", handler.GetPageFoot)
+	app.HandleFunc("GET /slaughter/entries", handler.FindEntries)
+	app.HandleFunc("GET /slaughter/entries/foot", handler.GetEntriesFoot)
+
+	app.HandleFunc("POST /slaughter", handler.Add)
+	app.HandleFunc("PUT /slaughter", handler.Update)
+	app.HandleFunc("PUT /slaughter/batch", handler.UpdateBatch)
+	app.HandleFunc("DELETE /slaughter/{id}", handler.Delete)
+	app.HandleFunc("DELETE /slaughter/batch", handler.DeleteBatch)
 
 	app.HandleFunc("GET /slaughter/groups/page", handler.FindGroups)
-	app.HandleFunc("GET /slaughter/groups/{entryDate}/entries", handler.FindEntriesByDate)
-	app.HandleFunc("GET /slaughter/groups/{entryDate}/entries/foot", handler.GetEntriesByDateFoot)
+
+	app.HandleFunc("GET /slaughter/butchers/{butcherId}/page", handler.FindButcherPage)
+	app.HandleFunc("GET /slaughter/butchers/{butcherId}/page/foot", handler.GetButcherPageFoot)
 
 	log.LogDomainsInit("Entradas de Abate")
 }
 
-func InitButcher(app *app.App) {
-	repository := newButcherRepository(app.DBconn)
-	handler := ButcherHandler{repository}
-
-	app.HandleFunc("PUT /slaughter/butchers/add", handler.Add)
-	app.HandleFunc("PUT /slaughter/butchers/update", handler.Update)
-	app.HandleFunc("PUT /slaughter/butchers/replace", handler.Replace)
-	app.HandleFunc("DELETE /slaughter/butchers/{id}/delete", handler.Delete)
-
-	app.HandleFunc("GET /slaughter/butchers/search", handler.Search)
-	app.HandleFunc("GET /slaughter/butchers/find-all", handler.FindAll)
-	app.HandleFunc("GET /slaughter/butchers/{id}", handler.FindById)
-
-	app.HandleFunc("GET /slaughter/butchers/{id}/entries/page", handler.FindPage)
-	app.HandleFunc("GET /slaughter/butchers/{id}/entries/page/foot", handler.FindPageFoot)
-
-	log.LogDomainsInit("Frigoríficos")
-}

@@ -13,103 +13,29 @@ func NewService(repo *InseminationRepository) *InseminationService {
 	return &InseminationService{repo}
 }
 
-func (s *InseminationService) GetBirthRateStats(userId string) (*CardStats, *log.APIError) {
+func (s *InseminationService) GetBirthRateStats(userId string) (*util.CardStats, *log.APIError) {
 	result, err := s.Repo.GetBirthRateStats(userId)
 	if err != nil {
 		return nil, log.InternalServerAPIError(err)
 	}
-
-	birthRates := *result
-	var currentRate, previousRate, trend float64
-
-	switch lenght := len(birthRates); lenght {
-	case 0:
-		currentRate = 0
-		previousRate = 0
-		trend = 0
-	case 1:
-		currentRate = birthRates[lenght-1].BirthRate
-		previousRate = 0
-		trend = 0
-	default:
-		currentRate = birthRates[lenght-1].BirthRate
-		previousRate = birthRates[lenght-2].BirthRate
-		trend = util.CalculatePercentageTrend(currentRate, previousRate)
-	}
-
-	stats := &CardStats{
-		Hist:    birthRates,
-		Current: currentRate,
-		Trend:   trend,
-	}
-
-	return stats, nil
+	return util.NewCardPercentage(*result), nil
 }
 
-func (s *InseminationService) GetPregnancyRateStats(userId string) (*CardStats, *log.APIError) {
+func (s *InseminationService) GetPregnancyRateStats(userId string) (*util.CardStats, *log.APIError) {
 	result, err := s.Repo.GetPregnancyRateStats(userId)
 	if err != nil {
 		return nil, log.InternalServerAPIError(err)
 	}
-
-	pregnancyRates := *result
-	var currentRate, previousRate, trend float64
-
-	switch lenght := len(pregnancyRates); lenght {
-	case 0:
-		currentRate = 0
-		previousRate = 0
-		trend = 0
-	case 1:
-		currentRate = pregnancyRates[lenght-1].PregnancyRate
-		previousRate = 0
-		trend = 0
-	default:
-		currentRate = pregnancyRates[lenght-1].PregnancyRate
-		previousRate = pregnancyRates[lenght-2].PregnancyRate
-		trend = util.CalculatePercentageTrend(currentRate, previousRate)
-	}
-
-	stats := &CardStats{
-		Hist:    pregnancyRates,
-		Current: currentRate,
-		Trend:   trend,
-	}
-
-	return stats, nil
+	return util.NewCardPercentage(*result), nil
 }
 
-func (s *InseminationService) GetAnimalsNumber(userId string) (*CardStats, error) {
+func (s *InseminationService) GetAnimalsNumber(userId string) (*util.CardStats, error) {
 	result, err := s.Repo.GetAnimalsNumber(userId)
 	if err != nil {
 		return nil, err
 	}
 
-	pregnancyRates := *result
-	var currentRate, previousRate, trend float64
-
-	switch lenght := len(pregnancyRates); lenght {
-	case 0:
-		currentRate = 0
-		previousRate = 0
-		trend = 0
-	case 1:
-		currentRate = pregnancyRates[lenght-1].AnimalsNumber
-		previousRate = 0
-		trend = 0
-	default:
-		currentRate = pregnancyRates[lenght-1].AnimalsNumber
-		previousRate = pregnancyRates[lenght-2].AnimalsNumber
-		trend = util.CalculatePercentageTrend(currentRate, previousRate)
-	}
-
-	stats := &CardStats{
-		Hist:    pregnancyRates,
-		Current: currentRate,
-		Trend:   trend,
-	}
-
-	return stats, nil
+	return util.NewCardPercentage(*result), nil
 }
 
 func (s *InseminationService) Add(entry *InseminationEntrySave) *log.APIError {

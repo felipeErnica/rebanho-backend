@@ -1,4 +1,4 @@
-package pregnancyTests
+package tests
 
 import (
 	"net/http"

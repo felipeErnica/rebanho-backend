@@ -87,8 +87,8 @@ func GetFilterArgs[F any](filter *F) []any {
 				value = "%" + value.(string) + "%"
 			}
 			if fieldValue.Elem().Kind() == reflect.Slice {
-				slice := fieldValue.Elem().Interface().([]string)
-				args = GetSliceArgs(slice, args)
+				slice := fieldValue.Elem().Interface().([]any)
+				args = GetSliceArgs(args, slice)
 			} else {
 				args = append(args, value)
 			}
@@ -97,7 +97,7 @@ func GetFilterArgs[F any](filter *F) []any {
 	return args
 }
 
-func GetSliceArgs(slice []string, args []any) []any {
+func GetSliceArgs[T any](args []any, slice []T) []any {
 	for _, arg := range slice {
 		args = append(args, arg)
 	}

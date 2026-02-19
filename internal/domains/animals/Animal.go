@@ -92,7 +92,7 @@ type AnimalFilter struct {
 	MaxAveragePeak          *float64   `schema:"maxAveragePeak" db:"average_peak"`
 	MinChildrenNumber       *int       `schema:"minChildrenNumber" db:"children_number"`
 	MaxChildrenNumber       *int       `schema:"maxChildrenNumber" db:"children_number"`
-	HasDeath                *bool      `schema:"isAlive" db:"death_date"`
+	HasDeath                *bool      `schema:"hasDeath" db:"death_date"`
 	HasName                 *bool      `schema:"hasName" db:"name"`
 	IsBreedingBull          *bool      `schema:"isBreedingBull" db:"is_breeding_bull"`
 	IsInsemininationBull    *bool      `schema:"isInseminationBull" db:"is_insemination_bull"`

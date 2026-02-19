@@ -124,28 +124,7 @@ func (s *LactationService) GetLastLactating(userId string) (*util.CardStats, err
 		return nil, err
 	}
 
-	var current, previous, trend float64
-
-	switch lenght := len(*averageHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = (*averageHist)[0].Value
-		previous = 0
-		trend = 0
-	default:
-		current = (*averageHist)[lenght-1].Value
-		previous = (*averageHist)[lenght-2].Value
-		trend = util.CalculatePercentageTrend(current, previous)
-	}
-
-	return &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    averageHist,
-	}, nil
+	return util.NewCardPercentage(*averageHist), nil
 }
 
 func (s *LactationService) GetLastDry(userId string) (*util.CardStats, error) {
@@ -154,28 +133,7 @@ func (s *LactationService) GetLastDry(userId string) (*util.CardStats, error) {
 		return nil, err
 	}
 
-	var current, previous, trend float64
-
-	switch lenght := len(*averageHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = (*averageHist)[0].Value
-		previous = 0
-		trend = 0
-	default:
-		current = (*averageHist)[lenght-1].Value
-		previous = (*averageHist)[lenght-2].Value
-		trend = current - previous
-	}
-
-	return &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    averageHist,
-	}, nil
+	return util.NewCardPercentage(*averageHist), nil
 }
 
 func (s *LactationService) GetDairyTypes(userId string) (*DairyTypes, error) {

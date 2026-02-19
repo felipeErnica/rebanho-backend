@@ -1,4 +1,4 @@
-package pregnancyTests
+package tests
 
 import (
 	"github.com/felipeErnica/rebanho-backend/internal/app"

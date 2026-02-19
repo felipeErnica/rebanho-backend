@@ -6,57 +6,11 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/felipeErnica/rebanho-backend/internal/entity"
 	"github.com/felipeErnica/rebanho-backend/internal/log"
 	"github.com/jmoiron/sqlx"
 )
-
-/*Exclui um objeto da Tabela SQL usando o id como parâmetro*/
-func Delete(db *sqlx.DB, tableName string, id string) error {
-	deletedAt := time.Now()
-	query := fmt.Sprintf("UPDATE %s SET deleted_at = $1 WHERE id = $2", tableName)
-	_, err := db.Exec(query, deletedAt, id)
-	return err
-}
-
-/*Executa uma consulta SQL, utilizando um objeto como parâmetro*/
-func Add[E any](db *sqlx.DB, query string, userId string, object *E) error {
-	t := reflect.ValueOf(object).Elem()
-	userField := t.FieldByName("UserId")
-	userField.SetString(userId)
-
-	_, err := db.NamedExec(query, object)
-	return err
-}
-
-/*Adiciona um objeto a Tabela SQL e retorna o id*/
-func AddReturningId[E any](db *sqlx.DB, query string, userId string, object *E) (string, error) {
-
-	query += " RETURNING id"
-
-	t := reflect.ValueOf(object).Elem()
-	userField := t.FieldByName("UserId")
-	userField.SetString(userId)
-
-	log.LogInfo(strings.Join(strings.Fields(query), " "), true)
-	rows, err := db.NamedQuery(query, object)
-	if err != nil {
-		return "", err
-	}
-
-	id := ""
-	if rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			return id, err
-		}
-	}
-	rows.Close()
-
-	return id, err
-}
 
 /*
 Executa um comando SQL,
@@ -215,7 +169,7 @@ func NamedQueryTx[E any, F any](tx *sqlx.Tx, query string, object E, arg F) (*[]
 	}
 
 	list := []E{} 
-	if rows.Next() {
+	for rows.Next() {
 		var result E
 		err := rows.StructScan(&result)
 		if err != nil {
@@ -236,7 +190,7 @@ func NamedQuery[E any, F any](db *sqlx.DB, query string, object E, arg F) (*[]E,
 	}
 
 	list := []E{} 
-	if rows.Next() {
+	for rows.Next() {
 		var result E
 		err := rows.StructScan(&result)
 		if err != nil {

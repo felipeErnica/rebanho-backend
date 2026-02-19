@@ -311,14 +311,14 @@ func (r *AnimalRepository) GetLastDeaths(userId string) (*[]AnimalDB, error) {
 
 	query := `
 		SELECT
-			id,
-			tag,
-			name,
-			sex,
-			animal_type,
-			birth_date,
-			death_date,
-			observation,
+			a.id,
+			a.tag,
+			a.name,
+			a.sex,
+			a.animal_type,
+			a.birth_date,
+			a.death_date,
+			a.observation,
 
 			a.father_id,
 			f.tag,
@@ -330,10 +330,10 @@ func (r *AnimalRepository) GetLastDeaths(userId string) (*[]AnimalDB, error) {
 		FROM animals a
 		LEFT JOIN animals f ON f.id = a.father_id
 		LEFT JOIN animals m ON m.id = a.mother_id
-		WHERE user_id = $1 
-			AND deleted_at IS NULL
-			AND is_outside_animal = FALSE
-			AND death_date IS NOT NULL
+		WHERE a.user_id = $1 
+			AND a.deleted_at IS NULL
+			AND a.is_outside_animal = FALSE
+			AND a.death_date IS NOT NULL
 			AND NOT EXISTS (
 				SELECT 1
 				FROM slaughter_entries s
@@ -341,7 +341,7 @@ func (r *AnimalRepository) GetLastDeaths(userId string) (*[]AnimalDB, error) {
 					AND s.user_id = $1
 					AND s.deleted_at IS NULL
 			)
-		ORDER BY death_date DESC
+		ORDER BY a.death_date DESC
 		LIMIT 20
 	`
 	result, err := util.GetList[AnimalDB](r.DB, query, userId)

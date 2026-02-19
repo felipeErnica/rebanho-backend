@@ -1,4 +1,4 @@
-package pregnancyTests
+package tests
 
 import (
 	"fmt"
@@ -56,35 +56,11 @@ func (s *TestService) listToDTO(list *[]TestDB) *[]TestDTO {
 
 func (s *TestService) GetPregnancyRates(userId string) (*util.CardStats, error) {
 	result, err := s.Repo.GetPregnancyRate(userId)
-
 	if err != nil {
 		return nil, err
 	}
-	pregnancyHist := *result
-	var current, previous, trend float64
 
-	switch lenght := len(pregnancyHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = pregnancyHist[lenght-1].Value
-		previous = 0
-		trend = 0
-	default:
-		current = pregnancyHist[lenght-1].Value
-		previous = pregnancyHist[lenght-2].Value
-		trend = ((current / previous) - 1) * 100
-	}
-
-	stats := &util.CardStats{
-		Trend:   trend,
-		Current: current,
-		Hist:    pregnancyHist,
-	}
-
-	return stats, nil
+	return util.NewCardPercentage(*result), nil
 }
 
 func (s *TestService) GetAnimalsNumber(userId string) (*util.CardStats, error) {
@@ -93,31 +69,7 @@ func (s *TestService) GetAnimalsNumber(userId string) (*util.CardStats, error) {
 		return nil, err
 	}
 
-	pregnancyHist := *result
-	var current, previous, trend float64
-
-	switch lenght := len(pregnancyHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = pregnancyHist[lenght-1].Value
-		previous = 0
-		trend = 0
-	default:
-		current = pregnancyHist[lenght-1].Value
-		previous = pregnancyHist[lenght-2].Value
-		trend = ((current / previous) - 1) * 100
-	}
-
-	stats := &util.CardStats{
-		Trend:   trend,
-		Current: current,
-		Hist:    pregnancyHist,
-	}
-
-	return stats, nil
+	return util.NewCardPercentage(*result), nil
 }
 
 func (s *TestService) GetBirthRates(userId string) (*util.CardStats, error) {
@@ -126,31 +78,7 @@ func (s *TestService) GetBirthRates(userId string) (*util.CardStats, error) {
 		return nil, err
 	}
 
-	birthHist := *result
-	var current, previous, trend float64
-
-	switch lenght := len(birthHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = birthHist[lenght-1].Value
-		previous = 0
-		trend = 0
-	default:
-		current = birthHist[lenght-1].Value
-		previous = birthHist[lenght-2].Value
-		trend = ((current / previous) - 1) * 100
-	}
-
-	stats := &util.CardStats{
-		Trend:   trend,
-		Current: current,
-		Hist:    birthHist,
-	}
-
-	return stats, nil
+	return util.NewCardPercentage(*result), nil
 }
 
 func (s *TestService) GetTestHist(userId string) (*[]PregnancyTestHist, error) {

@@ -34,12 +34,58 @@ type CardStats struct {
 	Trend   float64 `json:"trend"`
 }
 
-func NewCardStats(hist any, trend float64, current float64) *CardStats {
-	return &CardStats{
-		Hist:    hist,
-		Trend:   trend,
-		Current: current,
+func NewCardPercentage(hist []GraphData) *CardStats {
+	var current, previous, trend float64
+
+	switch lenght := len(hist); lenght {
+	case 0:
+		current = 0
+		previous = 0
+		trend = 0
+	case 1:
+		current = hist[0].Value
+		previous = 0
+		trend = 0
+	default:
+		current = hist[lenght-1].Value
+		previous = hist[lenght-2].Value
+		trend = CalculatePercentageTrend(current, previous)
 	}
+
+	card := &CardStats{
+		Current: current,
+		Trend:   trend,
+		Hist:    hist,
+	}
+
+	return card
+}
+
+func NewCardInt(hist []GraphData) *CardStats {
+	var current, previous, trend float64
+
+	switch lenght := len(hist); lenght {
+	case 0:
+		current = 0
+		previous = 0
+		trend = 0
+	case 1:
+		current = hist[0].Value
+		previous = 0
+		trend = 0
+	default:
+		current = hist[lenght-1].Value
+		previous = hist[lenght-2].Value
+		trend = current - previous
+	}
+
+	card := &CardStats{
+		Current: current,
+		Trend:   trend,
+		Hist:    hist,
+	}
+
+	return card
 }
 
 type GraphData struct {

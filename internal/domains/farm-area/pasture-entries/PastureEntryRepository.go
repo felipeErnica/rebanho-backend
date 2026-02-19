@@ -164,7 +164,7 @@ func (r *PastureEntryRepository) FindByAnimalId(animalId string) (*[]PastureEntr
 }
 
 func (r *PastureEntryRepository) Delete(id string) error {
-	return util.Delete(r.DB, r.TableName, id)
+	return nil
 }
 
 func (r *PastureEntryRepository) AddEntry(entry *PastureEntry) *log.APIError {

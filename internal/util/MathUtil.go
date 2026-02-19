@@ -14,6 +14,6 @@ func CalculatePercentageTrend(current float64, previous float64) float64 {
 		return -100
 	}
 
-	trend := ((current / previous) - 1) * 100
+	trend := ((current / previous) - 1)
 	return trend
 }

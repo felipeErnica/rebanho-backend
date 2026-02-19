@@ -147,7 +147,7 @@ func (r *FarmRepository) SearchFarmById(userId string, idList []string) (*[]enti
         `
 	if len(idList) != 0 {
 		queryId := "SELECT id, name AS label FROM farms"
-		idExpression, _ := util.GetSliceExpressions(idList, "id", 2)
+		idExpression, _ := util.GetInExpression(idList, "id", 2)
 		queryId += " WHERE " + idExpression
 		query = fmt.Sprintf(`
             WITH farm_base AS (%s),
@@ -157,7 +157,7 @@ func (r *FarmRepository) SearchFarmById(userId string, idList []string) (*[]enti
             SELECT * FROM farm_id
         `, query, queryId)
 		args := []any{userId}
-		args = util.GetSliceArgs(idList, args)
+		args = util.GetSliceArgs(args, idList)
 		return util.GetList[entity.SearchEntity](r.DB, query, userId)
 	}
 	return util.GetList[entity.SearchEntity](r.DB, query, userId)

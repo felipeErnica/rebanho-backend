@@ -1,33 +1,25 @@
 package util
 
 import (
-	"errors"
 	"fmt"
-	"reflect"
+	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/felipeErnica/rebanho-backend/internal/entity"
 )
 
-func GetResults(result entity.Result, resultVar any) error {
-	if result.Err != nil {
-		return result.Err
-	}
+func writeResponse(w http.ResponseWriter, response []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
+}
 
-	t := reflect.TypeOf(resultVar)
-	if t.Kind() != reflect.Pointer {
-		return errors.New("A variável deve ser um ponteiro")
-	}
-
-	v := reflect.ValueOf(resultVar).Elem()
-	resultValue := reflect.ValueOf(result.Result)
-	if resultValue.Kind() != v.Kind() {
-		return fmt.Errorf("Tipo incorreto: O tipo do resultado é: %T", result.Result)
-	}
-
-	v.Set(resultValue)
-	return nil
+/*Retorna uma matriz baseado no texto enviado, usa a vírgula por separador comum.
+Se o texto estiver vazio, retorna uma matriz vazia.*/
+func ParseArray(inputString string) []string {
+    if inputString == "" {
+        return []string{}
+    }
+    array := strings.Split(inputString, ",")
+    return array
 }
 
 func ParseBool(str string) (bool, error) {

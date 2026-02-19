@@ -53,25 +53,7 @@ func (s *BreedingService) GetBirthRateStats(userId string) (*util.CardStats, err
 		return nil, err
 	}
 
-	var currentRate, previousRate, trend float64
-
-	switch lenght := len(*birthRates); lenght {
-	case 0:
-		currentRate = 0
-		previousRate = 0
-		trend = 0
-	case 1:
-		currentRate = (*birthRates)[lenght-1].Value
-		previousRate = 0
-		trend = 0
-	default:
-		currentRate = (*birthRates)[lenght-1].Value
-		previousRate = (*birthRates)[lenght-2].Value
-		trend = util.CalculatePercentageTrend(currentRate, previousRate)
-	}
-
-	stats := util.NewCardStats(birthRates, trend, currentRate)
-	return stats, nil
+	return util.NewCardPercentage(*birthRates), nil
 }
 
 func (s *BreedingService) GetPregnancyRateStats(userId string) (*util.CardStats, error) {
@@ -79,26 +61,7 @@ func (s *BreedingService) GetPregnancyRateStats(userId string) (*util.CardStats,
 	if err != nil {
 		return nil, err
 	}
-
-	var currentRate, previousRate, trend float64
-
-	switch lenght := len(*pregnancyRates); lenght {
-	case 0:
-		currentRate = 0
-		previousRate = 0
-		trend = 0
-	case 1:
-		currentRate = (*pregnancyRates)[lenght-1].Value
-		previousRate = 0
-		trend = 0
-	default:
-		currentRate = (*pregnancyRates)[lenght-1].Value
-		previousRate = (*pregnancyRates)[lenght-2].Value
-		trend = util.CalculatePercentageTrend(currentRate, previousRate)
-	}
-
-	stats := util.NewCardStats(pregnancyRates, trend, currentRate)
-	return stats, nil
+	return util.NewCardPercentage(*pregnancyRates), nil
 }
 
 func (s *BreedingService) GetAnimalsNumber(userId string) (*util.CardStats, error) {
@@ -107,25 +70,7 @@ func (s *BreedingService) GetAnimalsNumber(userId string) (*util.CardStats, erro
 		return nil, err
 	}
 
-	var currentRate, previousRate, trend float64
-
-	switch lenght := len(*animalsNumbers); lenght {
-	case 0:
-		currentRate = 0
-		previousRate = 0
-		trend = 0
-	case 1:
-		currentRate = (*animalsNumbers)[lenght-1].Value
-		previousRate = 0
-		trend = 0
-	default:
-		currentRate = (*animalsNumbers)[lenght-1].Value
-		previousRate = (*animalsNumbers)[lenght-2].Value
-		trend = util.CalculatePercentageTrend(currentRate, previousRate)
-	}
-
-	stats := util.NewCardStats(animalsNumbers, trend, currentRate)
-	return stats, nil
+	return util.NewCardPercentage(*animalsNumbers), nil
 }
 
 func (s *BreedingService) GetLastEntries(userId string) (*[]BreedingDTO, error) {

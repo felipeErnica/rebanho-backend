@@ -90,32 +90,7 @@ func (s *AnimalService) GetDairyHist(userId string) (*util.CardStats, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	histEntries := *hist
-	var current, past, trend float64
-
-	switch lenght := len(histEntries); lenght {
-	case 0:
-		current = 0
-		past = 0
-		trend = 0
-	case 1:
-		current = histEntries[0].Value
-		past = 0
-		trend = 0
-	default:
-		current = histEntries[lenght-1].Value
-		past = histEntries[lenght-2].Value
-		trend = util.CalculatePercentageTrend(float64(current), float64(past))
-	}
-
-	cardEntry := &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    histEntries,
-	}
-
-	return cardEntry, nil
+	return util.NewCardPercentage(*hist), nil
 }
 
 func (s *AnimalService) GetBirthHist(userId string) (*util.CardStats, error) {
@@ -124,31 +99,7 @@ func (s *AnimalService) GetBirthHist(userId string) (*util.CardStats, error) {
 		return nil, err
 	}
 
-	var current, past, trend float64
-
-	histEntries := *hist
-	switch lenght := len(histEntries); lenght {
-	case 0:
-		current = 0
-		past = 0
-		trend = 0
-	case 1:
-		current = histEntries[0].Value
-		past = 0
-		trend = 0
-	default:
-		current = histEntries[lenght-1].Value
-		past = histEntries[lenght-2].Value
-		trend = current - past
-	}
-
-	cardEntry := &util.CardStats{
-		Current: float64(current),
-		Trend:   float64(trend),
-		Hist:    histEntries,
-	}
-
-	return cardEntry, nil
+	return util.NewCardInt(*hist), nil
 }
 
 func (s *AnimalService) GetDeathHist(userId string) (*util.CardStats, error) {
@@ -157,31 +108,7 @@ func (s *AnimalService) GetDeathHist(userId string) (*util.CardStats, error) {
 		return nil, err
 	}
 
-	var current, past, trend float64
-
-	histEntries := *hist
-	switch lenght := len(histEntries); lenght {
-	case 0:
-		current = 0
-		past = 0
-		trend = 0
-	case 1:
-		current = histEntries[0].Value
-		past = 0
-		trend = 0
-	default:
-		current = histEntries[lenght-1].Value
-		past = histEntries[lenght-2].Value
-		trend = current - past
-	}
-
-	cardEntry := &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    histEntries,
-	}
-
-	return cardEntry, nil
+	return util.NewCardInt(*hist), nil
 }
 
 func (s *AnimalService) GetSlaughterHist(userId string) (*util.CardStats, error) {
@@ -190,31 +117,7 @@ func (s *AnimalService) GetSlaughterHist(userId string) (*util.CardStats, error)
 		return nil, err
 	}
 
-	histEntries := *hist
-	var current, past, trend float64
-
-	switch lenght := len(histEntries); lenght {
-	case 0:
-		current = 0
-		past = 0
-		trend = 0
-	case 1:
-		current = histEntries[0].Value
-		past = 0
-		trend = 0
-	default:
-		current = histEntries[lenght-1].Value
-		past = histEntries[lenght-2].Value
-		trend = util.CalculatePercentageTrend(float64(current), float64(past))
-	}
-
-	cardEntry := &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    histEntries,
-	}
-
-	return cardEntry, nil
+	return util.NewCardPercentage(*hist), nil
 }
 
 func (s *AnimalService) GetAnimalTypes(userId string) (*AnimalByType, error) {

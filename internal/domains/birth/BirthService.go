@@ -3,7 +3,6 @@ package birth
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 
 	"github.com/felipeErnica/rebanho-backend/internal/log"
 	"github.com/felipeErnica/rebanho-backend/internal/util"
@@ -140,31 +139,7 @@ func (s *BirthService) GetBirthIntervalHistory(userId string) (*util.CardStats, 
 	if err != nil {
 		return nil, err
 	}
-
-	var currentInterval, previousInterval, intervalTrend float64
-	hist := *intervalHist
-
-	switch length := len(hist); length {
-	case 0:
-		currentInterval = 0
-		previousInterval = 0
-		intervalTrend = 0
-	case 1:
-		currentInterval = hist[length-1].Value
-		previousInterval = 0
-		intervalTrend = 0
-	default:
-		currentInterval = hist[length-1].Value
-		previousInterval = hist[length-2].Value
-		intervalTrend = ((currentInterval / previousInterval) - 1) * 100
-	}
-
-	// Handle NaN if previousInterval is 0
-	if math.IsNaN(intervalTrend) {
-		intervalTrend = 0
-	}
-
-	card := util.NewCardStats(hist, intervalTrend, currentInterval)
+	card := util.NewCardPercentage(*intervalHist)
 	return card, nil
 }
 
@@ -173,26 +148,7 @@ func (s *BirthService) GetLastBirthsNumber(userId string) (*util.CardStats, erro
 	if err != nil {
 		return nil, err
 	}
-
-	hist := *results
-	var current, previous, trend float64
-
-	switch length := len(hist); length {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = hist[length-1].Value
-		previous = 0
-		trend = 0
-	default:
-		current = hist[length-1].Value
-		previous = hist[length-2].Value
-		trend = current - previous
-	}
-
-	card := util.NewCardStats(hist, trend, current)
+	card := util.NewCardInt(*results)
 	return card, nil
 }
 
@@ -201,26 +157,7 @@ func (s *BirthService) GetYearBirthsNumber(userId string) (*util.CardStats, erro
 	if err != nil {
 		return nil, err
 	}
-
-	hist := *results
-	var current, previous, trend float64
-
-	switch length := len(hist); length {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = hist[length-1].Value
-		previous = 0
-		trend = 0
-	default:
-		current = hist[length-1].Value
-		previous = hist[length-2].Value
-		trend = util.CalculatePercentageTrend(current, previous)
-	}
-
-	card := util.NewCardStats(hist, trend, current)
+	card := util.NewCardPercentage(*results)
 	return card, nil
 }
 
@@ -229,26 +166,7 @@ func (s *BirthService) GetYearDeathsNumber(userId string) (*util.CardStats, erro
 	if err != nil {
 		return nil, err
 	}
-
-	hist := *results
-	var current, previous, trend float64
-
-	switch length := len(hist); length {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = hist[length-1].Value
-		previous = 0
-		trend = 0
-	default:
-		current = hist[length-1].Value
-		previous = hist[length-2].Value
-		trend = util.CalculatePercentageTrend(current, previous)
-	}
-
-	card := util.NewCardStats(hist, trend, current)
+	card := util.NewCardPercentage(*results)
 	return card, nil
 }
 
@@ -257,30 +175,7 @@ func (s *BirthService) GetDeathIndex(userId string) (*util.CardStats, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	indexHist := *results
-	var currentIndex, previousIndex, indexTrend float64
-
-	switch length := len(indexHist); length {
-	case 0:
-		currentIndex = 0
-		previousIndex = 0
-		indexTrend = 0
-	case 1:
-		currentIndex = indexHist[length-1].Value
-		previousIndex = 0
-		indexTrend = 0
-	default:
-		currentIndex = indexHist[length-1].Value
-		previousIndex = indexHist[length-2].Value
-		indexTrend = ((currentIndex / previousIndex) - 1) * 100
-	}
-
-	if math.IsNaN(indexTrend) {
-		indexTrend = 0
-	}
-
-	card := util.NewCardStats(indexHist, indexTrend, currentIndex)
+	card := util.NewCardPercentage(*results)
 	return card, nil
 }
 

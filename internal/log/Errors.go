@@ -7,16 +7,15 @@ import (
 )
 
 type APIError struct {
-	Code       int     `json:"-"`
-	Kind       string  `json:"kind"`
-	ErrType    string  `json:"errType"`
-	Title      string  `json:"title"`
-	Message    string  `json:"message"`
+	Code    int    `json:"-"`
+	Kind    string `json:"kind"`
+	ErrType string `json:"errType"`
+	Title   string `json:"title"`
+	Message string `json:"message"`
 }
 
 const ERROR_TYPE = "Error"
 const WARNING_TYPE = "Warning"
-
 const INTERNAL_ERROR = "InternalError"
 const CONFLICT_ERROR = "ConflictError"
 const INFO_INCORRET_ERROR = "IncorretInfoError"

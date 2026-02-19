@@ -1,9 +1,10 @@
 package milk
 
 import (
+	"time"
+
 	"github.com/felipeErnica/rebanho-backend/internal/log"
 	"github.com/felipeErnica/rebanho-backend/internal/util"
-	"time"
 )
 
 type MilkService struct {
@@ -68,93 +69,28 @@ func (s *MilkService) GetMilkProduction(userId string) (*[]util.GraphData, error
 }
 
 func (s *MilkService) GetLastMilk(userId string) (*util.CardStats, error) {
-	averageHist, err := s.Repo.GetLastMilkEntries(userId)
+	hist, err := s.Repo.GetLastMilkEntries(userId)
 	if err != nil {
 		return nil, err
 	}
-
-	var current, previous, trend float64
-
-	switch lenght := len(*averageHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = (*averageHist)[0].Value
-		previous = 0
-		trend = 0
-	default:
-		current = (*averageHist)[lenght-1].Value
-		previous = (*averageHist)[lenght-2].Value
-		trend = util.CalculatePercentageTrend(current, previous)
-	}
-
-	return &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    averageHist,
-	}, nil
+	return util.NewCardPercentage(*hist), nil
 }
 
 func (s *MilkService) GetYearMilk(userId string) (*util.CardStats, error) {
-	averageHist, err := s.Repo.GetYearMilkEntries(userId)
+	hist, err := s.Repo.GetYearMilkEntries(userId)
 	if err != nil {
 		return nil, err
 	}
 
-	var current, previous, trend float64
-
-	switch lenght := len(*averageHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = (*averageHist)[0].Value
-		previous = 0
-		trend = 0
-	default:
-		current = (*averageHist)[lenght-1].Value
-		previous = (*averageHist)[lenght-2].Value
-		trend = util.CalculatePercentageTrend(current, previous)
-	}
-
-	return &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    averageHist,
-	}, nil
+	return util.NewCardPercentage(*hist), nil
 }
 
 func (s *MilkService) GetLastAverageMilk(userId string) (*util.CardStats, error) {
-	averageHist, err := s.Repo.GetLastAverageMilkEntries(userId)
+	hist, err := s.Repo.GetLastAverageMilkEntries(userId)
 	if err != nil {
 		return nil, err
 	}
-
-	var current, previous, trend float64
-
-	switch lenght := len(*averageHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = (*averageHist)[0].Value
-		previous = 0
-		trend = 0
-	default:
-		current = (*averageHist)[lenght-1].Value
-		previous = (*averageHist)[lenght-2].Value
-		trend = util.CalculatePercentageTrend(current, previous)
-	}
-
-	return &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    averageHist,
-	}, nil
+	return util.NewCardPercentage(*hist), nil
 }
 
 func (s *MilkService) GetYearAverageMilk(userId string) (*util.CardStats, error) {
@@ -163,28 +99,7 @@ func (s *MilkService) GetYearAverageMilk(userId string) (*util.CardStats, error)
 		return nil, err
 	}
 
-	var current, previous, trend float64
-
-	switch lenght := len(*averageHist); lenght {
-	case 0:
-		current = 0
-		previous = 0
-		trend = 0
-	case 1:
-		current = (*averageHist)[0].Value
-		previous = 0
-		trend = 0
-	default:
-		current = (*averageHist)[lenght-1].Value
-		previous = (*averageHist)[lenght-2].Value
-		trend = util.CalculatePercentageTrend(current, previous)
-	}
-
-	return &util.CardStats{
-		Current: current,
-		Trend:   trend,
-		Hist:    averageHist,
-	}, nil
+	return util.NewCardPercentage(*averageHist), nil
 }
 
 func (s *MilkService) FindPage(
@@ -212,8 +127,8 @@ func (s *MilkService) GetPageFoot(filter *MilkEntryFilter, userId string) (*Milk
 }
 
 func (s *MilkService) FindGroupsPage(
-	filter *LactationGroupFilter, 
-	order string, 
+	filter *LactationGroupFilter,
+	order string,
 	cursor string,
 	limit int,
 	userId string,
@@ -230,7 +145,7 @@ func (s *MilkService) FindGroupsPage(
 }
 
 func (s *MilkService) GetGroupEntries(userId string, entryDate time.Time) (*[]MilkDTO, error) {
-	list, err :=  s.Repo.GetGroupEntries(userId, entryDate)
+	list, err := s.Repo.GetGroupEntries(userId, entryDate)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +163,7 @@ func (s *MilkService) GetLactationEntriesFoot(lacId string) (*MilkEntryFoot, err
 }
 
 func (s *MilkService) GetLactationEntries(lacId string) (*[]MilkDTO, error) {
-	list, err :=  s.Repo.GetLactationEntries(lacId)
+	list, err := s.Repo.GetLactationEntries(lacId)
 	if err != nil {
 		return nil, err
 	}
@@ -353,4 +268,3 @@ func (s *MilkService) UpdateGroup(groupEntry *LactationGroupSave) (*LactationGro
 func (s *MilkService) DeleteGroup(entryDate time.Time, userId string) error {
 	return s.Repo.DeleteGroup(entryDate, userId)
 }
-
