@@ -127,7 +127,7 @@ func (r *AnimalRepository) CheckDeleteErrorConditions(id string, userId string) 
 			) AS is_insemination_bull,
 			EXISTS (
 				SELECT 1
-				FROM natural_breedings
+				FROM breeding_entries
 				WHERE bull_id = $1
 					AND user_id = $2
 					AND deleted_at IS NULL
@@ -148,7 +148,7 @@ func (r *AnimalRepository) CheckDeleteWarningConditions(id string, userId string
 			) AS has_lactation,
 			EXISTS (
 				SELECT 1
-				FROM natural_breedings
+				FROM breeding_entries
 				WHERE deleted_at IS NULL
 					AND animal_id = $1
 					AND user_id = $2
@@ -828,8 +828,8 @@ func (r *AnimalRepository) Search(
 	if err != nil {
 		return nil, err
 	}
-	whereExp := util.GetWhereExpression(filterExpression)
 
+	whereExp := util.GetWhereExpression(filterExpression)
 	sortExpression, err := util.GetSortExpression(sortMap, sort, order)
 	if err != nil {
 		return nil, err
@@ -908,7 +908,7 @@ func (r *AnimalRepository) Delete(id string, userId string) *log.APIError {
 	}
 
 	breedingQuery := `
-		UPDATE natural_breedings
+		UPDATE breeding_entries
 		SET deleted_at = NOW()
 		WHERE animal_id = $1 AND user_id = $2
 	`

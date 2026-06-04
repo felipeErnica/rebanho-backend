@@ -116,7 +116,11 @@ func (s *MilkService) FindPage(
 		return nil, err
 	}
 
-	newCursor := util.CreateCursorKey(sort, *list)
+	newCursor, err := util.CreateCursorKey(sort, *list)
+	if err != nil {
+		return nil, err
+	}
+
 	listDTO := s.listToDTO(list)
 	page := util.NewPage(*listDTO, newCursor, limit)
 	return page, nil
@@ -138,7 +142,11 @@ func (s *MilkService) FindGroupsPage(
 		return nil, err
 	}
 
-	newCursor := util.CreateCursorKey("entry_date", *list)
+	newCursor, err := util.CreateCursorKey("entry_date", *list)
+	if err != nil {
+		return nil, err
+	}
+
 	page := util.NewPage(*list, newCursor, limit)
 
 	return page, err

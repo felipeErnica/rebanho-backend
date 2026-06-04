@@ -3,48 +3,48 @@ package slaughter
 import "time"
 
 type SlaughterDB struct {
-	Id              string     `db:"id"`
-	AnimalId        *string    `db:"animal_id"`
-	AnimalTag       *string    `db:"animal_tag"`
-	AnimalName      *string    `db:"animal_name"`
-	AnimalSex       *string    `db:"animal_sex"`
-	AnimalBirth     *time.Time `db:"animal_birth"`
-	AnimalOrder     *string    `db:"animal_order"`
-	FatherId        *string    `db:"father_id"`
-	FatherTag       *string    `db:"father_tag"`
-	FatherName      *string    `db:"father_name"`
-	MotherId        *string    `db:"mother_id"`
-	MotherTag       *string    `db:"mother_tag"`
-	MotherName      *string    `db:"mother_name"`
-	ButcherId       string     `db:"butcher_id"`
-	ButcherName     string     `db:"butcher_name"`
-	ButcherDiscount *float64   `db:"butcher_discount"`
-	EntryDate       *time.Time `db:"entry_date"`
-	DiscountRate    *float64   `db:"discount_rate"`
-	Weight          float64    `db:"weight"`
-	DiscountWeight  *float64   `db:"discount_weight"`
-	DeadWeight      *float64   `db:"dead_weight"`
-	PerformanceRate *float64   `db:"performance_rate"`
-	CreatedAt       time.Time  `db:"created_at"`
-	UserId          string     `db:"user_id"`
+	Id string `db:"id"`
+
+	GroupId       string    `db:"group_id"`
+	GroupDate     time.Time `db:"group_date"`
+	GroupDiscount float64   `db:"group_discount"`
+
+	ButcherId       string   `db:"butcher_id"`
+	ButcherName     string   `db:"butcher_name"`
+	ButcherDiscount *float64 `db:"butcher_discount"`
+
+	AnimalId    *string    `db:"animal_id"`
+	AnimalTag   *string    `db:"animal_tag"`
+	AnimalName  *string    `db:"animal_name"`
+	AnimalSex   *string    `db:"animal_sex"`
+	AnimalBirth *time.Time `db:"animal_birth"`
+	AnimalOrder *string    `db:"animal_order"`
+
+	FatherId   *string `db:"father_id"`
+	FatherTag  *string `db:"father_tag"`
+	FatherName *string `db:"father_name"`
+
+	MotherId   *string `db:"mother_id"`
+	MotherTag  *string `db:"mother_tag"`
+	MotherName *string `db:"mother_name"`
+
+	Weight          float64   `db:"weight"`
+	DiscountWeight  *float64  `db:"discount_weight"`
+	DeadWeight      *float64  `db:"dead_weight"`
+	PerformanceRate *float64  `db:"performance_rate"`
+	CreatedAt       time.Time `db:"created_at"`
+	UserId          string    `db:"user_id"`
 }
 
 type SlaughterSave struct {
 	Id           *string    `json:"id" db:"id"`
 	AnimalId     *string    `json:"animalId" db:"animal_id"`
-	ButcherId    string     `json:"butcherId" db:"butcher_id"`
-	EntryDate    *time.Time `json:"entryDate" db:"entry_date"`
-	DiscountRate *float64   `json:"discountRate" db:"discount_rate"`
+	GroupId      string     `json:"groupId" db:"group_id"`
 	Weight       float64    `json:"weight" db:"weight"`
 	DeadWeight   *float64   `json:"deadWeight" db:"dead_weight"`
 	UserId       string     `json:"-" db:"user_id"`
 	Overwrite    bool       `json:"overwrite"`
 	IgnoreDeath  bool       `json:"ignoreDeath"`
-}
-
-type SlaughterSaveBatch struct {
-	Entries []SlaughterSave `json:"entries"`
-	UserId  string
 }
 
 type SlaughterFilter struct {

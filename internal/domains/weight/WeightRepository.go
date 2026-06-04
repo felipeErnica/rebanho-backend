@@ -231,8 +231,8 @@ func (r *WeightRepository) GetLastGroups(userId string) (*[]WeightGroup, error) 
 		)
 		SELECT
 			c.*,
-			COALESCE( ((c.average_gain / LAG(c.average_gain) OVER win) - 1) * 100, 0) gain_variation,
-			COALESCE( ((c.average_weight / LAG(c.average_weight) OVER win) - 1) * 100, 0) weight_variation 
+			COALESCE( ((c.average_gain / LAG(c.average_gain) OVER win) - 1) , 0) gain_variation,
+			COALESCE( ((c.average_weight / LAG(c.average_weight) OVER win) - 1) , 0) weight_variation 
 		FROM cte c
 		WINDOW win AS (ORDER BY c.entry_date)
 		ORDER BY entry_date DESC
@@ -280,7 +280,7 @@ func (r *WeightRepository) GetBestFathers(userId string) (*[]AnimalRating, error
 		SELECT 
 			CONCAT_WS(' - ', f.ring_number, f.name) animal_name,
 			t.avg_gain,
-			((t.avg_gain / s.gn_avg_gain) - 1) * 100 gain_trend,
+			((t.avg_gain / s.gn_avg_gain) - 1)  gain_trend,
 			t.children_number
 		FROM stats s, father_tbl t 
 			JOIN animals f ON f.id = t.father_id
@@ -330,7 +330,7 @@ func (r *WeightRepository) GetBestMothers(userId string) (*[]AnimalRating, error
 		SELECT 
 			CONCAT_WS(' - ', m.ring_number, m.name) animal_name,
 			t.avg_gain,
-			((t.avg_gain / s.gn_avg_gain) - 1) * 100 gain_trend,
+			((t.avg_gain / s.gn_avg_gain) - 1)  gain_trend,
 			t.children_number
 		FROM stats s, mother_tbl t 
 			LEFT JOIN animals m ON m.id = t.mother_id
@@ -509,10 +509,10 @@ func (r *WeightRepository) FindGroups(userId string, order string) (*[]WeightGro
 		SELECT
 			c.*,
 			COALESCE(
-				((c.average_gain / LAG(c.average_gain) OVER (ORDER BY c.entry_date)) - 1) * 100
+				((c.average_gain / LAG(c.average_gain) OVER (ORDER BY c.entry_date)) - 1) 
 			, 0) gain_variation,
 			COALESCE(
-				((c.average_weight / LAG(c.average_weight) OVER (ORDER BY c.entry_date)) - 1) * 100
+				((c.average_weight / LAG(c.average_weight) OVER (ORDER BY c.entry_date)) - 1) 
 			, 0) weight_variation
 		FROM cte c
 	`

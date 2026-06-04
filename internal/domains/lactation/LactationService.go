@@ -204,31 +204,31 @@ func (s *LactationService) FindAnimalsPage(
 	listDTO := make([]AnimalDTO, 0)
 	for _, entry := range *list {
 		dto := AnimalDTO{
-			Id: entry.Id,
-			Name: entry.Name,
-			Tag: entry.Tag,
+			Id:        entry.Id,
+			Name:      entry.Name,
+			Tag:       entry.Tag,
 			BirthDate: entry.BirthDate,
 		}
 
 		if entry.LacId != nil {
 			dto.Lactation = &LactationDTO{
-				Id: *entry.LacId,
-				StartDate: *entry.LacStart,
-				EndDate: entry.LacEnd,
-				LacInterval: entry.LacInterval,
-				LacPeriod: entry.LacPeriod,
+				Id:                *entry.LacId,
+				StartDate:         *entry.LacStart,
+				EndDate:           entry.LacEnd,
+				LacInterval:       entry.LacInterval,
+				LacPeriod:         entry.LacPeriod,
 				AverageProduction: entry.LacAverage,
-				TotalProduction: entry.LacTotal,
-				Peak: entry.LacPeak,
-				Observation: entry.LacObservation,
+				TotalProduction:   entry.LacTotal,
+				Peak:              entry.LacPeak,
+				Observation:       entry.LacObservation,
 			}
 
 			if entry.CalfId != nil {
 				dto.Lactation.Calf = &Calf{
-					Id: *entry.CalfId,
-					Name: entry.CalfName,
-					Tag: entry.CalfTag,
-					Sex: *entry.CalfSex,
+					Id:        *entry.CalfId,
+					Name:      entry.CalfName,
+					Tag:       entry.CalfTag,
+					Sex:       *entry.CalfSex,
 					BirthDate: entry.CalfBirthDate,
 					DeathDate: entry.CalfDeathDate,
 				}
@@ -238,7 +238,11 @@ func (s *LactationService) FindAnimalsPage(
 		listDTO = append(listDTO, dto)
 	}
 
-	newCursor := util.CreateCursorKey(sort, *list)
+	newCursor, err := util.CreateCursorKey(sort, *list)
+	if err != nil {
+		return nil, err
+	}
+
 	page := util.NewPage(listDTO, newCursor, limit)
 	return page, nil
 }

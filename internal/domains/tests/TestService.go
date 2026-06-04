@@ -128,7 +128,11 @@ func (s *TestService) FindEntriesPage(
 		return nil, err
 	}
 
-	newCursor := util.CreateCursorKey(sort, *list)
+	newCursor, err := util.CreateCursorKey(sort, *list)
+	if err != nil {
+		return nil, err
+	}
+
 	listDTO := s.listToDTO(list)
 	page := util.NewPage(*listDTO, newCursor, limit)
 	return page, nil

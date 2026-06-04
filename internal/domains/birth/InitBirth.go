@@ -15,8 +15,11 @@ func InitBirth(app *app.App) {
 
 	app.HandleFunc("POST /births", handler.AddBirth)
 	app.HandleFunc("PUT /births", handler.UpdateBirth)
+	app.HandleFunc("DELETE /births", handler.DeleteBirth)
 
+	app.HandleFunc("GET /births/{id}", handler.GetById)
 	app.HandleFunc("GET /births/potential-father", handler.GetPotentialFather)
+
 	app.HandleFunc("GET /births/stats/last-births", handler.GetLastBirths)
 	app.HandleFunc("GET /births/stats/births-number", handler.GetLastBirthsNumber)
 	app.HandleFunc("GET /births/stats/year-births", handler.GetYearBirthsNumber)

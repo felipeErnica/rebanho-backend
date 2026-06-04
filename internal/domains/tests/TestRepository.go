@@ -32,7 +32,7 @@ func (r *TestEntryRepository) GetPregnancyRate(userId string) (*[]util.GraphData
         )
         SELECT 
             test_date AS date,
-            (pregnancies::float / NULLIF(totals, 0)) * 100 AS value
+            (pregnancies::float / NULLIF(totals, 0))  AS value
         FROM cte
         ORDER BY test_date
     `
@@ -81,7 +81,7 @@ func (r *TestEntryRepository) GetBirthRate(userId string) (*[]util.GraphData, er
         )
         SELECT 
             test_date AS date,
-            (births::float / NULLIF(totals, 0)) * 100 AS value
+            (births::float / NULLIF(totals, 0))  AS value
         FROM cte
         ORDER BY test_date
     `
@@ -187,8 +187,8 @@ func (r *TestEntryRepository) GetLastGroups(userId string) (*[]TestGroups, error
             SELECT
                 test_date,
                 animals_number,
-                (pregnancy_success::float / NULLIF(animals_number, 0)) * 100 pregnancy_rate,
-                (birth_success::float / NULLIF(animals_number, 0)) * 100 birth_rate
+                (pregnancy_success::float / NULLIF(animals_number, 0))  pregnancy_rate,
+                (birth_success::float / NULLIF(animals_number, 0))  birth_rate
             FROM totals
         )
         SELECT
@@ -198,10 +198,10 @@ func (r *TestEntryRepository) GetLastGroups(userId string) (*[]TestGroups, error
             birth_rate,
             COALESCE(
 				(pregnancy_rate / LAG(pregnancy_rate) OVER win) - 1, 0
-			) * 100 AS pregnancy_comparison,
+			)  AS pregnancy_comparison,
             COALESCE(
 				(birth_rate / LAG(birth_rate) OVER win) - 1, 0
-			) * 100 AS birth_comparison
+			)  AS birth_comparison
         FROM rates
 		WINDOW win AS (ORDER BY test_date)
         ORDER BY test_date DESC
@@ -266,8 +266,8 @@ func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, erro
 			SELECT
 				animal_id,
 				totals,
-				(pregnancy_success::float / totals) * 100 AS pregnancy_rate,
-				(birth_success::float / totals) * 100 AS birth_rate
+				(pregnancy_success::float / totals)  AS pregnancy_rate,
+				(birth_success::float / totals)  AS birth_rate
 			FROM totals
 		),
 		general_totals AS (
@@ -279,8 +279,8 @@ func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, erro
 		),
 		general_rates AS (
 			SELECT
-				(pregnancy_success::float / NULLIF(totals, 0)) * 100 AS total_pregnancy_rate,
-				(birth_success::float / NULLIF(totals, 0)) * 100 AS total_birth_rate
+				(pregnancy_success::float / NULLIF(totals, 0))  AS total_pregnancy_rate,
+				(birth_success::float / NULLIF(totals, 0))  AS total_birth_rate
 			FROM general_totals
 		),
 		scores AS (
@@ -298,8 +298,8 @@ func (r *TestEntryRepository) GetBestResults(userId string) (*[]TestAnimal, erro
 			s.totals,
 			s.pregnancy_rate,
 			s.birth_rate,
-			COALESCE((s.pregnancy_rate / NULLIF(gr.total_pregnancy_rate, 0)) - 1, 0) * 100 AS pregnancy_comparison,
-			COALESCE((s.birth_rate / NULLIF(gr.total_birth_rate, 0)) - 1, 0) * 100 AS birth_comparison
+			COALESCE((s.pregnancy_rate / NULLIF(gr.total_pregnancy_rate, 0)) - 1, 0)  AS pregnancy_comparison,
+			COALESCE((s.birth_rate / NULLIF(gr.total_birth_rate, 0)) - 1, 0)  AS birth_comparison
 		FROM scores s
 		CROSS JOIN general_rates gr
 		JOIN animals a ON a.id = s.animal_id
@@ -342,8 +342,8 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
 			SELECT
 				animal_id,
 				totals,
-				(pregnancy_success::float / totals) * 100 AS pregnancy_rate,
-				(birth_success::float / totals) * 100 AS birth_rate
+				(pregnancy_success::float / totals)  AS pregnancy_rate,
+				(birth_success::float / totals)  AS birth_rate
 			FROM totals
 		),
 		general_totals AS (
@@ -355,8 +355,8 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
 		),
 		general_rates AS (
 			SELECT
-				(pregnancy_success::float / NULLIF(totals, 0)) * 100 AS total_pregnancy_rate,
-				(birth_success::float / NULLIF(totals, 0)) * 100 AS total_birth_rate
+				(pregnancy_success::float / NULLIF(totals, 0))  AS total_pregnancy_rate,
+				(birth_success::float / NULLIF(totals, 0))  AS total_birth_rate
 			FROM general_totals
 		),
 		scores AS (
@@ -374,8 +374,8 @@ func (r *TestEntryRepository) GetWorstResults(userId string) (*[]TestAnimal, err
 			totals,
 			pregnancy_rate,
 			birth_rate,
-			COALESCE((pregnancy_rate / NULLIF(total_pregnancy_rate, 0)) - 1, 0) * 100 AS pregnancy_comparison,
-			COALESCE((birth_rate / NULLIF(total_birth_rate, 0)) - 1, 0) * 100 AS birth_comparison
+			COALESCE((pregnancy_rate / NULLIF(total_pregnancy_rate, 0)) - 1, 0)  AS pregnancy_comparison,
+			COALESCE((birth_rate / NULLIF(total_birth_rate, 0)) - 1, 0)  AS birth_comparison
 		FROM scores s
 		CROSS JOIN general_rates gr
 		JOIN animals a ON a.id = s.animal_id
@@ -523,8 +523,8 @@ func (r *TestEntryRepository) GetEntriesFoot(filter *TestFilter, userId string) 
         WITH count_query AS (%s)
         SELECT 
             totals,
-            COALESCE(birth_success::float / NULLIF(totals, 0), 0) * 100 birth_rate,
-            COALESCE(pregnancy_success::float / NULLIF(totals, 0), 0) * 100 pregnancy_rate
+            COALESCE(birth_success::float / NULLIF(totals, 0), 0)  birth_rate,
+            COALESCE(pregnancy_success::float / NULLIF(totals, 0), 0)  pregnancy_rate
         FROM count_query
     `, countQuery)
 
@@ -558,8 +558,8 @@ func (r *TestEntryRepository) FindGroups(userId string) (*[]TestGroups, error) {
             SELECT
                 g.test_date,
                 g.animals_number,
-                (g.pregnancy_success::float / g.animals_number::float)*100 pregnancy_rate,
-                (g.birth_success::float / g.animals_number::float)*100 birth_rate
+                (g.pregnancy_success::float / g.animals_number::float) pregnancy_rate,
+                (g.birth_success::float / g.animals_number::float) birth_rate
             FROM totals g
         )
         SELECT
@@ -567,8 +567,8 @@ func (r *TestEntryRepository) FindGroups(userId string) (*[]TestGroups, error) {
             animals_number,
             pregnancy_rate,
             birth_rate,
-            COALESCE((pregnancy_rate / LAG(pregnancy_rate) OVER win) - 1, 0) *100 pregnancy_comparison,
-            COALESCE((birth_rate / LAG(birth_rate) OVER win) - 1, 0) * 100 birth_comparison
+            COALESCE((pregnancy_rate / LAG(pregnancy_rate) OVER win) - 1, 0)  pregnancy_comparison,
+            COALESCE((birth_rate / LAG(birth_rate) OVER win) - 1, 0)  birth_comparison
         FROM rates
 		WINDOW win AS (ORDER BY test_date)
         ORDER BY test_date DESC
@@ -663,8 +663,8 @@ func (r *TestEntryRepository) GetEntriesByGroupFoot(testDate time.Time, userId s
         )
         SELECT 
             totals,
-            COALESCE(birth_success::float / NULLIF(totals, 0), 0) * 100 birth_rate,
-            COALESCE(pregnancy_success::float / NULLIF(totals, 0), 0) * 100 pregnancy_rate
+            COALESCE(birth_success::float / NULLIF(totals, 0), 0)  birth_rate,
+            COALESCE(pregnancy_success::float / NULLIF(totals, 0), 0)  pregnancy_rate
         FROM count_query
     `
 	return util.GetOne[TestFoot](r.DB, query, testDate, userId)
@@ -850,8 +850,8 @@ func (r *TestEntryRepository) UpdateGroup(group *TestGroupSave) (*TestGroups, *l
             SELECT
                 g.test_date,
                 g.animals_number,
-                (g.pregnancy_success::float / g.animals_number::float)*100 pregnancy_rate,
-                (g.birth_success::float / g.animals_number::float)*100 birth_rate
+                (g.pregnancy_success::float / g.animals_number::float) pregnancy_rate,
+                (g.birth_success::float / g.animals_number::float) birth_rate
             FROM totals g
         )
         SELECT
@@ -859,8 +859,8 @@ func (r *TestEntryRepository) UpdateGroup(group *TestGroupSave) (*TestGroups, *l
             animals_number,
             pregnancy_rate,
             birth_rate,
-            COALESCE((pregnancy_rate / LAG(pregnancy_rate) OVER win) - 1, 0) * 100 pregnancy_comparison,
-            COALESCE((birth_rate / LAG(birth_rate) OVER win) - 1, 0) * 100 birth_comparison
+            COALESCE((pregnancy_rate / LAG(pregnancy_rate) OVER win) - 1, 0)  pregnancy_comparison,
+            COALESCE((birth_rate / LAG(birth_rate) OVER win) - 1, 0)  birth_comparison
         FROM rates
 		WINDOW win AS (ORDER BY test_date)
     `

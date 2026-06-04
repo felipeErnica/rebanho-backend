@@ -87,7 +87,7 @@ func GetFilterArgs[F any](filter *F) []any {
 				value = "%" + value.(string) + "%"
 			}
 			if fieldValue.Elem().Kind() == reflect.Slice {
-				slice := fieldValue.Elem().Interface().([]any)
+				slice := fieldValue.Elem().Interface().([]string)
 				args = GetSliceArgs(args, slice)
 			} else {
 				args = append(args, value)

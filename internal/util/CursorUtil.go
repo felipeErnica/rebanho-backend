@@ -13,10 +13,10 @@ import (
 Cria um novo cursor com a informação do último objeto da lista.
 Os parâmetros são selecionados com base no parâmetro de ordenamento.
 */
-func CreateCursorKey[E any](sort string, list []E) string {
+func CreateCursorKey[E any](sort string, list []E) (string, error) {
 	listSize := len(list)
 	if listSize == 0 {
-		return ""
+		return "", nil
 	}
 
 	sortFields := strings.Split(sort, ",")
@@ -29,7 +29,7 @@ func CreateCursorKey[E any](sort string, list []E) string {
 		sortField = strings.TrimSpace(sortField)
 		arg, err := getValueFromSortField(sortField, entryType, values)
 		if err != nil {
-			return ""
+			return "", err
 		}
 		cursorArgs = append(cursorArgs, arg)
 	}
@@ -41,7 +41,7 @@ func CreateCursorKey[E any](sort string, list []E) string {
 	data = strings.TrimSuffix(data, ",")
 
 	cursor := base64.StdEncoding.EncodeToString([]byte(data))
-	return cursor
+	return cursor, nil
 }
 
 func getValueFromSortField(sortField string, entryType reflect.Type, values reflect.Value) (string, error) {
@@ -60,6 +60,7 @@ func getValueFromSortField(sortField string, entryType reflect.Type, values refl
 		err := fmt.Errorf("O campo não existe: %s", sortField)
 		return "", err
 	}
+
 	return getParamValue(value), nil
 }
 

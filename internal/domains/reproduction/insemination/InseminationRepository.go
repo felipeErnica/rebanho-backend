@@ -183,7 +183,7 @@ func (r *InseminationRepository) GetBirthRateStats(userId string) (*[]util.Graph
 		)
 		SELECT 
 			insemination_date, 
-			(birth_success::float / NULLIF(total, 0)::float) * 100 AS birth_rate
+			(birth_success::float / NULLIF(total, 0)::float)  AS birth_rate
 		FROM totals
 		ORDER BY 1
     `, util.MinGestantionDays, util.MaxGestationDays)
@@ -243,7 +243,7 @@ func (r *InseminationRepository) GetPregnancyRateStats(userId string) (*[]util.G
 		)
 		SELECT 
 			insemination_date AS date,
-			(pregnancy_success::float / NULLIF(total, 0)) * 100 AS value
+			(pregnancy_success::float / NULLIF(total, 0))  AS value
 		FROM cte
 		ORDER BY 1
     `, util.MinGestantionDays, util.MaxGestationDays)
@@ -455,8 +455,8 @@ func (r *InseminationRepository) GetBestBull(userId string) (*[]InseminationBull
 			SELECT 
 				bull_name,
 				total,
-				(birth_success::float / NULLIF(total, 0)::float) * 100 birth_rate,
-				(pregnancy_success::float / NULLIF(total, 0)::float) * 100 pregnancy_rate
+				(birth_success::float / NULLIF(total, 0)::float)  birth_rate,
+				(pregnancy_success::float / NULLIF(total, 0)::float)  pregnancy_rate
 			FROM totals
 		)
 		SELECT
@@ -464,8 +464,8 @@ func (r *InseminationRepository) GetBestBull(userId string) (*[]InseminationBull
 			total,
 			birth_rate,
 			pregnancy_rate,
-			(birth_rate / NULLIF(AVG(birth_rate) OVER (), 0) - 1) * 100 AS birth_comparison_rate,
-			(pregnancy_rate / NULLIF(AVG(pregnancy_rate) OVER (), 0) - 1) * 100 AS pregnancy_comparison_rate
+			(birth_rate / NULLIF(AVG(birth_rate) OVER (), 0) - 1)  AS birth_comparison_rate,
+			(pregnancy_rate / NULLIF(AVG(pregnancy_rate) OVER (), 0) - 1)  AS pregnancy_comparison_rate
 		FROM rates
 		ORDER BY birth_rate DESC;
     `, util.MinGestantionDays, util.MaxGestationDays)
@@ -543,8 +543,8 @@ func (r *InseminationRepository) GetLastGroups(userId string) (*[]InseminationGr
 			SELECT
 				insemination_date,
 				cow_number,
-				(birth_success::float * 100 / NULLIF(cow_number, 0)) AS birth_rate,
-				(pregnancy_success::float * 100 / NULLIF(cow_number, 0)) AS pregnancy_rate
+				(birth_success::float  / NULLIF(cow_number, 0)) AS birth_rate,
+				(pregnancy_success::float  / NULLIF(cow_number, 0)) AS pregnancy_rate
 			FROM daily_stats
 		)
 		SELECT
@@ -553,10 +553,10 @@ func (r *InseminationRepository) GetLastGroups(userId string) (*[]InseminationGr
 			birth_rate,
 			pregnancy_rate,
 			COALESCE(
-				(birth_rate / NULLIF(LAG(birth_rate) OVER win, 0) - 1) * 100, 0
+				(birth_rate / NULLIF(LAG(birth_rate) OVER win, 0) - 1) , 0
 			) AS birth_comparison_rate,
 			COALESCE(
-				(pregnancy_rate / NULLIF(LAG(pregnancy_rate) OVER win, 0) - 1) * 100, 0
+				(pregnancy_rate / NULLIF(LAG(pregnancy_rate) OVER win, 0) - 1) , 0
 			) AS pregnancy_comparison_rate
 		FROM rates
 		WINDOW win AS (ORDER BY insemination_date)
@@ -877,8 +877,8 @@ func (r *InseminationRepository) GetEntriesFoot(
 		)
         SELECT 
             totals,
-            COALESCE(birth_success::float / NULLIF(totals, 0), 0) * 100 average_birth_rate,
-            COALESCE(pregnancy_success::float / NULLIF(totals, 0), 0) * 100 average_pregnancy_rate
+            COALESCE(birth_success::float / NULLIF(totals, 0), 0)  average_birth_rate,
+            COALESCE(pregnancy_success::float / NULLIF(totals, 0), 0)  average_pregnancy_rate
 		FROM totals
     `, statusQuery)
 
@@ -1042,8 +1042,8 @@ func (r *InseminationRepository) GetEntriesByGroupFoot(userId string, date time.
         )
         SELECT 
             totals,
-            (birth_success::float / NULLIF(totals, 0)) * 100 average_birth_rate,
-            (pregnancy_success::float / NULLIF(totals, 0)) * 100 average_pregnancy_rate
+            (birth_success::float / NULLIF(totals, 0))  average_birth_rate,
+            (pregnancy_success::float / NULLIF(totals, 0))  average_pregnancy_rate
         FROM COUNTING
     `, util.MinGestantionDays, util.MaxGestationDays)
 	return util.GetOne[InseminationFoot](r.DB, query, userId, date)
@@ -1120,8 +1120,8 @@ func (r *InseminationRepository) FindGroups(userId string) (*[]InseminationGroup
             SELECT
                 insemination_date,
                 cow_number,
-                (birth_success::float / cow_number::float)*100 birth_rate,
-                (pregnancy_success::float / cow_number::float)*100 pregnancy_rate
+                (birth_success::float / cow_number::float) birth_rate,
+                (pregnancy_success::float / cow_number::float) pregnancy_rate
             FROM totals
         )
         SELECT 
@@ -1131,10 +1131,10 @@ func (r *InseminationRepository) FindGroups(userId string) (*[]InseminationGroup
             s.pregnancy_rate,
             COALESCE(
 				(s.birth_rate / NULLIF(LAG(s.birth_rate) OVER win, 0)) - 1, 0
-			) * 100 AS birth_comparison_rate,
+			)  AS birth_comparison_rate,
             COALESCE(
 				(s.pregnancy_rate / NULLIF(LAG(s.pregnancy_rate) OVER win, 0)) - 1, 0
-			) * 100 AS pregnancy_comparison_rate
+			)  AS pregnancy_comparison_rate
         FROM rates s
 		WINDOW win AS (ORDER BY s.insemination_date)
         ORDER BY s.insemination_date DESC
@@ -1468,8 +1468,8 @@ func (r *InseminationRepository) UpdateGroup(group *InseminationGroupSave) (*Ins
             SELECT
                 insemination_date,
                 cow_number,
-                (birth_success::float / cow_number::float)*100 birth_rate,
-                (pregnancy_success::float / cow_number::float)*100 pregnancy_rate
+                (birth_success::float / cow_number::float) birth_rate,
+                (pregnancy_success::float / cow_number::float) pregnancy_rate
             FROM totals
         )
 
@@ -1480,10 +1480,10 @@ func (r *InseminationRepository) UpdateGroup(group *InseminationGroupSave) (*Ins
             s.pregnancy_rate,
             COALESCE(
 				(s.birth_rate / NULLIF(LAG(s.birth_rate) OVER win, 0)) - 1, 0
-			) * 100 AS birth_comparison_rate,
+			)  AS birth_comparison_rate,
             COALESCE(
 				(s.pregnancy_rate / NULLIF(LAG(s.pregnancy_rate) OVER win, 0)) - 1, 0
-			) * 100 AS pregnancy_comparison_rate
+			)  AS pregnancy_comparison_rate
         FROM rates s
 		WINDOW win AS (ORDER BY s.insemination_date)
     `, util.MinGestantionDays, util.MaxGestationDays)

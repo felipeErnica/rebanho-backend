@@ -96,8 +96,8 @@ func (r *MilkRepository) FindGroupsPage(
 		SELECT 
 			cte.*,
 			COALESCE(animals_number - LAG(animals_number) OVER (ORDER BY entry_date), 0) number_difference,
-			COALESCE(((total_milk / LAG(total_milk) OVER (ORDER BY entry_date)) - 1)*100, 0) total_rate,
-			COALESCE(((avg_milk / LAG(avg_milk) OVER (ORDER BY entry_date)) - 1)*100, 0) avg_rate
+			COALESCE(((total_milk / LAG(total_milk) OVER (ORDER BY entry_date)) - 1), 0) total_rate,
+			COALESCE(((avg_milk / LAG(avg_milk) OVER (ORDER BY entry_date)) - 1), 0) avg_rate
 		FROM cte
     `
 	filterExpression, nextParam, err := util.GetFilterExpressions(filter, "cte", 2)
@@ -309,8 +309,8 @@ func (r *MilkRepository) GetLastGroups(userId string) (*[]LactationGroup, error)
 		SELECT 
 			cte.*,
 			COALESCE(animals_number - LAG(animals_number) OVER (ORDER BY entry_date), 0) number_difference,
-			COALESCE(((total_milk / LAG(total_milk) OVER (ORDER BY entry_date)) - 1)*100, 0) total_rate,
-			COALESCE(((avg_milk / LAG(avg_milk) OVER (ORDER BY entry_date)) - 1)*100, 0) avg_rate
+			COALESCE(((total_milk / LAG(total_milk) OVER (ORDER BY entry_date)) - 1), 0) total_rate,
+			COALESCE(((avg_milk / LAG(avg_milk) OVER (ORDER BY entry_date)) - 1), 0) avg_rate
 		FROM cte
 		ORDER BY entry_date DESC
 		LIMIT 5
@@ -498,8 +498,8 @@ func (r *MilkRepository) UpdateGroup(groupEntry *LactationGroupSave) (*Lactation
 			SELECT 
 				s.*,
 				COALESCE(animals_number - LAG(animals_number) OVER (ORDER BY entry_date), 0) AS number_difference,
-				COALESCE(((total_milk / LAG(total_milk) OVER (ORDER BY entry_date)) - 1) * 100, 0) AS total_rate,
-				COALESCE(((avg_milk / LAG(avg_milk) OVER (ORDER BY entry_date)) - 1) * 100, 0) AS avg_rate
+				COALESCE(((total_milk / LAG(total_milk) OVER (ORDER BY entry_date)) - 1) , 0) AS total_rate,
+				COALESCE(((avg_milk / LAG(avg_milk) OVER (ORDER BY entry_date)) - 1) , 0) AS avg_rate
 			FROM milk_stats s
 		)
 		SELECT * 

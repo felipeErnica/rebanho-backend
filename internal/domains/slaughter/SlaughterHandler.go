@@ -147,21 +147,6 @@ func (h *SlaughterHandler) GetLastEntries(w http.ResponseWriter, r *http.Request
 	util.WriteEntity(w, result)
 }
 
-func (h *SlaughterHandler) GetLastGroups(w http.ResponseWriter, r *http.Request) {
-	userId, ok := util.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	result, err := h.Service.GetLastGroups(userId)
-	if err != nil {
-		log.WriteError(w, err)
-		return
-	}
-
-	util.WriteEntity(w, result)
-}
-
 func (h *SlaughterHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 	sort := r.URL.Query().Get("sort")
 	order := r.URL.Query().Get("order")
@@ -256,25 +241,10 @@ func (h *SlaughterHandler) GetButcherPageFoot(w http.ResponseWriter, r *http.Req
 	util.WriteEntity(w, result)
 }
 
-func (h *SlaughterHandler) FindGroups(w http.ResponseWriter, r *http.Request) {
-	order := r.URL.Query().Get("order")
-	userId, ok := util.GetUserId(w, r)
-	if !ok {
-		return
-	}
-
-	result, err := h.Service.FindGroups(order, userId)
-	if err != nil {
-		log.WriteError(w, err)
-		return
-	}
-
-	util.WriteEntity(w, result)
-}
-
 func (h *SlaughterHandler) FindEntries(w http.ResponseWriter, r *http.Request) {
 	sort := r.URL.Query().Get("sort")
 	order := r.URL.Query().Get("order")
+	groupId := r.PathValue("groupId")
 	userId, ok := util.GetUserId(w, r)
 	if !ok {
 		return
@@ -286,7 +256,7 @@ func (h *SlaughterHandler) FindEntries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.Service.FindEntries(sort, order, filter, userId)
+	result, err := h.Service.FindEntries(sort, order, filter, groupId, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -296,6 +266,7 @@ func (h *SlaughterHandler) FindEntries(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SlaughterHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request) {
+	groupId := r.PathValue("groupId")
 	userId, ok := util.GetUserId(w, r)
 	if !ok {
 		return
@@ -307,7 +278,7 @@ func (h *SlaughterHandler) GetEntriesFoot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	result, err := h.Service.GetEntriesFoot(filter, userId)
+	result, err := h.Service.GetEntriesFoot(filter, groupId, userId)
 	if err != nil {
 		log.WriteError(w, err)
 		return
@@ -376,12 +347,15 @@ func (h *SlaughterHandler) UpdateBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	batch, ok := util.DecodeEntity(w, r, &SlaughterSaveBatch{})
+	batch, ok := util.DecodeEntity(w, r, &[]SlaughterSave{})
 	if !ok {
 		return
 	}
 
-	batch.UserId = userId
+	for i := range *batch {
+		(*batch)[i].UserId = userId
+	}
+
 	err := h.Service.UpdateBatch(batch)
 	if err != nil {
 		log.WriteAPIError(err, w)

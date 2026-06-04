@@ -1,9 +1,6 @@
 package birth
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/felipeErnica/rebanho-backend/internal/log"
 	"github.com/felipeErnica/rebanho-backend/internal/util"
 )
@@ -87,7 +84,7 @@ func (s *BirthService) AddBirth(entry *BirthEntrySave) *log.APIError {
 	return nil
 }
 
-func (s *BirthService) UpdateBirth(entry *BirthEntrySave) (*BirthDB, *log.APIError) {
+func (s *BirthService) UpdateBirth(entry *BirthEntrySave) (*[]BirthDTO, *log.APIError) {
 	validation, err := s.Repo.CheckBirthConflicts(entry)
 	if err != nil {
 		return nil, log.InternalServerAPIError(err)
@@ -113,12 +110,55 @@ func (s *BirthService) UpdateBirth(entry *BirthEntrySave) (*BirthDB, *log.APIErr
 		)
 	}
 
-	res, err := s.Repo.UpdateBirth(entry)
+	err = s.Repo.UpdateBirth(entry)
 	if err != nil {
 		return nil, log.InternalServerAPIError(err)
 	}
 
-	return res, nil
+	res, err := s.Repo.GetById(entry.Id)
+	if err != nil {
+		return nil, log.InternalServerAPIError(err)
+	}
+
+	dto := s.toDTO(*res)
+	listDto := []BirthDTO{dto}
+
+	oldBrother, err := s.Repo.GetNextBirth(*entry.MotherId, entry.BirthDate)
+	if err != nil {
+		return nil, log.InternalServerAPIError(err)
+	}
+
+	if oldBrother != nil {
+		dto := s.toDTO(*oldBrother)
+		listDto = append(listDto, dto)
+	}
+
+	return &listDto, nil
+}
+
+func (s *BirthService) DeleteBirth(id string, userId string, skipValidation bool) (*BirthDTO, *log.APIError) {
+	valErr := s.Repo.DeleteBirthValidation(id, userId, skipValidation)
+	if valErr != nil {
+		return nil, valErr
+	}
+
+	entry, err := s.Repo.GetById(id)
+	if err != nil {
+		return nil, log.InternalServerAPIError(err)
+	}
+
+	valErr = s.Repo.DeleteBirth(id, userId)
+	if valErr != nil {
+		return nil, valErr
+	}
+
+	oldBrother, err := s.Repo.GetNextBirth(entry.MotherId, entry.CalfBirthDate)
+	if err != nil {
+		return nil, log.InternalServerAPIError(err)
+	}
+
+	dto := s.toDTO(*oldBrother)
+	return  &dto, nil
 }
 
 func (s *BirthService) GetPotentialFather(entry *BirthEntrySave) (*BirthEntrySave, *log.APIError) {
@@ -196,17 +236,28 @@ func (s *BirthService) FindPage(
 	cursor string,
 	limit int,
 ) (*util.Page[BirthDTO], error) {
-	sort = util.AddNewFields(sort, "id")
+	sort = util.AddNewFields(sort, "calf_id", "created_at")
 	list, err := s.Repo.FindPage(userId, sort, order, filter, cursor, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	newCursor := util.CreateCursorKey(sort, *list)
+	newCursor, err := util.CreateCursorKey(sort, *list)
+	if err != nil {
+		return nil, err
+	}
 
 	listDto := s.listToDTO(*list)
-	json, _ := json.MarshalIndent(listDto, "", "	")
-	fmt.Println(string(json))
 	page := util.NewPage(listDto, newCursor, limit)
 	return page, err
+}
+
+func (s *BirthService) GetById(id string) (*BirthDTO, error) {
+	res, err := s.Repo.GetById(id)
+	if err != nil {
+		return nil, err
+	}
+
+	dto := s.toDTO(*res)
+	return &dto, nil
 }

@@ -104,12 +104,17 @@ func ExecTx(tx *sqlx.Tx, query string, args ...any) error {
 /*Retorna um objeto da Tabela SQL de acordo com os parâmetros informados*/
 func GetOne[E any](db *sqlx.DB, query string, args ...any) (*E, error) {
 	log.LogInfo(strings.Join(strings.Fields(query), " "), true)
-	var object E
-	err := db.Get(&object, query, args...)
+	var list []E
+	err := db.Select(&list, query, args...)
 	if err != nil {
 		return nil, err
 	}
-	return &object, err
+
+	if len(list) == 0 {
+		return nil, nil
+	}
+
+	return &list[0], err
 }
 
 /*Retorna um objeto do banco, dentro de uma transação, de acordo com os parâmetros informados*/
@@ -302,7 +307,10 @@ func GetPage[E any](
 		return nil, err
 	}
 
-	cursor := CreateCursorKey(sort, list)
+	cursor, err := CreateCursorKey(sort, list)
+	if err != nil {
+		return nil, err
+	}
 
 	page := entity.Page[E]{
 		List:        &list,

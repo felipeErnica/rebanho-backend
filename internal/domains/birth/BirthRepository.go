@@ -3,7 +3,10 @@ package birth
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
+	"github.com/felipeErnica/rebanho-backend/internal/domains/animals"
+	"github.com/felipeErnica/rebanho-backend/internal/log"
 	"github.com/felipeErnica/rebanho-backend/internal/util"
 	"github.com/jmoiron/sqlx"
 )
@@ -49,7 +52,7 @@ func (r *BirthRepository) CheckBirthConflicts(entry *BirthEntrySave) (*BirthVali
 				FROM animals
 				WHERE mother_id = :mother_id
 					AND birth_date < :birth_date
-					AND age(birth_date, :birth_date) <= 'interval %[1]d days'
+					AND age(:birth_date, birth_date) <= interval '%[1]d days'
 					AND user_id = :user_id
 					AND id IS DISTINCT FROM :id
 					AND deleted_at IS NULL
@@ -61,7 +64,7 @@ func (r *BirthRepository) CheckBirthConflicts(entry *BirthEntrySave) (*BirthVali
 				FROM animals
 				WHERE mother_id = :mother_id
 					AND birth_date > :birth_date
-					AND age(:birth_date, birth_date) <= 'interval %[1]d days'
+					AND age(birth_date, :birth_date) <= interval '%[1]d days'
 					AND user_id = :user_id
 					AND id IS DISTINCT FROM :id
 					AND deleted_at IS NULL
@@ -216,7 +219,7 @@ func (r *BirthRepository) GetBestIntervals(userId string) (*[]IntervalAnimal, er
                 a.interval_average,
                 a.birth_numbers,
                 (a.interval_average - b.gn_interval_average) / NULLIF(b.dev_interval, 0) AS reproductive_score,
-                ((a.interval_average / NULLIF(b.gn_interval_average, 0)) - 1) * 100 average_rate
+                ((a.interval_average / NULLIF(b.gn_interval_average, 0)) - 1)  average_rate
             FROM average_list a, birth_stats b
 			WHERE a.birth_numbers >= 3
         )
@@ -268,7 +271,7 @@ func (r *BirthRepository) GetWorstIntervals(userId string) (*[]IntervalAnimal, e
                 a.interval_average,
                 a.birth_numbers,
                 (a.interval_average - b.gn_interval_average) / NULLIF(b.dev_interval, 0) AS reproductive_score,
-                ((a.interval_average / NULLIF(b.gn_interval_average, 0)) - 1) * 100 average_rate
+                ((a.interval_average / NULLIF(b.gn_interval_average, 0)) - 1)  average_rate
             FROM average_list a, birth_stats b
 			WHERE a.birth_numbers >= 3
         )
@@ -306,7 +309,7 @@ func (r *BirthRepository) GetBirthIntervalHistory(userId string) (*[]util.GraphD
 			ORDER BY birth_date DESC
 			LIMIT 10
 		)
-		SELECT * FROM cte ORDER BY birth_date
+		SELECT * FROM cte ORDER BY date
     `
 	return util.GetList[util.GraphData](r.DB, query, userId)
 }
@@ -351,7 +354,7 @@ func (r *BirthRepository) GetYearBirthsNumber(userId string) (*[]util.GraphData,
 			ORDER BY 1 DESC
 			LIMIT 20
 		)
-		SELECT * FROM cte ORDER BY entry_date
+		SELECT * FROM cte ORDER BY date
     `
 	return util.GetList[util.GraphData](r.DB, query, userId)
 }
@@ -360,8 +363,8 @@ func (r *BirthRepository) GetYearDeathsNumber(userId string) (*[]util.GraphData,
 	query := `
 		WITH cte AS (
 			SELECT
-				DATE_TRUNC('year', a.death_date) entry_date,
-				COUNT(a.*) deaths_total
+				DATE_TRUNC('year', a.death_date) as date,
+				COUNT(a.*) as value
 			FROM animals a
 				JOIN animals m ON m.id = a.mother_id 
 					AND m.is_outside_animal = FALSE
@@ -373,7 +376,7 @@ func (r *BirthRepository) GetYearDeathsNumber(userId string) (*[]util.GraphData,
 			ORDER BY 1 DESC
 			LIMIT 20
 		)
-		SELECT * FROM cte ORDER BY entry_date
+		SELECT * FROM cte ORDER BY date
     `
 	return util.GetList[util.GraphData](r.DB, query, userId)
 }
@@ -385,9 +388,10 @@ func (r *BirthRepository) GetDeathIndex(userId string) (*[]util.GraphData, error
                 DATE_TRUNC('year', a.death_date) date,
                 COUNT(a.*) deaths
             FROM animals a
-				JOIN animals m ON m.id = a.mother_id AND m.is_outside_animal = FALSE
+				JOIN animals m ON m.id = a.mother_id 
             WHERE
                 a.user_id = $1
+				AND m.is_outside_animal = FALSE
                 AND a.death_date IS NOT NULL
                 AND age(a.death_date, a.birth_date) < INTERVAL '1 year'
                 AND a.deleted_at IS NULL
@@ -408,7 +412,7 @@ func (r *BirthRepository) GetDeathIndex(userId string) (*[]util.GraphData, error
         cte AS (
 			SELECT
 				date,
-				COALESCE((deaths::float / NULLIF(births, 0)::float)*100, 0) death_index
+				COALESCE((deaths::float / NULLIF(births, 0)::float), 0) as value
 			FROM birth_tbl FULL JOIN death_tbl USING(date)
 			ORDER BY 1 DESC
 			LIMIT 10
@@ -553,7 +557,8 @@ func (r *BirthRepository) FindPage(
 		"mother_order":    {Field: "cte.mother_order", Order: "asc"},
 		"mother_name":     {Field: "cte.mother_name", Order: "asc"},
 		"birth_interval":  {Field: "coalesce(cte.birth_interval, 0)", Order: "asc"},
-		"id":              {Field: "cte.calf_id", Order: "asc"},
+		"calf_id":         {Field: "cte.calf_id", Order: "asc"},
+		"created_at":      {Field: "cte.created_at", Order: "asc"},
 	}
 
 	query := `
@@ -575,9 +580,10 @@ func (r *BirthRepository) FindPage(
 				f.name AS father_name,
 				f.tag AS father_tag,
 
-				EXTRACT(days FROM a.birth_date - LAG(a.birth_date) OVER win) AS birth_interval
+				EXTRACT(days FROM a.birth_date - LAG(a.birth_date) OVER win) AS birth_interval,
+				a.created_at
 			FROM animals a
-				JOIN animals m ON m.id = a.mother_id AND m.is_outside_animal = FALSE
+				JOIN animals m ON m.id = a.mother_id
 				LEFT JOIN animals f ON f.id = a.father_id
 			WHERE 
 				a.user_id = $1 
@@ -654,15 +660,88 @@ func (r *BirthRepository) GetPageFoot(userId string, filter *BirthEntryFilter) (
 	return util.GetOne[BirthFooter](r.DB, query, args...)
 }
 
-func (r *BirthRepository) UpdateBirth(entry *BirthEntrySave) (*BirthDB, error) {
+func (r *BirthRepository) GetById(id string) (*BirthDB, error) {
+	query := `
+		WITH mother_tbl AS (SELECT mother_id FROM animals a WHERE a.id = $1),
+		cte AS (
+			SELECT 
+				a.id AS calf_id,
+				a.sex AS calf_sex,
+				a.name AS calf_name,
+				a.tag AS calf_tag,
+				a.birth_date AS calf_birth_date,
+				a.observation AS calf_observation,
 
-	tx, err := r.DB.Beginx()
-	if err != nil {
-		return nil, err
-	}
+				a.mother_id,
+				m.name AS mother_name,
+				m.tag AS mother_tag,
+				COALESCE(REGEXP_REPLACE(m.tag, '[^0-9]', '', 'g')::int, 0) AS mother_order,
 
-	defer tx.Rollback()
+				a.father_id AS father_id,
+				f.name AS father_name,
+				f.tag AS father_tag,
 
+				EXTRACT(days FROM a.birth_date - LAG(a.birth_date) OVER win) AS birth_interval
+			FROM animals a
+				CROSS JOIN mother_tbl
+				JOIN animals m ON m.id = a.mother_id
+				LEFT JOIN animals f ON f.id = a.father_id
+			WHERE a.mother_id = mother_tbl.mother_id
+			WINDOW win AS (PARTITION BY a.mother_id ORDER BY a.birth_date)
+		)
+		SELECT * FROM cte WHERE calf_id = $1
+    `
+	return util.GetOne[BirthDB](r.DB, query, id)
+}
+
+func (r *BirthRepository) GetNextBirth(motherId string, birthDate time.Time) (*BirthDB, error) {
+	query := `
+		WITH cte AS (
+			SELECT 
+				a.id AS calf_id,
+				a.sex AS calf_sex,
+				a.name AS calf_name,
+				a.tag AS calf_tag,
+				a.birth_date AS calf_birth_date,
+				a.observation AS calf_observation,
+
+				a.mother_id,
+				m.name AS mother_name,
+				m.tag AS mother_tag,
+				COALESCE(REGEXP_REPLACE(m.tag, '[^0-9]', '', 'g')::int, 0) AS mother_order,
+
+				a.father_id AS father_id,
+				f.name AS father_name,
+				f.tag AS father_tag,
+
+				EXTRACT(days FROM a.birth_date - LAG(a.birth_date) OVER win) AS birth_interval
+			FROM animals a
+				JOIN animals m ON m.id = a.mother_id
+				LEFT JOIN animals f ON f.id = a.father_id
+			WHERE a.mother_id = $1 
+			WINDOW win AS (PARTITION BY a.mother_id ORDER BY a.birth_date)
+		)
+		SELECT * 
+		FROM cte 
+		WHERE calf_birth_date > $2
+		ORDER BY calf_birth_date
+		LIMIT 1
+    `
+	return util.GetOne[BirthDB](r.DB, query, motherId, birthDate)
+}
+
+func (r *BirthRepository) DeleteBirthValidation(id string, userId string, skipValidation bool) *log.APIError {
+	animalRepo := animals.NewRepository(r.DB)
+	animalService := animals.NewService(animalRepo)
+	return animalService.DeleteValidation(skipValidation, id, userId)
+}
+
+func (r *BirthRepository) DeleteBirth(id string, userId string) *log.APIError {
+	animalRepo := animals.NewRepository(r.DB)
+	return animalRepo.Delete(id, userId)
+}
+
+func (r *BirthRepository) UpdateBirth(entry *BirthEntrySave) error {
 	query := `
 		UPDATE animals
 		SET birth_date = :birth_date,
@@ -671,55 +750,8 @@ func (r *BirthRepository) UpdateBirth(entry *BirthEntrySave) (*BirthDB, error) {
 			observation = :observation
 			WHERE id = :id AND user_id = :user_id
 	`
-	err = util.NamedExecTx(tx, query, entry)
-	if err != nil {
-		return nil, err
-	}
-
-	selectQuery := `
-		SELECT 
-			a.id,
-			a.mother_id,
-			m.name AS mother_name,
-			CONCAT_WS(' - ', m.tag, m.name) AS mother_info,
-			a.birth_date AS calf_birth_date,
-			a.sex AS calf_sex,
-			CASE 
-				WHEN a.name IS NULL THEN ''
-				ELSE CONCAT_WS(' - ', a.tag, a.name)
-			END AS calf_name,
-			a.father_id AS calf_father_id,
-			CONCAT_WS(' - ', f.tag, f.name) calf_father,
-			bi.birth_interval
-		FROM animals a
-			JOIN animals m ON m.id = a.mother_id 
-			LEFT JOIN animals f ON f.id = a.father_id
-			JOIN (
-				SELECT
-					id,
-					EXTRACT(days FROM bi.birth_date - LAG(bi.birth_date) OVER win) AS birth_interval
-				FROM animals bi
-				WHERE bi.mother_id = :mother_id
-					AND bi.deleted_at IS NULL
-					AND bi.user_id = :user_id
-				WINDOW win AS (PARTITION BY bi.mother_id ORDER BY bi.birth_date)
-			) bi ON bi.id = a.id
-			WHERE a.id = :id 
-				AND a.user_id = :user_id
-				AND m.is_outside_animal = FALSE
-	`
-
-	result, err := util.NamedGet(r.DB, selectQuery, BirthDB{}, entry)
-	if err != nil {
-		return nil, err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	err := util.NamedExec(r.DB, query, entry)
+	return err
 }
 
 func (r *BirthRepository) AddBirth(entry *BirthEntrySave) error {

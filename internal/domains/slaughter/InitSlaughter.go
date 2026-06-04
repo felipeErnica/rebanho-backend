@@ -19,20 +19,17 @@ func InitSlaughter(app *app.App) {
 	app.HandleFunc("GET /slaughter/stats/best-mothers", handler.GetBestMothers)
 	app.HandleFunc("GET /slaughter/stats/best-slaughterhouses", handler.GetBestButchers)
 	app.HandleFunc("GET /slaughter/stats/last-entries", handler.GetLastEntries)
-	app.HandleFunc("GET /slaughter/stats/last-groups", handler.GetLastGroups)
 
 	app.HandleFunc("GET /slaughter/page", handler.FindPage)
 	app.HandleFunc("GET /slaughter/page/foot", handler.GetPageFoot)
-	app.HandleFunc("GET /slaughter/entries", handler.FindEntries)
-	app.HandleFunc("GET /slaughter/entries/foot", handler.GetEntriesFoot)
+	app.HandleFunc("GET /slaughter/groups/{groupId}/entries", handler.FindEntries)
+	app.HandleFunc("GET /slaughter/groups/{groupId}/entries/foot", handler.GetEntriesFoot)
 
 	app.HandleFunc("POST /slaughter", handler.Add)
 	app.HandleFunc("PUT /slaughter", handler.Update)
 	app.HandleFunc("PUT /slaughter/batch", handler.UpdateBatch)
 	app.HandleFunc("DELETE /slaughter/{id}", handler.Delete)
 	app.HandleFunc("DELETE /slaughter/batch", handler.DeleteBatch)
-
-	app.HandleFunc("GET /slaughter/groups/page", handler.FindGroups)
 
 	app.HandleFunc("GET /slaughter/butchers/{butcherId}/page", handler.FindButcherPage)
 	app.HandleFunc("GET /slaughter/butchers/{butcherId}/page/foot", handler.GetButcherPageFoot)

@@ -3,19 +3,24 @@ package slaughter
 import "time"
 
 type SlaughterDTO struct {
-	Id              string     `json:"id"`
-	Animal          *Animal    `json:"animal"`
-	Butcher         Butcher    `json:"butcher"`
-	EntryDate       *time.Time `json:"entryDate"`
-	DiscountRate    *float64   `json:"discountRate"`
-	Weight          float64    `json:"weight"`
-	DiscountWeight  *float64   `json:"discountWeight"`
-	DeadWeight      *float64   `json:"deadWeight"`
-	PerformanceRate *float64   `json:"performanceRate"`
+	Id              string   `json:"id"`
+	Group           Group    `json:"group"`
+	Animal          *Animal  `json:"animal"`
+	Weight          float64  `json:"weight"`
+	DiscountWeight  *float64 `json:"discountWeight"`
+	DeadWeight      *float64 `json:"deadWeight"`
+	PerformanceRate *float64 `json:"performanceRate"`
+}
+
+type Group struct {
+	Id        string    `json:"groupId"`
+	EntryDate time.Time `json:"entryDate"`
+	Discount  float64   `json:"discount"`
+	Butcher   Butcher   `json:"butcher"`
 }
 
 type Animal struct {
-	Id        string     `json:"id"` 
+	Id        string     `json:"id"`
 	Tag       *string    `json:"tag"`
 	Name      *string    `json:"name"`
 	Sex       string     `json:"sex"`

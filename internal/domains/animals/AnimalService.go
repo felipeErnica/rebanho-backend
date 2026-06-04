@@ -16,9 +16,9 @@ func NewService(repository *AnimalRepository) *AnimalService {
 	return &AnimalService{Repo: repository}
 }
 
-const DELETE_OBSERVATION = "\n\nOBS.: A exclusão de animais só é recomendada em caso de erros." +
-	"Em caso de morte e/ou abate, faça o registro apropriado." +
-	"Lembre-se, apagar um animal do sistema apagará, PERMANENTEMENTE, todas as informções ligadas a ele."
+const DELETE_OBSERVATION = "\n\nOBS.: A exclusão de animais só é recomendada em caso de erros de registro. " +
+	"Em caso de morte e/ou abate, faça o registro apropriado. " +
+	"Lembre-se, apagar um animal do sistema apagará, PERMANENTEMENTE, todas as informações ligadas a ele."
 
 func (s *AnimalService) toDTO(entry AnimalDB) AnimalDTO {
 
@@ -152,7 +152,11 @@ func (s *AnimalService) FindPage(
 		return nil, err
 	}
 
-	newCursor := util.CreateCursorKey(sort, *list)
+	newCursor, err := util.CreateCursorKey(sort, *list)
+	if err != nil {
+		return nil, err
+	}
+
 	listDTO := s.listToDTO(*list)
 
 	page := util.NewPage(listDTO, newCursor, limit)
@@ -189,7 +193,7 @@ func (s *AnimalService) Search(
 	return &listDTO, nil
 }
 
-func (s *AnimalService) Delete(skipValidation bool, id string, userId string) *log.APIError {
+func (s *AnimalService) DeleteValidation(skipValidation bool, id string, userId string) *log.APIError {
 
 	if !skipValidation {
 		errResult, err := s.Repo.CheckDeleteErrorConditions(id, userId)
@@ -271,6 +275,14 @@ func (s *AnimalService) Delete(skipValidation bool, id string, userId string) *l
 
 	}
 
+	return nil
+}
+
+func (s *AnimalService) Delete(skipValidation bool, id string, userId string) *log.APIError {
+	err := s.DeleteValidation(skipValidation, id, userId)
+	if err != nil {
+		return nil
+	}
 	return s.Repo.Delete(id, userId)
 }
 

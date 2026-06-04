@@ -56,6 +56,16 @@ func (h *BirthHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 	util.WriteEntity(w, result)
 }
 
+func (h *BirthHandler) GetById(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	res, err := h.Service.GetById(id)
+	if err != nil {
+		log.WriteError(w, err)
+		return
+	}
+	util.WriteEntity(w, res)
+}
+
 func (h *BirthHandler) GetBestIntervals(w http.ResponseWriter, r *http.Request) {
 	userId, ok := util.GetUserId(w, r)
 	if !ok {
@@ -253,6 +263,27 @@ func (h *BirthHandler) UpdateBirth(w http.ResponseWriter, r *http.Request) {
 
 	birthEntry.UserId = userId
 	result, err := h.Service.UpdateBirth(birthEntry)
+	if err != nil {
+		log.WriteAPIError(err, w)
+		return
+	}
+
+	util.WriteEntity(w, result)
+}
+
+func (h *BirthHandler) DeleteBirth(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	skipValidation, parseErr := util.ParseBool(r.URL.Query().Get("skipValidation"))
+	if parseErr != nil {
+		log.WriteError(w, parseErr)
+	}
+
+	userId, ok := util.GetUserId(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.Service.DeleteBirth(id, userId, skipValidation)
 	if err != nil {
 		log.WriteAPIError(err, w)
 		return

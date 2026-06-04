@@ -16,16 +16,19 @@ func NewService(repo *SlaughterRepository) *SlaughterService {
 func (s *SlaughterService) toDTO(entry SlaughterDB) SlaughterDTO {
 	dto := SlaughterDTO{
 		Id:              entry.Id,
-		EntryDate:       entry.EntryDate,
-		DiscountRate:    entry.DiscountRate,
 		Weight:          entry.Weight,
 		DiscountWeight:  entry.DiscountWeight,
 		DeadWeight:      entry.DeadWeight,
 		PerformanceRate: entry.PerformanceRate,
-		Butcher: Butcher{
-			Id:       entry.ButcherId,
-			Name:     entry.ButcherName,
-			Discount: entry.ButcherDiscount,
+		Group: Group{
+			Id:        entry.GroupId,
+			EntryDate: entry.GroupDate,
+			Discount:  entry.GroupDiscount,
+			Butcher: Butcher{
+				Id:       entry.ButcherId,
+				Name:     entry.ButcherName,
+				Discount: entry.ButcherDiscount,
+			},
 		},
 	}
 
@@ -150,16 +153,6 @@ func (s *SlaughterService) GetLastEntries(userId string) (*[]SlaughterDTO, error
 	return listDTO, nil
 }
 
-func (s *SlaughterService) GetLastGroups(userId string) (*[]SlaughterGroupDTO, error) {
-	list, err := s.Repo.GetLastGroups(userId)
-	if err != nil {
-		return nil, err
-	}
-
-	listDTO := s.listGroupToDTO(list)
-	return listDTO, nil
-}
-
 func (s *SlaughterService) FindPage(
 	sort string,
 	order string,
@@ -174,7 +167,11 @@ func (s *SlaughterService) FindPage(
 		return nil, err
 	}
 
-	newCursor := util.CreateCursorKey(sort, *list)
+	newCursor, err := util.CreateCursorKey(sort, *list)
+	if err != nil {
+		return nil, err
+	}
+
 	listDTO := s.listToDTO(list)
 	page := util.NewPage(*listDTO, newCursor, limit)
 
@@ -200,7 +197,11 @@ func (s *SlaughterService) FindButcherPage(
 		return nil, err
 	}
 
-	newCursor := util.CreateCursorKey(sort, *list)
+	newCursor, err := util.CreateCursorKey(sort, *list)
+	if err != nil {
+		return nil, err
+	}
+
 	listDTO := s.listToDTO(list)
 	page := util.NewPage(*listDTO, newCursor, limit)
 	return page, nil
@@ -214,23 +215,14 @@ func (s *SlaughterService) GetButcherPageFoot(
 	return s.Repo.GetButcherPageFoot(filter, butcherId, userId)
 }
 
-func (s *SlaughterService) FindGroups(order string, userId string) (*[]SlaughterGroupDTO, error) {
-	list, err := s.Repo.FindGroups(order, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	listDTO := s.listGroupToDTO(list)
-	return listDTO, nil
-}
-
 func (s *SlaughterService) FindEntries(
 	sort string,
 	order string,
 	filter *SlaughterFilter,
+	groupId string,
 	userId string,
 ) (*[]SlaughterDTO, error) {
-	list, err := s.Repo.FindEntries(sort, order, filter, userId)
+	list, err := s.Repo.FindEntriesByGroup(sort, order, filter, groupId, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -239,8 +231,8 @@ func (s *SlaughterService) FindEntries(
 	return listDTO, nil
 }
 
-func (s *SlaughterService) GetEntriesFoot(filter *SlaughterFilter, userId string) (*SlaughterFoot, error) {
-	return s.Repo.GetEntriesFoot(filter, userId)
+func (s *SlaughterService) GetEntriesFoot(filter *SlaughterFilter, groupId string ,userId string) (*SlaughterFoot, error) {
+	return s.Repo.GetEntriesFoot(filter, groupId, userId)
 }
 
 func (s *SlaughterService) Delete(id string, userId string) *log.APIError {
@@ -271,13 +263,6 @@ func (s *SlaughterService) Update(entry *SlaughterSave) (*SlaughterDTO, *log.API
 		return nil, log.ConflictAPIError("Já existe um registro deste animal nesta data!")
 	}
 
-	if validate.HasDeath && !entry.IgnoreDeath {
-		return nil, log.ConflictAPIWarning(
-			"O animal já está morto! Deseja continuar mesmo assim?" +
-				"\nATENÇÃO: A data de morte será alterada para a data do abate.",
-		)
-	}
-
 	result, err := s.Repo.Update(entry)
 	if err != nil {
 		return nil, log.InternalServerAPIError(err)
@@ -287,7 +272,7 @@ func (s *SlaughterService) Update(entry *SlaughterSave) (*SlaughterDTO, *log.API
 	return &dto, nil
 }
 
-func (s *SlaughterService) UpdateBatch(batch *SlaughterSaveBatch) *log.APIError {
+func (s *SlaughterService) UpdateBatch(batch *[]SlaughterSave) *log.APIError {
 	err := s.Repo.UpdateBatch(batch)
 	if err != nil {
 		return log.InternalServerAPIError(err)

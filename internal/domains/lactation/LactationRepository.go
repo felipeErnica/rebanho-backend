@@ -228,10 +228,10 @@ func (r *LactationRepository) GetBestAnimals(userId string) (*[]AnimalsRating, e
 		cte AS (
 			SELECT
 				l.*,
-				((l.avg_period / NULLIF(s.gn_avg_period, 0)) - 1)*100 AS period_rate,
-				((l.avg_prod / NULLIF(s.gn_avg_prod, 0)) - 1)*100 AS prod_rate,
-				((l.avg_total / NULLIF(s.gn_avg_total, 0)) - 1)*100 AS total_rate,
-				((l.avg_interval / NULLIF(s.gn_avg_interval, 0)) - 1)*100 AS interval_rate,
+				((l.avg_period / NULLIF(s.gn_avg_period, 0)) - 1) AS period_rate,
+				((l.avg_prod / NULLIF(s.gn_avg_prod, 0)) - 1) AS prod_rate,
+				((l.avg_total / NULLIF(s.gn_avg_total, 0)) - 1) AS total_rate,
+				((l.avg_interval / NULLIF(s.gn_avg_interval, 0)) - 1) AS interval_rate,
 				(l.avg_total - gn_avg_total ) / NULLIF(s.dev_total, 0) AS total_score,
 				(l.avg_interval - gn_avg_interval) / NULLIF(s.dev_interval, 0) AS interval_score
 			FROM lac_stats l
@@ -303,10 +303,10 @@ func (r *LactationRepository) GetWorstAnimals(userId string) (*[]AnimalsRating, 
 		cte AS (
 			SELECT
 				l.*,
-				((l.avg_period / NULLIF(s.gn_avg_period, 0)) - 1)*100 AS period_rate,
-				((l.avg_prod / NULLIF(s.gn_avg_prod, 0)) - 1)*100 AS prod_rate,
-				((l.avg_total / NULLIF(s.gn_avg_total, 0)) - 1)*100 AS total_rate,
-				((l.avg_interval / NULLIF(s.gn_avg_interval, 0)) - 1)*100 AS interval_rate,
+				((l.avg_period / NULLIF(s.gn_avg_period, 0)) - 1) AS period_rate,
+				((l.avg_prod / NULLIF(s.gn_avg_prod, 0)) - 1) AS prod_rate,
+				((l.avg_total / NULLIF(s.gn_avg_total, 0)) - 1) AS total_rate,
+				((l.avg_interval / NULLIF(s.gn_avg_interval, 0)) - 1) AS interval_rate,
 				(l.avg_total - gn_avg_total ) / NULLIF(s.dev_total, 0) AS total_score,
 				(l.avg_interval - gn_avg_interval) / NULLIF(s.dev_interval, 0) AS interval_score
 			FROM lac_stats l
@@ -387,10 +387,10 @@ func (r *LactationRepository) GetBestMothers(userId string) (*[]ParentsRating, e
 		cte AS (
 			SELECT
 				m.*,
-				((m.avg_period / NULLIF(s.avg_period, 0)) - 1)*100 period_rate,
-				((m.avg_prod / NULLIF(s.avg_prod, 0)) - 1)*100 prod_rate,
-				((m.avg_total / NULLIF(s.avg_total, 0)) - 1)*100 total_rate,
-				((m.avg_interval / NULLIF(s.avg_interval, 0)) - 1)*100 interval_rate,
+				((m.avg_period / NULLIF(s.avg_period, 0)) - 1) period_rate,
+				((m.avg_prod / NULLIF(s.avg_prod, 0)) - 1) prod_rate,
+				((m.avg_total / NULLIF(s.avg_total, 0)) - 1) total_rate,
+				((m.avg_interval / NULLIF(s.avg_interval, 0)) - 1) interval_rate,
 				(m.avg_total - s.avg_total) / NULLIF(s.dev_total, 0) AS total_score,
 				(m.avg_interval - s.avg_interval) / NULLIF(s.dev_interval, 0) AS interval_score
 			FROM mother_stats m
@@ -471,10 +471,10 @@ func (r *LactationRepository) GetWorstMothers(userId string) (*[]ParentsRating, 
 		cte AS (
 			SELECT
 				m.*,
-				((m.avg_period / NULLIF(s.avg_period, 0)) - 1)*100 period_rate,
-				((m.avg_prod / NULLIF(s.avg_prod, 0)) - 1)*100 prod_rate,
-				((m.avg_total / NULLIF(s.avg_total, 0)) - 1)*100 total_rate,
-				((m.avg_interval / NULLIF(s.avg_interval, 0)) - 1)*100 interval_rate,
+				((m.avg_period / NULLIF(s.avg_period, 0)) - 1) period_rate,
+				((m.avg_prod / NULLIF(s.avg_prod, 0)) - 1) prod_rate,
+				((m.avg_total / NULLIF(s.avg_total, 0)) - 1) total_rate,
+				((m.avg_interval / NULLIF(s.avg_interval, 0)) - 1) interval_rate,
 				(m.avg_total - s.avg_total) / NULLIF(s.dev_total, 0) AS total_score,
 				(m.avg_interval - s.avg_interval) / NULLIF(s.dev_interval, 0) AS interval_score
 			FROM mother_stats m
@@ -555,10 +555,10 @@ func (r *LactationRepository) GetBestFathers(userId string) (*[]ParentsRating, e
 		cte AS (
 			SELECT
 				m.*,
-				((m.avg_period / NULLIF(s.avg_period, 0)) - 1) * 100 period_rate,
-				((m.avg_prod / NULLIF(s.avg_prod, 0)) - 1) * 100 prod_rate,
-				((m.avg_total / NULLIF(s.avg_total, 0)) - 1) * 100 total_rate,
-				((m.avg_interval / NULLIF(s.avg_interval, 0)) - 1) * 100 interval_rate,
+				((m.avg_period / NULLIF(s.avg_period, 0)) - 1)  period_rate,
+				((m.avg_prod / NULLIF(s.avg_prod, 0)) - 1)  prod_rate,
+				((m.avg_total / NULLIF(s.avg_total, 0)) - 1)  total_rate,
+				((m.avg_interval / NULLIF(s.avg_interval, 0)) - 1)  interval_rate,
 				(m.avg_total - s.avg_total) / NULLIF(s.dev_total, 0) AS total_score,
 				(m.avg_interval - s.avg_interval) / NULLIF(s.dev_interval, 0) AS interval_score
 			FROM mother_stats m
@@ -639,10 +639,10 @@ func (r *LactationRepository) GetWorstFathers(userId string) (*[]ParentsRating, 
 		cte AS (
 			SELECT
 				m.*,
-				((m.avg_period / NULLIF(s.avg_period, 0)) - 1) * 100 period_rate,
-				((m.avg_prod / NULLIF(s.avg_prod, 0)) - 1) * 100 prod_rate,
-				((m.avg_total / NULLIF(s.avg_total, 0)) - 1) * 100 total_rate,
-				((m.avg_interval / NULLIF(s.avg_interval, 0)) - 1) * 100 interval_rate,
+				((m.avg_period / NULLIF(s.avg_period, 0)) - 1)  period_rate,
+				((m.avg_prod / NULLIF(s.avg_prod, 0)) - 1)  prod_rate,
+				((m.avg_total / NULLIF(s.avg_total, 0)) - 1)  total_rate,
+				((m.avg_interval / NULLIF(s.avg_interval, 0)) - 1)  interval_rate,
 				(m.avg_total - s.avg_total) / NULLIF(s.dev_total, 0) AS total_score,
 				(m.avg_interval - s.avg_interval) / NULLIF(s.dev_interval, 0) AS interval_score
 			FROM mother_stats m

@@ -34,7 +34,7 @@ type BirthEntryFilter struct {
 
 type BirthEntrySave struct {
 	Id          string    `json:"id" db:"id"`
-	RingNumber  *string   `json:"ringNumber" db:"ring_number"`
+	Tag         *string   `json:"tag" db:"tag"`
 	MotherId    *string   `json:"motherId" db:"mother_id"`
 	FatherId    *string   `json:"fatherId" db:"father_id"`
 	PastureId   *string   `json:"pastureId" db:"pasture_id"`

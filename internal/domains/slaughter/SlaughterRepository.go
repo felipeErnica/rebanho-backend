@@ -2,7 +2,6 @@ package slaughter
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/felipeErnica/rebanho-backend/internal/util"
 	"github.com/jmoiron/sqlx"
@@ -31,7 +30,7 @@ func (r *SlaughterRepository) CheckSave(entry *SlaughterSave) (*SaveValidation, 
 		SELECT EXISTS (
 			SELECT 1
 			FROM slaughter_entries
-			WHERE entry_date = :entry_date
+			WHERE group_id = :group_id
 				AND animal_id = :animal_id
 				AND id IS DISTINCT FROM :id
 				AND user_id = :user_id
@@ -42,7 +41,6 @@ func (r *SlaughterRepository) CheckSave(entry *SlaughterSave) (*SaveValidation, 
 			FROM animals
 			WHERE id = :animal_id
 				AND death_date IS NOT NULL
-				AND death_date IS DISTINCT FROM :entry_date
 				AND user_id = :user_id
 				AND deleted_at IS NULL
 		) AS has_death
@@ -59,10 +57,11 @@ func (r *SlaughterRepository) GetLastPerformance(userId string) (*[]util.GraphDa
 	query := `
 		WITH cte AS (
 			SELECT 
-				entry_date AS date,
-				AVG((dead_weight / NULLIF(weight * (1 - discount_rate), 0)) ) AS value
+				g.entry_date AS date,
+				AVG((s.dead_weight / NULLIF(s.weight * (1 - g.discount), 0)) ) AS value
 			FROM slaughter_entries s
-			WHERE user_id = $1 AND deleted_at IS NULL
+			JOIN slaughter_groups g ON g.id = s.group_id
+			WHERE s.user_id = $1 AND s.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
 			LIMIT 10
@@ -76,10 +75,11 @@ func (r *SlaughterRepository) GetLastAverageWeight(userId string) (*[]util.Graph
 	query := `
 		WITH cte AS (
 			SELECT 
-				entry_date AS date,
-				AVG(weight) AS value
-			FROM slaughter_entries 
-			WHERE user_id = $1 AND deleted_at IS NULL
+				g.entry_date AS date,
+				AVG(s.weight) AS value
+			FROM slaughter_entries s
+			JOIN slaughter_groups g ON g.id = s.group_id
+			WHERE s.user_id = $1 AND s.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
 			LIMIT 10
@@ -93,10 +93,11 @@ func (r *SlaughterRepository) GetLastDeadWeight(userId string) (*[]util.GraphDat
 	query := `
 		WITH cte AS (
 			SELECT 
-				entry_date AS date,
-				AVG(dead_weight) AS value
-			FROM slaughter_entries 
-			WHERE user_id = $1 AND deleted_at IS NULL
+				g.entry_date AS date,
+				AVG(g.dead_weight) AS value
+			FROM slaughter_entries s
+			JOIN slaughter_groups g ON g.id = g.group_id
+			WHERE s.user_id = $1 AND s.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
 			LIMIT 10
@@ -110,10 +111,11 @@ func (r *SlaughterRepository) GetWeightHist(userId string) (*[]WeightHist, error
 	query := `
 		WITH cte AS (
 			SELECT 
-				DATE_TRUNC('month', s.entry_date) entry_date,
-				AVG(weight) avg_weight,
-				AVG(dead_weight) dead_weight
+				DATE_TRUNC('month', g.entry_date) entry_date,
+				AVG(s.weight) avg_weight,
+				AVG(s.dead_weight) dead_weight
 			FROM slaughter_entries s
+			JOIN slaughter_groups g ON g.id = s.group_id
 			WHERE s.user_id = $1 AND s.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
@@ -128,9 +130,10 @@ func (r *SlaughterRepository) GetRateHist(userId string) (*[]util.GraphData, err
 	query := `
 		WITH cte AS (
 			SELECT 
-				DATE_TRUNC('month', s.entry_date) AS date,
-				AVG((s.dead_weight / NULLIF(weight * (1 - s.discount_rate), 0)) ) AS value
+				DATE_TRUNC('month', g.entry_date) AS date,
+				AVG((s.dead_weight / NULLIF(s.weight * (1 - g.discount), 0))) AS value
 			FROM slaughter_entries s
+			JOIN slaughter_groups g ON g.id = s.group_id
 			WHERE s.user_id = $1 AND s.deleted_at IS NULL
 			GROUP BY 1
 			ORDER BY 1 DESC
@@ -140,15 +143,18 @@ func (r *SlaughterRepository) GetRateHist(userId string) (*[]util.GraphData, err
 	`
 	return util.GetList[util.GraphData](r.DB, query, userId)
 }
+
 func (r *SlaughterRepository) GetBestFathers(userId string) (*[]TableRatings, error) {
 	query := `
 		WITH cte AS (
 			SELECT 
 				a.father_id,
-				COUNT(*) animals_number,
-				AVG(weight) avg_weight,
-				AVG((s.dead_weight / NULLIF(weight * (1 - s.discount_rate), 0))) avg_rate
-			FROM slaughter_entries s JOIN animals a ON a.id = s.animal_id
+				COUNT(*) AS animals_number,
+				AVG(weight) AS avg_weight,
+				AVG((s.dead_weight / NULLIF(weight * (1 - g.discount), 0))) AS avg_rate
+			FROM slaughter_entries s 
+			JOIN animals a ON a.id = s.animal_id
+			JOIN slaughter_groups g ON g.id = s.group_id
 			WHERE s.user_id = $1 AND s.deleted_at IS NULL
 			GROUP BY 1
 			HAVING COUNT(*) >= 10
@@ -180,30 +186,32 @@ func (r *SlaughterRepository) GetBestMothers(userId string) (*[]TableRatings, er
 		WITH cte AS (
 			SELECT 
 				a.mother_id,
-				COUNT(*) animals_number,
-				AVG(weight) avg_weight,
-				AVG((s.dead_weight / NULLIF(weight * (1 - s.discount_rate), 0))) avg_rate
-			FROM slaughter_entries s JOIN animals a ON a.id = s.animal_id
+				COUNT(*) AS animals_number,
+				AVG(weight) AS avg_weight,
+				AVG((s.dead_weight / NULLIF(weight * (1 - g.discount), 0))) AS avg_rate
+			FROM slaughter_entries s 
+			JOIN animals a ON a.id = s.animal_id
+			JOIN slaughter_groups g ON g.id = s.group_id
 			WHERE s.user_id = $1 AND s.deleted_at IS NULL
 			GROUP BY 1
 			HAVING COUNT(*) >= 10
 		),
 		gn_stats AS (
 			SELECT 
-				AVG(avg_weight) gn_avg_weight,
-				AVG(avg_rate) gn_avg_rate
+				AVG(avg_weight) AS gn_avg_weight,
+				AVG(avg_rate) AS gn_avg_rate
 			FROM cte
 		)
 		SELECT 
-			CONCAT_WS(' - ', a.tag, a.name) name,
+			CONCAT_WS(' - ', a.tag, a.name) AS name,
 			c.avg_weight,
-			((c.avg_weight / NULLIF(s.gn_avg_weight, 0)) - 1)  weight_comparison,
+			((c.avg_weight / NULLIF(s.gn_avg_weight, 0)) - 1) AS weight_comparison,
 			c.avg_rate,
-			((c.avg_rate / NULLIF(s.gn_avg_rate, 0)) - 1)  rate_comparison,
+			((c.avg_rate / NULLIF(s.gn_avg_rate, 0)) - 1) AS rate_comparison,
 			c.animals_number
 		FROM cte c 
-			CROSS JOIN gn_stats s
-			JOIN animals a ON a.id = c.mother_id
+		CROSS JOIN gn_stats s
+		JOIN animals a ON a.id = c.mother_id
 		ORDER BY c.avg_rate DESC
 		LIMIT 10
 	`
@@ -214,28 +222,31 @@ func (r *SlaughterRepository) GetBestButchers(userId string) (*[]TableRatings, e
 	query := `
 		WITH cte AS (
 			SELECT 
-				butcher_id,
-				COUNT(*) animals_number,
-				AVG(weight) avg_weight,
-				AVG((dead_weight / NULLIF(weight * (1 - discount_rate), 0))) avg_rate
-			FROM slaughter_entries 
+				g.butcher_id,
+				COUNT(*) AS animals_number,
+				AVG(s.weight) AS avg_weight,
+				AVG((s.dead_weight / NULLIF(s.weight * (1 - g.discount), 0))) AS avg_rate
+			FROM slaughter_entries s
+			JOIN slaughter_groups g ON g.id = s.group_id
 			WHERE user_id = $1 AND deleted_at IS NULL
 			GROUP BY 1
 		),
 		gn_stats AS (
 			SELECT 
-				AVG(avg_weight) gn_avg_weight,
-				AVG(avg_rate) gn_avg_rate
+				AVG(avg_weight) AS gn_avg_weight,
+				AVG(avg_rate) AS gn_avg_rate
 			FROM cte
 		)
 		SELECT 
 			s.name,
 			c.avg_weight,
-			((c.avg_weight / NULLIF(g.gn_avg_weight, 0)) - 1)  weight_comparison,
+			((c.avg_weight / NULLIF(g.gn_avg_weight, 0)) - 1) AS weight_comparison,
 			c.avg_rate,
-			((c.avg_rate / NULLIF(g.gn_avg_rate, 0)) - 1)  rate_comparison,
+			((c.avg_rate / NULLIF(g.gn_avg_rate, 0)) - 1) AS rate_comparison,
 			c.animals_number
-		FROM gn_stats g, cte c JOIN butchers s ON s.id = c.butcher_id
+		FROM gn_stats g
+		CROSS JOIN cte c 
+		JOIN butchers s ON s.id = c.butcher_id
 		WHERE c.avg_rate >= 20
 		ORDER BY c.avg_rate DESC
 		LIMIT 10
@@ -243,47 +254,38 @@ func (r *SlaughterRepository) GetBestButchers(userId string) (*[]TableRatings, e
 	return util.GetList[TableRatings](r.DB, query, userId)
 }
 
-func (r *SlaughterRepository) GetLastGroups(userId string) (*[]SlaughterGroupDB, error) {
-	query := `
-		WITH cte AS (
-			SELECT 
-				entry_date,
-				butcher_id,
-				COUNT(animal_id) animals_number,
-				AVG(dead_weight) avg_weight,
-				AVG((dead_weight / NULLIF(weight * (1 - discount_rate), 0))) avg_rate
-			FROM slaughter_entries 
-			WHERE user_id = $1 AND deleted_at IS NULL
-			GROUP BY 1, 2
-		)
-		SELECT 
-			c.entry_date,
-			c.avg_weight,
-			((c.avg_weight / LAG(NULLIF(c.avg_weight, 0)) OVER (ORDER BY c.entry_date)) - 1)  AS weight_variation,
-			c.avg_rate,
-			((c.avg_rate / LAG(NULLIF(c.avg_rate, 0)) OVER (ORDER BY c.entry_date)) - 1)  AS rate_variation,
-			c.animals_number,
-
-			b.id AS butcher_id,
-			b.name AS butcher_name,
-			b.discount AS butcher_discount
-		FROM cte c 
-		JOIN butchers b ON b.id = c.butcher_id
-		ORDER BY c.entry_date DESC
-		LIMIT 10
-	`
-	return util.GetList[SlaughterGroupDB](r.DB, query, userId)
-}
-
 func (r *SlaughterRepository) GetLastEntries(userId string) (*[]SlaughterDB, error) {
 	query := `
+
 		WITH last_date AS (
-			SELECT MAX(entry_date) max_date 
-			FROM slaughter_entries
+			SELECT MAX(entry_date) AS max_date
+			FROM slaughter_groups
 			WHERE user_id = $1 AND deleted_at IS NULL
+		),
+
+		last_groups AS (
+			SELECT 
+				g.id AS group_id,
+				g.entry_date AS group_date,
+				g.discount AS group_discount
+				
+				g.butcher_id,
+				b.name AS butcher_name
+			FROM slaughter_groups g
+			CROSS JOIN last_date ld
+			JOIN butchers b ON b.id = g.butcher_id
+			WHERE g.entry_date = ld.max_date
+				AND g.user_id = $1 
+				AND g.deleted_at IS NULL
 		)
+
 		SELECT 
 			s.id,
+			s.weight,
+			s.weight * (1 - g.group_discount) discount_weight,
+			s.dead_weight,
+			s.dead_weight / NULLIF(s.weight*(1 - s.discount_rate), 0) AS performance_rate,
+
 			s.animal_id,
 			a.tag AS animal_tag, 
 			a.name AS animal_name, 
@@ -299,24 +301,18 @@ func (r *SlaughterRepository) GetLastEntries(userId string) (*[]SlaughterDB, err
 			m.tag AS mother_tag,
 			m.name AS mother_name,
 
-			s.butcher_id,
-			h.name butcher_name,
+			g.group_id,
+			g.group_date,
+			g.group_discount,
 
-			s.entry_date,
-			s.discount_rate AS discount_rate,
-			s.weight,
-			s.weight * (1 - s.discount_rate) discount_weight,
-			s.dead_weight,
-			s.dead_weight / NULLIF(s.weight*(1 - s.discount_rate), 0) AS performance_rate
+			g.butcher_id,
+			g.butcher_name
 		FROM slaughter_entries s
-		CROSS JOIN last_date l
+		CROSS JOIN last_group l
 		LEFT JOIN animals a ON a.id = s.animal_id
 		LEFT JOIN animals m ON m.id = a.mother_id
 		LEFT JOIN animals f ON f.id = a.father_id
-		JOIN butchers h ON h.id = s.butcher_id
-		WHERE s.entry_date = l.max_date
-			AND s.user_id = $1 
-			AND s.deleted_at IS NULL
+		WHERE s.user_id = $1 AND s.deleted_at IS NULL
 		ORDER BY COALESCE(NULLIF(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g'), '')::int, 0) 
 	`
 	return util.GetList[SlaughterDB](r.DB, query, userId)
@@ -332,55 +328,61 @@ func (r *SlaughterRepository) FindPage(
 ) (*[]SlaughterDB, error) {
 
 	sortMap := map[string]util.SortField{
-		"entry_date":       {Field: "s.entry_date", Order: "desc"},
-		"animal_order":     {Field: "COALESCE(NULLIF(regexp_replace(a.tag, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
-		"animal_name":      {Field: "COALESCE(a.name, '')", Order: "asc"},
-		"birth_date":       {Field: "COALESCE(a.birth_date, '-infinity')", Order: "desc"},
-		"weight":           {Field: "s.weight", Order: "asc"},
-		"dead_weight":      {Field: "s.dead_weight", Order: "asc"},
-		"performance_rate": {Field: "COALESCE(s.dead_weight / NULLIF(s.weight*(1 - s.discount_rate), 0) , 0)", Order: "asc"},
-		"id":               {Field: "s.id", Order: "asc"},
-		"created_at":       {Field: "s.created_at", Order: "asc"},
+		"entry_date":       {Field: "cte.group_date", Order: "desc"},
+		"animal_order":     {Field: "COALESCE(NULLIF(regexp_replace(cte.animal_tag, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
+		"animal_name":      {Field: "COALESCE(cte.animal_name, '')", Order: "asc"},
+		"birth_date":       {Field: "COALESCE(cte.animal_birth, '-infinity')", Order: "desc"},
+		"weight":           {Field: "cte.weight", Order: "asc"},
+		"dead_weight":      {Field: "cte.dead_weight", Order: "asc"},
+		"performance_rate": {Field: "COALESCE(cte.dead_weight / NULLIF(cte.weight*(1 - cte.group_discount), 0) , 0)", Order: "asc"},
+		"id":               {Field: "cte.id", Order: "asc"},
+		"created_at":       {Field: "cte.created_at", Order: "asc"},
 	}
 
 	query := `
-		SELECT 
-			s.id,
-			s.animal_id,
-			a.tag AS animal_tag, 
-			a.name AS animal_name, 
-			a.sex AS animal_sex,
-			a.birth_date AS animal_birth,
-			COALESCE(NULLIF(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g'), '')::int, 0) animal_order,
+		WITH cte AS (
+			SELECT 
+				s.id,
+				s.weight,
+				s.weight * (1 - g.discount) AS discount_weight,
+				s.dead_weight,
+				s.dead_weight / NULLIF(s.weight*(1 - g.discount), 0) AS performance_rate,
 
-			a.father_id,
-			f.tag AS father_tag,
-			f.name AS father_name,
+				s.animal_id,
+				a.tag AS animal_tag, 
+				a.name AS animal_name, 
+				a.sex AS animal_sex,
+				a.birth_date AS animal_birth,
+				COALESCE(NULLIF(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g'), '')::int, 0) animal_order,
 
-			a.mother_id,
-			m.tag AS mother_tag,
-			m.name AS mother_name,
+				a.father_id,
+				f.tag AS father_tag,
+				f.name AS father_name,
 
-			s.butcher_id,
-			h.name butcher_name,
+				a.mother_id,
+				m.tag AS mother_tag,
+				m.name AS mother_name,
 
-			s.entry_date,
-			s.discount_rate AS discount_rate,
-			s.weight,
-			s.weight * (1 - s.discount_rate) discount_weight,
-			s.dead_weight,
-			s.dead_weight / NULLIF(s.weight*(1 - s.discount_rate), 0) AS performance_rate,
-			s.created_at
-		FROM slaughter_entries s
-		JOIN butchers h ON h.id = s.butcher_id
-		LEFT JOIN animals a ON a.id = s.animal_id
-		LEFT JOIN animals f ON f.id = a.father_id
-		LEFT JOIN animals m ON m.id = a.mother_id
+				s.group_id,
+				g.entry_date AS group_date,
+				g.discount AS group_discount,
+
+				g.butcher_id,
+				b.name butcher_name,
+
+				s.created_at
+			FROM slaughter_entries s
+			JOIN slaughter_groups g ON g.id = s.group_id
+			JOIN butchers b ON b.id = g.butcher_id
+			LEFT JOIN animals a ON a.id = s.animal_id
+			LEFT JOIN animals f ON f.id = a.father_id
+			LEFT JOIN animals m ON m.id = a.mother_id
+			WHERE s.user_id = $1 AND s.deleted_at IS NULL
+		)
+		SELECT * FROM cte
 	`
 
-	whereExpression := "WHERE s.user_id = $1 AND s.deleted_at IS NULL"
-
-	filterExpression, nextParam, err := util.GetFilterExpressions(filter, "s", 2)
+	filterExpression, nextParam, err := util.GetFilterExpressions(filter, "cte", 2)
 	if err != nil {
 		return nil, err
 	}
@@ -390,13 +392,7 @@ func (r *SlaughterRepository) FindPage(
 		return nil, err
 	}
 
-	if filterExpression != "" {
-		whereExpression += " AND " + filterExpression
-	}
-
-	if cursorExpression != "" {
-		whereExpression += " AND " + cursorExpression
-	}
+	whereExpression := util.GetWhereExpression(filterExpression, cursorExpression)
 
 	sortExpression, err := util.GetSortExpression(sortMap, sort, order)
 	if err != nil {
@@ -420,24 +416,46 @@ func (r *SlaughterRepository) FindPage(
 func (r *SlaughterRepository) GetPageFoot(filter *SlaughterFilter, userId string) (*SlaughterFoot, error) {
 
 	query := `
+		WITH cte AS (
+			SELECT 
+				s.id,
+				s.weight,
+				s.weight * (1 - g.discount) AS discount_weight,
+				s.dead_weight,
+				s.dead_weight / NULLIF(s.weight*(1 - g.discount), 0) AS performance_rate,
+
+				s.animal_id,
+				a.sex AS animal_sex,
+				a.birth_date AS animal_birth,
+
+				a.father_id,
+				a.mother_id,
+
+				s.group_id,
+				g.entry_date AS group_date,
+				g.discount AS group_discount,
+				g.butcher_id,
+			FROM slaughter_entries s
+			JOIN slaughter_groups g ON g.id = s.group_id
+			JOIN butchers b ON b.id = g.butcher_id
+			LEFT JOIN animals a ON a.id = s.animal_id
+			WHERE s.user_id = $1 AND s.deleted_at IS NULL
+		)
+
 		SELECT 
 			COUNT(s.*) AS animals_number,
-			AVG(s.weight) AS avg_weight,
-			AVG(s.dead_weight) AS avg_dead_weight,
-			AVG((s.dead_weight / NULLIF(weight * (1 - s.discount_rate), 0)) ) AS avg_rate
-		FROM slaughter_entries s
+			AVG(cte.weight) AS avg_weight,
+			AVG(cte.dead_weight) AS avg_dead_weight,
+			AVG((cte.dead_weight / NULLIF(cte.weight * (1 - cte.group_discount), 0)) ) AS avg_rate
+		FROM cte
 	`
 
-	whereExpression := " WHERE s.user_id = $1 AND s.deleted_at IS NULL"
-
-	filterExpression, _, err := util.GetFilterExpressions(filter, "s", 2)
+	filterExpression, _, err := util.GetFilterExpressions(filter, "cte", 2)
 	if err != nil {
 		return nil, err
 	}
 
-	if filterExpression != "" {
-		whereExpression += " AND " + filterExpression
-	}
+	whereExpression := util.GetWhereExpression(filterExpression)
 
 	args := []any{userId}
 	filterArgs := util.GetFilterArgs(filter)
@@ -458,59 +476,63 @@ func (r *SlaughterRepository) FindButcherPage(
 ) (*[]SlaughterDB, error) {
 
 	sortMap := map[string]util.SortField{
-		"entry_date":       {Field: "s.entry_date", Order: "desc"},
-		"animal_order":     {Field: "COALESCE(NULLIF(regexp_replace(a.tag, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
-		"animal_name":      {Field: "COALESCE(a.name, '')", Order: "asc"},
-		"birth_date":       {Field: "COALESCE(a.birth_date, '-infinity')", Order: "desc"},
-		"weight":           {Field: "s.weight", Order: "asc"},
-		"dead_weight":      {Field: "s.dead_weight", Order: "asc"},
-		"performance_rate": {Field: "COALESCE(s.dead_weight / NULLIF(s.weight*(1 - s.discount_rate), 0) , 0)", Order: "asc"},
+		"entry_date":       {Field: "cte.group_date", Order: "desc"},
+		"animal_order":     {Field: "COALESCE(NULLIF(regexp_replace(cte.animal_tag, '[^0-9]', '', 'g'), '')::int, 0)", Order: "asc"},
+		"animal_name":      {Field: "COALESCE(cte.animal_name, '')", Order: "asc"},
+		"birth_date":       {Field: "COALESCE(cte.animal_birth, '-infinity')", Order: "desc"},
+		"weight":           {Field: "cte.weight", Order: "asc"},
+		"dead_weight":      {Field: "cte.dead_weight", Order: "asc"},
+		"performance_rate": {Field: "COALESCE(cte.dead_weight / NULLIF(cte.weight*(1 - cte.group_discount), 0) , 0)", Order: "asc"},
 		"id":               {Field: "s.id", Order: "asc"},
 		"created_at":       {Field: "s.created_at", Order: "asc"},
 	}
 
 	query := `
-		SELECT 
-			s.id,
-			s.animal_id,
-			a.tag AS animal_tag, 
-			a.name AS animal_name, 
-			a.sex AS animal_sex,
-			a.birth_date AS animal_birth,
-			COALESCE(NULLIF(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g'), '')::int, 0) animal_order,
+		WITH cte AS (
+			SELECT 
+				s.id,
+				s.weight,
+				s.weight * (1 - g.discount) discount_weight,
+				s.dead_weight,
+				s.dead_weight / NULLIF(s.weight * (1 - g.discount), 0) AS performance_rate,
 
-			a.father_id,
-			f.tag AS father_tag,
-			f.name AS father_name,
+				s.animal_id,
+				a.tag AS animal_tag, 
+				a.name AS animal_name, 
+				a.sex AS animal_sex,
+				a.birth_date AS animal_birth,
+				COALESCE(NULLIF(REGEXP_REPLACE(a.tag, '[^0-9]', '', 'g'), '')::int, 0) animal_order,
 
-			a.mother_id,
-			m.tag AS mother_tag,
-			m.name AS mother_name,
+				a.father_id,
+				f.tag AS father_tag,
+				f.name AS father_name,
 
-			s.butcher_id,
-			h.name butcher_name,
+				a.mother_id,
+				m.tag AS mother_tag,
+				m.name AS mother_name,
 
-			s.entry_date,
-			s.discount_rate AS discount_rate,
-			s.weight,
-			s.weight * (1 - s.discount_rate) discount_weight,
-			s.dead_weight,
-			s.dead_weight / NULLIF(s.weight * (1 - s.discount_rate), 0) AS performance_rate,
-			s.created_at
-		FROM slaughter_entries s
-		JOIN butchers h ON h.id = s.butcher_id
-		LEFT JOIN animals a ON a.id = s.animal_id
-		LEFT JOIN animals f ON f.id = a.father_id
-		LEFT JOIN animals m ON m.id = a.mother_id
+				s.group_id,
+				g.entry_date AS group_date,
+				g.discount AS group_discount,
+
+				g.butcher_id,
+				h.name butcher_name,
+
+				s.created_at
+			FROM slaughter_entries s
+			JOIN slaughter_groups g ON g.id = s.group_id
+			JOIN butchers h ON h.id = g.butcher_id
+			LEFT JOIN animals a ON a.id = s.animal_id
+			LEFT JOIN animals f ON f.id = a.father_id
+			LEFT JOIN animals m ON m.id = a.mother_id
+			WHERE s.user_id = $1 
+				AND g.butcher_id = $2
+				AND s.deleted_at IS NULL
+		)
 	`
 
-	whereExpression := `
-		WHERE s.user_id = $1 
-			AND s.butcher_id = $2
-			AND s.deleted_at IS NULL
-		`
 
-	filterExpression, nextParam, err := util.GetFilterExpressions(filter, "s", 3)
+	filterExpression, nextParam, err := util.GetFilterExpressions(filter, "cte", 3)
 	if err != nil {
 		return nil, err
 	}
@@ -520,13 +542,7 @@ func (r *SlaughterRepository) FindButcherPage(
 		return nil, err
 	}
 
-	if filterExpression != "" {
-		whereExpression += " AND " + filterExpression
-	}
-
-	if cursorExpression != "" {
-		whereExpression += " AND " + cursorExpression
-	}
+	whereExpression := util.GetWhereExpression(filterExpression, cursorExpression)
 
 	sortExpression, err := util.GetSortExpression(sortMap, sort, order)
 	if err != nil {
@@ -554,24 +570,36 @@ func (r *SlaughterRepository) GetButcherPageFoot(
 ) (*SlaughterFoot, error) {
 
 	query := `
+		WITH cte AS (
+			SELECT
+				s.weight,
+				s.dead_weight,
+				s.dead_weight / NULLIF(s.weight * (1 - g.discount), 0) AS performance_rate,
+				s.animal_id,
+				a.birth_date AS animal_birth,
+				a.father_id,
+				a.mother_id,
+				g.entry_date AS group_date,
+				g.butcher_id
+			FROM slaughter_entries s 
+			JOIN slaughter_groups g ON g.id = s.group_id
+			WHERE s.user_id = $1 AND g.butcher_id = $2 AND s.deleted_at IS NULL
+		)
+
 		SELECT 
-			COUNT(s.*) AS animals_number,
-			AVG(s.weight) AS avg_weight,
-			AVG(s.dead_weight) AS avg_dead_weight,
-			AVG((s.dead_weight / NULLIF(weight * (1 - s.discount_rate), 0)) ) AS avg_rate
-		FROM slaughter_entries s
+			COUNT(cte.*) AS animals_number,
+			AVG(cte.weight) AS avg_weight,
+			AVG(cte.dead_weight) AS avg_dead_weight,
+			AVG(cte.performance_rate) AS avg_rate
+		FROM cte 
 	`
 
-	whereExpression := " WHERE s.user_id = $1 AND s.butcher_id = $2 AND s.deleted_at IS NULL"
-
-	filterExpression, _, err := util.GetFilterExpressions(filter, "s", 3)
+	filterExpression, _, err := util.GetFilterExpressions(filter, "cte", 3)
 	if err != nil {
 		return nil, err
 	}
 
-	if filterExpression != "" {
-		whereExpression += " AND " + filterExpression
-	}
+	whereExpression := util.GetWhereExpression(filterExpression)
 
 	args := []any{userId, butcherId}
 	filterArgs := util.GetFilterArgs(filter)
@@ -581,46 +609,11 @@ func (r *SlaughterRepository) GetButcherPageFoot(
 	return util.GetOne[SlaughterFoot](r.DB, query, args...)
 }
 
-func (r *SlaughterRepository) FindGroups(order string, userId string) (*[]SlaughterGroupDB, error) {
-	query := `
-		WITH cte AS (
-			SELECT 
-				entry_date,
-				butcher_id,
-				COUNT(*) AS animals_number,
-				AVG(weight) AS avg_weight,
-				AVG(dead_weight) AS avg_dead_weight,
-				AVG((dead_weight / NULLIF(weight * (1 - discount_rate), 0)) ) AS avg_rate
-			FROM slaughter_entries 
-			WHERE user_id = $1 AND deleted_at IS NULL
-			GROUP BY 1, 2
-		)
-		SELECT 
-			c.entry_date,
-			c.avg_weight,
-			c.avg_dead_weight,
-			COALESCE((c.avg_weight / LAG(NULLIF(c.avg_weight, 0)) OVER win) - 1, 0)  AS weight_variation, 
-			COALESCE((c.avg_dead_weight / LAG(NULLIF(c.avg_dead_weight, 0)) OVER win) - 1, 0)  AS dead_weight_variation,
-			c.avg_rate,
-			COALESCE((c.avg_rate / LAG(NULLIF(c.avg_rate, 0)) OVER win) - 1, 0)  AS rate_variation,
-			c.animals_number,
-
-			c.butcher_id,
-			b.name butcher_name,
-			b.discount butcher_discount
-		FROM cte c 
-			JOIN butchers b ON b.id = c.butcher_id
-		WINDOW win AS (ORDER BY c.entry_date)
-		ORDER BY c.entry_date
-	`
-	query += order
-	return util.GetList[SlaughterGroupDB](r.DB, query, userId)
-}
-
-func (r *SlaughterRepository) FindEntries(
+func (r *SlaughterRepository) FindEntriesByGroup(
 	sort string,
 	order string,
 	filter *SlaughterFilter,
+	groupId string,
 	userId string,
 ) (*[]SlaughterDB, error) {
 
@@ -637,6 +630,11 @@ func (r *SlaughterRepository) FindEntries(
 		WITH cte AS (
 			SELECT 
 				s.id,
+				s.weight,
+				s.weight * (1 - g.discount) AS discount_weight,
+				s.dead_weight,
+				(s.dead_weight / NULLIF(s.weight * (1 - g.discount), 0)) AS performance_rate,
+
 				s.animal_id,
 				a.tag AS animal_tag, 
 				a.name AS animal_name, 
@@ -657,21 +655,20 @@ func (r *SlaughterRepository) FindEntries(
 
 				s.entry_date,
 				s.discount_rate AS discount_rate,
-				s.weight,
-				s.weight * (1 - s.discount_rate) AS discount_weight,
-				s.dead_weight,
-				(s.dead_weight / NULLIF(s.weight * (1 - s.discount_rate), 0)) AS performance_rate
 			FROM slaughter_entries s 
+			JOIN slaughter_groups g ON g.id = s.group_id
 			JOIN butchers h ON h.id = s.butcher_id
 			LEFT JOIN animals a ON a.id = s.animal_id
 			LEFT JOIN animals m ON m.id = a.mother_id
 			LEFT JOIN animals f ON f.id = a.father_id
-			WHERE s.user_id = $1 AND s.deleted_at IS NULL
+			WHERE s.user_id = $1 
+				AND s.deleted_at IS NULL
+				AND s.group_id = $2
 		)
 		SELECT * FROM cte
 	`
 
-	filterExp, _, err := util.GetFilterExpressions(filter, "cte", 2)
+	filterExp, _, err := util.GetFilterExpressions(filter, "cte", 3)
 	if err != nil {
 		return nil, err
 	}
@@ -684,24 +681,27 @@ func (r *SlaughterRepository) FindEntries(
 	whereExpression := util.GetWhereExpression(filterExp)
 	orderExperssion := " ORDER BY " + sortExpression
 	query += whereExpression + orderExperssion
-	args := []any{userId}
+	args := []any{userId, groupId}
 	filterArgs := util.GetFilterArgs(filter)
 	args = append(args, filterArgs...)
 
 	return util.GetList[SlaughterDB](r.DB, query, args...)
 }
 
-func (r *SlaughterRepository) GetEntriesFoot(filter *SlaughterFilter, userId string) (*SlaughterFoot, error) {
+func (r *SlaughterRepository) GetEntriesFoot(filter *SlaughterFilter, groupId string, userId string) (*SlaughterFoot, error) {
 	query := `
 		WITH cte AS (
 			SELECT 
-				s.entry_date,
+				g.entry_date,
 				s.animal_id,
 				s.weight,
 				s.dead_weight,
-				(s.dead_weight / NULLIF(s.weight * (1 - s.discount_rate), 0))  AS rate
+				(s.dead_weight / NULLIF(s.weight * (1 - g.discount), 0)) AS rate
 			FROM slaughter_entries s
-			WHERE s.user_id = $1 AND s.deleted_at IS NULL
+			JOIN slaughter_groups g ON g.id = s.group_id
+			WHERE s.user_id = $1 
+				AND s.group_id = $2
+				AND s.deleted_at IS NULL
 		)
 
 		SELECT 
@@ -733,15 +733,15 @@ func (r *SlaughterRepository) Delete(id string, userId string) error {
 
 	defer tx.Rollback()
 
-	entryQuery := `
-		SELECT
-			id,
-			animal_id,
-			user_id
-		FROM slaughter_entries
-		WHERE id = $1 AND user_id = $2
+	query := `
+		UPDATE animals a
+		SET death_date = NULL
+		FROM slaughter_entries se
+		WHERE se.id = $1
+			AND a.id = se.animal_id 
+			AND se.user_id = $2
 	`
-	entry, err := util.GetOneTx(tx, entryQuery, &SlaughterSave{}, id, userId)
+	err = util.ExecTx(tx, query, id, userId)
 	if err != nil {
 		return err
 	}
@@ -749,19 +749,9 @@ func (r *SlaughterRepository) Delete(id string, userId string) error {
 	deleteQuery := `
 		UPDATE slaughter_entries 
 		SET deleted_at = NOW()
-		WHERE id = :id AND user_id = :user_id
+		WHERE id = $1 AND user_id = $2
 	`
-	err = util.NamedExecTx(tx, deleteQuery, entry)
-	if err != nil {
-		return err
-	}
-
-	animalQuery := `
-		UPDATE animals 
-		SET death_date = NULL
-		WHERE id = :animal_id AND user_id = :user_id
-	`
-	err = util.NamedExecTx(tx, animalQuery, entry)
+	err = util.ExecTx(tx, deleteQuery, id, userId)
 	if err != nil {
 		return err
 	}
@@ -799,10 +789,10 @@ func (r *SlaughterRepository) DeleteBatch(ids []string, userId string) error {
 	args = util.GetSliceArgs(args, ids)
 
 	query := fmt.Sprintf(`
-		UPDATE slaughter_entries 
-		SET deleted_at = NOW()
-		FROM (%s) batch_entries be
-		WHERE id = be.id AND user_id = be.user_id
+		UPDATE animals a
+		SET death_date = NULL
+		FROM (%s) b
+		WHERE a.id = b.animal_id AND a.user_id = b.user_id
 	`, batchQuery)
 
 	err = util.ExecTx(tx, query, args...)
@@ -811,10 +801,10 @@ func (r *SlaughterRepository) DeleteBatch(ids []string, userId string) error {
 	}
 
 	query = fmt.Sprintf(`
-		UPDATE animals 
-		SET death_date = NULL
-		FROM (%s) AS batch_entries be
-		WHERE id = be.animal_id AND user_id = be.user_id
+		UPDATE slaughter_entries s
+		SET deleted_at = NOW()
+		FROM (%s) b
+		WHERE s.id = b.id AND s.user_id = b.user_id
 	`, batchQuery)
 
 	err = util.ExecTx(tx, query, args...)
@@ -840,11 +830,9 @@ func (r *SlaughterRepository) Update(entry *SlaughterSave) (*SlaughterDB, error)
 
 	query := `
 		UPDATE slaughter_entries 
-		SET entry_date = :entry_date,
-			discount_rate = :discount_rate,
+		SET group_id = :group_id,
 			weight = :weight,
 			dead_weight = :dead_weight,
-			butcher_id = :butcher_id
 		WHERE id = :id AND user_id = :user_id
 	`
 
@@ -854,9 +842,12 @@ func (r *SlaughterRepository) Update(entry *SlaughterSave) (*SlaughterDB, error)
 	}
 
 	query = `
-		UPDATE animals 
-		SET death_date = :entry_date
-		WHERE id = :animal_id AND user_id = :user_id
+		UPDATE animals a
+		SET death_date = g.entry_date
+		FROM slaughter_groups g
+		WHERE a.id = :animal_id 
+			AND g.id = :group_id 
+			AND a.user_id = :user_id
 	`
 	err = util.NamedExecTx(tx, query, entry)
 	if err != nil {
@@ -866,6 +857,11 @@ func (r *SlaughterRepository) Update(entry *SlaughterSave) (*SlaughterDB, error)
 	query = `
 		SELECT 
 			s.id,
+			s.weight,
+			s.weight * (1 - g.discount) AS discount_weight,
+			s.dead_weight,
+			s.dead_weight / NULLIF(s.weight * (1 - g.discount), 0) AS performance_rate,
+
 			s.animal_id,
 			a.tag AS animal_tag, 
 			a.name AS animal_name, 
@@ -883,14 +879,11 @@ func (r *SlaughterRepository) Update(entry *SlaughterSave) (*SlaughterDB, error)
 			s.butcher_id,
 			b.name AS butcher_name,
 
-			s.entry_date,
-			s.discount_rate AS discount_rate,
-			s.weight,
-			s.weight * (1 - s.discount_rate) AS discount_weight,
-			s.dead_weight,
-			s.dead_weight / NULLIF(s.weight * (1 - s.discount_rate), 0) AS performance_rate
+			g.entry_date AS group_date,
+			g.discount AS group_discount
 		FROM slaughter_entries s
-		JOIN butchers b ON b.id = s.butcher_id
+		JOIN slaughter_groups g ON g.id = s.group_id
+		JOIN butchers b ON b.id = g.butcher_id
 		LEFT JOIN animals a ON a.id = s.animal_id
 		LEFT JOIN animals f ON f.id = a.father_id
 		LEFT JOIN animals m ON m.id = a.mother_id
@@ -910,7 +903,7 @@ func (r *SlaughterRepository) Update(entry *SlaughterSave) (*SlaughterDB, error)
 	return result, nil
 }
 
-func (r *SlaughterRepository) UpdateBatch(batch *SlaughterSaveBatch) error {
+func (r *SlaughterRepository) UpdateBatch(batch *[]SlaughterSave) error {
 
 	tx, err := r.DB.Beginx()
 	if err != nil {
@@ -918,59 +911,31 @@ func (r *SlaughterRepository) UpdateBatch(batch *SlaughterSaveBatch) error {
 	}
 
 	defer tx.Rollback()
-	args := []any{batch.UserId}
-	animalArgs := []any{batch.UserId}
-	valueTbl := make([]string, len(batch.Entries))
-	animalValueTbl := make([]string, len(batch.Entries))
 
-	for i, entry := range batch.Entries {
-		rowArgs := []any{
-			entry.Id,
-			entry.AnimalId,
-			entry.EntryDate,
-			entry.DiscountRate,
-			entry.Weight,
-			entry.DeadWeight,
-			entry.ButcherId,
-		}
-		valueTbl[i] = util.GenerateRowExpression(i + 2, rowArgs) 
-		args = append(args, rowArgs...)
+	//Altera as datas de morte dos animais antes de modificar o abate
+	query := `
+		UPDATE animals a
+		SET death_date = g.entry_date
+		FROM slaughter_groups g
+		WHERE a.id = :animal_id 
+			AND g.id = :group_id
+			AND a.user_id = :user_id
+	`
 
-		animalRowArgs := []any{entry.AnimalId, entry.EntryDate}
-		animalValueTbl[i] = util.GenerateRowExpression(i + 2, animalRowArgs)
-		animalArgs = append(animalArgs, animalRowArgs...)
-	}
-
-	query := fmt.Sprintf(`
-		WITH batch_entries(id, animal_id, entry_date, discount_rate, weight, dead_weight, butcher_id) AS (
-			VALUES(%s)
-		)
-		UPDATE slaughter_entries 
-		SET entry_date = be.entry_date,
-			discount_rate = be.discount_rate,
-			weight = be.weight,
-			dead_weight = be.dead_weight,
-			butcher_id = be.butcher_id
-		FROM batch_entries be
-		WHERE id = be.id AND user_id = $1
-	`, strings.Join(valueTbl, ","))
-
-	err = util.ExecTx(tx, query, args...)
+	err = util.NamedExecTx(tx, query, batch)
 	if err != nil {
 		return err
 	}
 
-	query = fmt.Sprintf(`
-		WITH batch_entries(animal_id, entry_date) AS (
-			VALUES(%s)
-		)
-		UPDATE animals 
-		SET death_date = be.entry_date
-		FROM batch_entries be
-		WHERE id = be.animal_id AND user_id = $1
-	`, strings.Join(animalValueTbl, ","))
+	query = `
+		UPDATE slaughter_entries 
+		SET group_id = :group_id,
+			weight = :weight,
+			dead_weight = :dead_weight
+		WHERE id = :id AND user_id = :user_id
+	`
 
-	err = util.ExecTx(tx, query, animalArgs...)
+	err = util.NamedExecTx(tx, query, batch)
 	if err != nil {
 		return err
 	}
@@ -992,14 +957,26 @@ func (r *SlaughterRepository) Add(entry *SlaughterSave) error {
 
 	defer tx.Rollback()
 
-	var query string
+	//Altera as datas de morte dos animais antes de adicionar
+	query := `
+		UPDATE animals a
+		SET death_date = g.entry_date
+		FROM slaughter_groups g
+		WHERE a.id = :animal_id 
+			AND g.id = :group_id
+			AND a.user_id = :user_id
+	`
+	err = util.NamedExecTx(tx, query, entry)
+	if err != nil {
+		return err
+	}
+
 	if entry.Overwrite {
 		query = `
 			UPDATE slaughter_entries 
-			SET discount_rate = :discount_rate, 
-				weight = :weight, 
+			SET weight = :weight, 
 				dead_weight = :dead_weight
-			WHERE entry_date = :entry_date
+				WHERE group_id = :group_id
 				AND animal_id = :animal_id
 				AND user_id = :user_id
 				AND deleted_at IS NULL
@@ -1008,18 +985,14 @@ func (r *SlaughterRepository) Add(entry *SlaughterSave) error {
 		query = `
 			INSERT INTO slaughter_entries (
 				animal_id, 
-				butcher_id, 
-				entry_date, 
-				discount_rate, 
+				group_id,
 				weight, 
 				dead_weight,
 				user_id
 			)
 			VALUES (
 				:animal_id,
-				:butcher_id,
-				:entry_date,
-				:discount_rate,
+				:group_id,
 				:weight,
 				:dead_weight,
 				:user_id
@@ -1028,17 +1001,6 @@ func (r *SlaughterRepository) Add(entry *SlaughterSave) error {
 	}
 
 	err = util.NamedExecTx(tx, query, entry)
-	if err != nil {
-		return err
-	}
-
-	animalQuery := `
-		UPDATE animals
-		SET death_date = :entry_date
-		WHERE id = :animal_id 
-			AND user_id = :user_id
-	`
-	err = util.NamedExecTx(tx, animalQuery, entry)
 	if err != nil {
 		return err
 	}
